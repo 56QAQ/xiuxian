@@ -132,6 +132,7 @@ class HUDCanvas:
 		_draw_spellbar(vs, s)
 		_draw_info(vs, s)
 		_draw_prompt(vs, s)
+		_draw_radar(vs, s)
 
 	# ------------------------------------------------------------ 中央环
 	func _draw_cluster(c: Vector2, s: float) -> void:
@@ -378,6 +379,69 @@ class HUDCanvas:
 		draw_rect(Rect2(p - Vector2(w * 0.5, 20.0 * s), Vector2(w, 30.0 * s)), Color(0.03, 0.04, 0.06, 0.7))
 		draw_rect(Rect2(p - Vector2(w * 0.5, 20.0 * s), Vector2(w, 30.0 * s)), C_GOLD.darkened(0.3), false, 1.0)
 		_text(p + Vector2(0, 2.0 * s), prompt, 18 * s, C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+
+	# ------------------------------------------------------------ 雷达
+	func _draw_radar(vs: Vector2, s: float) -> void:
+		if cam == null:
+			return
+		var rr := 92.0 * s
+		var c := Vector2(vs.x - rr - 26.0 * s, rr + 26.0 * s)
+		var world_r := 80.0
+		draw_circle(c, rr, Color(0.03, 0.05, 0.07, 0.55))
+		draw_arc(c, rr, 0.0, TAU, 64, Color(0.95, 0.8, 0.4, 0.5), 1.5 * s, true)
+		draw_arc(c, rr * 0.5, 0.0, TAU, 48, Color(1, 1, 1, 0.08), 1.0, true)
+		var yaw := cam.yaw
+		var origin := actor.global_position
+		var to_screen := func(p: Vector3, clamp_edge: bool) -> Vector2:
+			var d := p - origin
+			var v := Vector2(d.x, d.z).rotated(yaw) / world_r * rr
+			if v.length() > rr:
+				if not clamp_edge:
+					return Vector2.INF
+				v = v.normalized() * (rr - 4.0 * s)
+			return c + v
+		# 撤离点 / 天材地宝
+		for n in get_tree().get_nodes_in_group("extraction_point"):
+			var ep := n as Node3D
+			var sp: Vector2 = to_screen.call(ep.global_position, true)
+			var active: bool = ep.get("active") == true
+			var col := Color(0.4, 1.0, 0.75) if active else Color(0.6, 0.6, 0.65)
+			draw_colored_polygon(PackedVector2Array([sp + Vector2(0, -6) * s, sp + Vector2(6, 0) * s, sp + Vector2(0, 6) * s, sp + Vector2(-6, 0) * s]), col)
+		for n in get_tree().get_nodes_in_group("interactable"):
+			if n is TreasureSite:
+				var sp2: Vector2 = to_screen.call((n as Node3D).global_position, true)
+				draw_circle(sp2, 5.0 * s, Color(0.85, 0.5, 1.0))
+		for n in get_tree().get_nodes_in_group("loot_container"):
+			var lc := n as LootContainer
+			if lc == null or (lc.searched and lc.grid.entries.is_empty()):
+				continue
+			var sp3: Vector2 = to_screen.call(lc.global_position, false)
+			if sp3 != Vector2.INF:
+				draw_rect(Rect2(sp3 - Vector2(2.5, 2.5) * s, Vector2(5, 5) * s), Color(0.95, 0.8, 0.35, 0.5 if lc.searched else 0.9))
+		# 角色
+		var me := actor.combatant
+		for b in CombatUtil.bodies():
+			var body := b as Node3D
+			if body == actor or body == null:
+				continue
+			var bc := CombatUtil.combatant_of(body)
+			if bc == null or not bc.alive:
+				continue
+			var sp4: Vector2 = to_screen.call(body.global_position, false)
+			if sp4 == Vector2.INF:
+				continue
+			var col2 := Color(0.95, 0.95, 1.0)
+			if me.is_hostile_to(bc):
+				col2 = Color(1.0, 0.3, 0.25)
+			elif bc.faction == "beast":
+				col2 = Color(1.0, 0.65, 0.2)
+			draw_circle(sp4, (4.0 if body != actor.lock_target else 6.0) * s, col2)
+		# 玩家箭头（镜头朝上）
+		var fwd := actor.forward()
+		var ang := atan2(fwd.x, -fwd.z) + yaw
+		var tip := Vector2(sin(ang), -cos(ang))
+		var side := Vector2(-tip.y, tip.x)
+		draw_colored_polygon(PackedVector2Array([c + tip * 9.0 * s, c - tip * 5.0 * s + side * 5.0 * s, c - tip * 5.0 * s - side * 5.0 * s]), Color(1, 0.9, 0.5))
 
 	func _text(pos: Vector2, t: String, size: float, col: Color, align: HorizontalAlignment, f: Font = null) -> void:
 		var fnt := f if f != null else font
