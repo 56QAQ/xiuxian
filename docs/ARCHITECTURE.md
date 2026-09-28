@@ -62,6 +62,25 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
 - **CharacterBuilder.build(appearance, equip_visual) -> CharacterRig**：外貌字段见 DATA.md。VOXEL = 0.025m，身高约 1.75m。
 - **WeaponBuilder.build(visual) -> Node3D**：meta `tip_length`。
 
+## 大地图（src/world）
+
+- **TerrainGen**（`TerrainGen.shared(seed)`，按种子缓存）：1024×1024 m、1 m 方块列、海平面 12 m；区域：中部平原坊市、北雪峰（天剑宗）、东古林（青木谷）、南湖泽（玄水阁）、西赤岩火山（离火殿）、西南黄土台地（厚土宗）。
+  `get_height(x,z)`（与碰撞一致）、`get_ground_y`、`get_biome`、`is_water`、`is_lava`、`find_poi(id)`、`carve_crater(pos, r)`（本次会话持久）、`render_map_image(px)`。
+- **TerrainStreamer**：32 m 区块，工作线程生成（`WorkerThreadPool` 一律 high_priority），主线程每帧预算；4 m 远景网格。碰撞为 HeightMapShape3D。
+- **WorldMap**（静态）：`pois()` → `{id, name, type(sect/town/home/portal/landmark), pos, facing, yaw, region, sect_id?, realm_id?, markers}`；区块加载前即可用。
+- **标记点**（Marker3D，组 `poi_marker`，meta `poi_id`/`sect_id`/`realm_id`）：宗门 `npc_master/npc_teacher/npc_steward/npc_senior/shop/mission_board/cultivation_room/sect_gate`；坊市 `npc_merchant_1..4/town_board/town_center`；洞府 `home_cushion/home_stash/home_furnace/home_field/home_spawn`；秘境 `realm_portal`。
+- **VoxelDestructible**（组 `destructible`，层 1+7）：`apply_damage_at(point, radius, power)`；断开的部分整体坠落；碎屑为对象池 MultiMesh。
+- **PropBuilder / BuildingBuilder / BuildingLayouts / DestructibleFactory**：植被、中式建筑、宗门布局与可破坏物。
+- **DayNight**、**WaterPlane**：昼夜与水面；大地图 1 现实分钟 = 1 时辰。
+- **OverworldGameplay**（src/gameplay）：`overworld._spawn_player()` 在已开局时创建它，负责玩家会话、NPC 按锚点生成/回收、标记点交互、地点加成、遭遇、地图参数（`UIManager.register_args_provider("map", ...)`）。
+
+## 界面（src/ui）
+
+- **UIManager**（每个游戏场景一个，组 `ui_manager`）：`open/close/toggle(name, args)`、`is_blocking()`、`confirm`、`ask_number`、`notify`；静态 `register_panel(name, factory)`、`register_args_provider(name, provider)`。
+- 内置面板：inventory（可带 other 网格：仓库/容器）、character、cultivation、skills、map、pause、settings、dialogue、shop、craft、saves；宗门面板 `sect` 由 GameSession 注册（SectPanel）。
+- 面板继承 **UIWindow**：覆盖 `_build()` 与 `refresh()`；主题由 **UITheme** 代码生成。
+- 战斗 HUD（src/ui/hud/combat_hud.gd）由 GameSession 创建：中央环形资源、锁定框、法诀栏、雷达、目标提示。
+
 ## 物理层
 
 | 层 | 名称 | 用途 |
