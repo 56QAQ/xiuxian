@@ -41,6 +41,8 @@ extends StyleBox
 @export var brush_flip: bool = false
 ## 笔触截取到 u（0..1）：<1 时收笔的飞白更少，适合承载文字
 @export var brush_u1: float = 1.0
+## 笔触是否略微出界（起笔/收笔越过边框更自然）；进度条等需要严格贴边时关闭
+@export var brush_overflow: bool = true
 ## 阴影
 @export var shadow_size: float = 0.0
 @export var shadow_color: Color = Color(0, 0, 0, 0.5)
@@ -140,7 +142,7 @@ func _draw_brush_bg(ci: RID, rect: Rect2) -> void:
 	var t := InkArt.tex("brush_stroke")
 	if t == null:
 		return
-	var over := minf(rect.size.y * 0.6, 26.0)
+	var over := minf(rect.size.y * 0.6, 26.0) if brush_overflow else 0.0
 	var r := Rect2(rect.position - Vector2(over * 0.5, rect.size.y * 0.12), rect.size + Vector2(over * 1.3, rect.size.y * 0.24))
 	var col := Color(brush_color.r, brush_color.g, brush_color.b, brush_color.a * brush)
 	if brush_u1 < 0.999:

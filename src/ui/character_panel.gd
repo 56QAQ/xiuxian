@@ -37,7 +37,7 @@ func _build() -> void:
 	var left := UITheme.vbox(8)
 	left.custom_minimum_size.x = 300
 	var pv := PanelContainer.new()
-	pv.theme_type_variation = "InsetPanel"
+	pv.theme_type_variation = "PortraitPanel"
 	_preview = RigPreview.new()
 	_preview.custom_minimum_size = Vector2(280, 300)
 	pv.add_child(_preview)

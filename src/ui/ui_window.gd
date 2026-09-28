@@ -62,7 +62,7 @@ func _ready() -> void:
 	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.add_child(sl)
 	bar.add_child(_cloud(false))
-	title_seal = InkSeal.make(window_title.substr(0, 1), 30.0)
+	title_seal = InkSeal.make(seal_glyph(window_title), 30.0)
 	bar.add_child(title_seal)
 	title_label = UITheme.title(window_title, 30)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -107,8 +107,16 @@ func set_title(t: String) -> void:
 	window_title = t
 	if title_label != null:
 		title_label.text = t
-		title_seal.glyph = t.substr(0, 1)
+		title_seal.glyph = seal_glyph(t)
 		title_bar.visible = t != ""
+
+
+## 标题印章字：取标题中第一个汉字（跳过【】等符号）
+static func seal_glyph(t: String) -> String:
+	for i in t.length():
+		if t.unicode_at(i) >= 0x4E00 and t.unicode_at(i) <= 0x9FFF:
+			return t.substr(i, 1)
+	return ""
 
 
 ## 标题两侧的祥云纹（mirror：云头朝左）

@@ -5,9 +5,9 @@ extends RefCounted
 ## Settings._ready() 中：get_tree().root.theme = UITheme.get_theme()
 ##
 ## 主题类型变体（Control.theme_type_variation）：
-##   Label：TitleLabel HeaderLabel DimLabel SmallLabel GoldLabel ParchmentLabel
+##   Label：TitleLabel HeaderLabel DisplayLabel DimLabel SmallLabel GoldLabel ParchmentLabel
 ##   Button：PrimaryButton JadeButton MenuItem ChipButton TabButton IconButton ListButton SwatchButton
-##   PanelContainer：WindowPanel InsetPanel CardPanel CardSelected ParchmentPanel TitleBar ToastPanel HudPanel
+##   PanelContainer：WindowPanel InsetPanel PortraitPanel CardPanel CardSelected ParchmentPanel TitleBar ToastPanel HudPanel
 ##   ProgressBar：ExpBar
 
 # ---------------------------------------------------------------- 调色
@@ -143,6 +143,21 @@ static func _build() -> Theme:
 	inset.mottle_color = Color(0, 0, 0, 0.1)
 	inset.set_all_margins(10)
 	t.set_stylebox("panel", "InsetPanel", inset)
+	# 头像画框：深色绢底 + 双金线 + 小祥云角
+	t.set_type_variation("PortraitPanel", "PanelContainer")
+	var por := OrnateBox.new()
+	por.bg_top = Color(0.13, 0.11, 0.09, 0.9)
+	por.bg_bottom = Color(0.04, 0.04, 0.05, 0.9)
+	por.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.75)
+	por.border_width = 1.5
+	por.inner_line_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.3)
+	por.inner_inset = 4.0
+	por.ornament = 4
+	por.corner_len = 6.5
+	por.ornament_color = Color(0.96, 0.8, 0.5, 0.8)
+	por.paper_color = Color(1.0, 0.9, 0.72, 0.04)
+	por.set_all_margins(8)
+	t.set_stylebox("panel", "PortraitPanel", por)
 	t.set_type_variation("CardPanel", "PanelContainer")
 	t.set_stylebox("panel", "CardPanel", card_box(false))
 	t.set_type_variation("CardSelected", "PanelContainer")
@@ -471,13 +486,24 @@ static func _build() -> Theme:
 	t.set_color("font_outline_color", "ProgressBar", Color(0, 0, 0, 0.9))
 	t.set_constant("outline_size", "ProgressBar", 4)
 	t.set_font_size("font_size", "ProgressBar", 15)
+	# 修为条：一笔金墨（底为淡墨痕）
 	t.set_type_variation("ExpBar", "ProgressBar")
 	var exp_fill := OrnateBox.new()
-	exp_fill.bg_top = Color(1.0, 0.88, 0.55)
-	exp_fill.bg_bottom = Color(0.66, 0.44, 0.16)
+	exp_fill.brush = 1.0
+	exp_fill.brush_color = Color(0.98, 0.78, 0.4, 0.95)
+	exp_fill.brush_u1 = 0.9
+	exp_fill.brush_overflow = false
 	exp_fill.border_width = 0.0
 	exp_fill.set_all_margins(0)
 	t.set_stylebox("fill", "ExpBar", exp_fill)
+	var exp_bg := OrnateBox.new()
+	exp_bg.brush = 1.0
+	exp_bg.brush_color = Color(0.0, 0.0, 0.0, 0.6)
+	exp_bg.brush_u1 = 0.95
+	exp_bg.brush_overflow = false
+	exp_bg.border_width = 0.0
+	exp_bg.set_all_margins(0)
+	t.set_stylebox("background", "ExpBar", exp_bg)
 
 	# ---- 滚动条
 	for ty in ["VScrollBar", "HScrollBar"]:

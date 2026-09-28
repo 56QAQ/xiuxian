@@ -161,7 +161,7 @@ class RealmBanner extends Control:
 		var c := size * 0.5 + Vector2(0, -90)
 		var full_w := minf(size.x * 0.84, 1180.0)
 		var w := full_w * reveal
-		var hh := 150.0
+		var hh := 134.0
 		if w < 24.0 or size.x < 64.0:
 			return
 		var ci := get_canvas_item()

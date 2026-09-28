@@ -67,6 +67,16 @@ void fragment() {
 	float rim_i = exp(-pow((dr + hw_band) / 0.75, 2.0));
 	col = over(col, vec4(0.96, 0.84, 0.55, (rim_o * 0.75 + rim_i * 0.55) * disc_alpha * 2.2));
 
+	// 内圈罗盘刻度：细金线 + 每 15° 一刻、每 45° 长刻
+	float r_in = ring_r - hw_band - 6.0;
+	float bez = exp(-pow((r - r_in) / 0.7, 2.0));
+	float da15 = abs(fract(a360 / 15.0 + 0.5) - 0.5) * 15.0;
+	float da45 = abs(fract(a360 / 45.0 + 0.5) - 0.5) * 45.0;
+	float tick_w = 1.0 - smoothstep(0.45, 1.1, radians(da15) * r);
+	float tick_len = (da45 < 1.0) ? 7.0 : 3.5;
+	float tick = tick_w * step(r_in - tick_len, r) * step(r, r_in);
+	col = over(col, vec4(0.96, 0.84, 0.55, (bez * 0.5 + tick * 0.55) * disc_alpha * 1.6));
+
 	// ---------------------------------------------------------------- 生命：朱砂笔触
 	float t_hp = (a360 - 108.0) / SPAN;
 	if (t_hp >= -0.02 && t_hp <= 1.02) {
