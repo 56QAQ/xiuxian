@@ -1,6 +1,6 @@
 class_name UIWindow
 extends PanelContainer
-## 界面窗口基类：标题栏（标题 + 关闭按钮，可拖动）+ 内容区 body。
+## 界面窗口基类：标题栏（笔触线 · 祥云 · 朱印 + 书法标题 · 祥云 · 笔触线 · 关闭，可拖动）+ 内容区 body。
 ## 由 UIManager.open(name, args) 创建；子类覆盖 _build()（构建一次）与 refresh()（数据变化时刷新）。
 ## 也可脱离 UIManager 直接 add_child 使用（关闭时自行淡出并释放）。
 
@@ -25,6 +25,7 @@ var esc_closes: bool = true
 var auto_refresh: bool = true
 
 var title_label: Label
+var title_seal: InkSeal
 var title_bar: Control
 var body: VBoxContainer
 var close_button: Button
@@ -53,16 +54,24 @@ func _ready() -> void:
 	bar.gui_input.connect(_on_bar_input)
 	title_bar = bar
 	root.add_child(bar)
-	var sl := GoldSeparator.new()
-	sl.ornament = false
-	sl.fade_right = false
+	var gold := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.5)
+	var sl := BrushLine.new()
+	sl.flip = true
+	sl.color = gold
+	sl.thickness = 6.0
+	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.add_child(sl)
-	title_label = UITheme.title(window_title, 26)
+	bar.add_child(_cloud(false))
+	title_seal = InkSeal.make(window_title.substr(0, 1), 30.0)
+	bar.add_child(title_seal)
+	title_label = UITheme.title(window_title, 30)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bar.add_child(title_label)
-	var sr := GoldSeparator.new()
-	sr.ornament = false
-	sr.fade_left = false
+	bar.add_child(_cloud(true))
+	var sr := BrushLine.new()
+	sr.color = gold
+	sr.thickness = 6.0
+	sr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.add_child(sr)
 	close_button = UITheme.icon_button("close", "关闭（Esc）", close)
 	close_button.visible = closable
@@ -98,7 +107,23 @@ func set_title(t: String) -> void:
 	window_title = t
 	if title_label != null:
 		title_label.text = t
+		title_seal.glyph = t.substr(0, 1)
 		title_bar.visible = t != ""
+
+
+## 标题两侧的祥云纹（mirror：云头朝左）
+static func _cloud(mirror: bool) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = InkArt.tex("cloud_band")
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.custom_minimum_size = Vector2(72, 18)
+	tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tr.flip_h = mirror
+	tr.modulate = Color(0.95, 0.78, 0.46, 0.85)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return tr
 
 
 ## 合并同一帧内的多次刷新请求

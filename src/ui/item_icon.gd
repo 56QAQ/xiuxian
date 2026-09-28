@@ -79,33 +79,40 @@ static func draw_icon(ci: CanvasItem, rect: Rect2, id: String, g: int = -1, rot:
 		ci.draw_texture_rect(tex, Rect2(center - ds * 0.5, ds), false, Color(1, 1, 1, alpha))
 
 
-## 物品格底色：品阶色渐变 + 细边
+## 物品格底色：品阶色晕染（中心透光的锦缎底）+ 委角细边；地品以上角饰、天品以上外发光
 static func draw_cell_bg(ci: CanvasItem, rect: Rect2, g: int, hovered: bool, alpha: float = 1.0) -> void:
 	var gc := Grade.color_of(g)
-	var top := Color(gc.r * 0.22, gc.g * 0.22, gc.b * 0.22, 0.85 * alpha)
-	var bot := Color(gc.r * 0.08 + 0.02, gc.g * 0.08 + 0.02, gc.b * 0.08 + 0.03, 0.9 * alpha)
+	var rid := ci.get_canvas_item()
+	var top := Color(gc.r * 0.24, gc.g * 0.24, gc.b * 0.24, 0.88 * alpha)
+	var bot := Color(gc.r * 0.07 + 0.02, gc.g * 0.07 + 0.018, gc.b * 0.07 + 0.02, 0.92 * alpha)
 	if hovered:
-		top = top.lightened(0.12)
-	var pts := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
-	ci.draw_polygon(pts, PackedColorArray([top, top, bot, bot]))
-	var bc := Color(gc.r, gc.g, gc.b, (0.75 if hovered else 0.5) * alpha)
-	ci.draw_rect(rect.grow(-0.5), bc, false, 1.5 if g >= 2 else 1.0)
+		top = top.lightened(0.14)
+	var ch := minf(4.0, minf(rect.size.x, rect.size.y) * 0.12)
+	InkArt.plaque(rid, rect, ch, top, bot)
+	# 中心柔光（品阶色）
+	var glow := UITheme.icon("dot")
+	var gs := minf(rect.size.x, rect.size.y) * 1.1
+	ci.draw_texture_rect(glow, Rect2(rect.get_center() - Vector2(gs, gs) * 0.5, Vector2(gs, gs)), false, Color(gc.r, gc.g, gc.b, (0.2 if g >= 1 else 0.1) * alpha))
+	var bc := Color(gc.r, gc.g, gc.b, (0.85 if hovered else 0.55) * alpha)
+	InkArt.outline(rid, InkArt.chamfer_points(rect.grow(-0.75), ch), bc, 1.5 if g >= 2 else 1.0)
 	if g >= 3:
-		# 高品阶：角点亮饰
-		var s := 5.0
-		for c in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
+		# 高品阶：角点金钩
+		var s := 6.0
+		var hook := Color(gc.lightened(0.3).r, gc.lightened(0.3).g, gc.lightened(0.3).b, alpha)
+		for c: Vector2 in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
 			var dir: Vector2 = (rect.get_center() - c).sign()
-			ci.draw_line(c + dir, c + dir + Vector2(dir.x * s, 0), gc, 2.0)
-			ci.draw_line(c + dir, c + dir + Vector2(0, dir.y * s), gc, 2.0)
+			var o := c + dir * (ch + 2.0)
+			ci.draw_line(o, o + Vector2(dir.x * s, 0), hook, 1.5)
+			ci.draw_line(o, o + Vector2(0, dir.y * s), hook, 1.5)
 
 
-static func draw_count(ci: CanvasItem, rect: Rect2, n: int, fs: int = 15) -> void:
-	var f := UITheme.font_regular()
+static func draw_count(ci: CanvasItem, rect: Rect2, n: int, fs: int = 17) -> void:
+	var f := UITheme.font_display()
 	var t := str(n)
 	var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	var p := Vector2(rect.end.x - ts.x - 4, rect.end.y - 4)
-	ci.draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.9))
-	ci.draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.95, 0.85))
+	var p := Vector2(rect.end.x - ts.x - 4, rect.end.y - 3)
+	ci.draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0.02, 0.01, 0.0, 0.92))
+	ci.draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.95, 0.84))
 
 
 # ================================================================ 生成纹理

@@ -1,6 +1,7 @@
 class_name UITheme
 extends RefCounted
-## 全局界面主题（纯代码生成）：水墨底 · 细金边 · 回纹角饰 · 玉/朱砂点缀 · 宣纸提示框。
+## 全局界面主题（纯代码生成）：漆墨底 + 宣纸纤维 · 双金线 · 祥云角 · 回纹带 · 书法标题 · 委角牌匾按钮 ·
+## 笔触页签/菜单/提示 · 玉牌 · 宣纸提示框。纹理见 assets/textures/ui（tools/gen_ui_textures.py），绘制工具见 InkArt。
 ## Settings._ready() 中：get_tree().root.theme = UITheme.get_theme()
 ##
 ## 主题类型变体（Control.theme_type_variation）：
@@ -95,13 +96,19 @@ static func _build() -> Theme:
 	t.set_color("font_color", "Label", TEXT)
 	t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0))
 	t.set_constant("line_spacing", "Label", 2)
-	_label_var(t, "TitleLabel", GOLD_BRIGHT, 30, true)
+	_label_var(t, "TitleLabel", GOLD_BRIGHT, 32, true)
+	t.set_font("font", "TitleLabel", font_display())
 	t.set_color("font_outline_color", "TitleLabel", Color(0.08, 0.05, 0.02, 0.9))
-	t.set_constant("outline_size", "TitleLabel", 5)
+	t.set_constant("outline_size", "TitleLabel", 6)
 	t.set_color("font_shadow_color", "TitleLabel", Color(0, 0, 0, 0.55))
 	t.set_constant("shadow_offset_x", "TitleLabel", 0)
 	t.set_constant("shadow_offset_y", "TitleLabel", 3)
-	_label_var(t, "HeaderLabel", GOLD, 21, true)
+	_label_var(t, "HeaderLabel", GOLD, 23, true)
+	t.set_font("font", "HeaderLabel", font_display())
+	t.set_color("font_outline_color", "HeaderLabel", Color(0.05, 0.03, 0.02, 0.8))
+	t.set_constant("outline_size", "HeaderLabel", 3)
+	_label_var(t, "DisplayLabel", TEXT, 22, true)
+	t.set_font("font", "DisplayLabel", font_display())
 	_label_var(t, "GoldLabel", GOLD_BRIGHT, 18, false)
 	_label_var(t, "DimLabel", TEXT_DIM, 16, false)
 	_label_var(t, "SmallLabel", TEXT_DIM, 14, false)
@@ -111,21 +118,29 @@ static func _build() -> Theme:
 	t.set_stylebox("panel", "PanelContainer", _ink_box(0, 10))
 	t.set_stylebox("panel", "Panel", _ink_box(0, 0))
 	t.set_type_variation("WindowPanel", "PanelContainer")
-	var win := _ink_box(1, 0)
-	win.set_margins(20, 14, 20, 18)
-	win.shadow_size = 22.0
-	win.shadow_color = Color(0, 0, 0, 0.55)
-	win.inner_line_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.16)
-	win.corner_len = 18.0
+	var win := _ink_box(4, 0)
+	win.set_margins(24, 14, 24, 20)
+	win.shadow_size = 28.0
+	win.shadow_color = Color(0, 0, 0, 0.6)
+	win.border_width = 1.5
+	win.inner_line_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.3)
+	win.inner_inset = 6.0
+	win.corner_len = 13.0
+	win.ornament_color = Color(0.96, 0.8, 0.5, 0.72)
 	win.top_glow = 1.0
 	win.wash = 1.0
 	win.watermark = 1.0
+	win.paper_color = Color(1.0, 0.9, 0.72, 0.04)
+	win.mottle_color = Color(0.0, 0.0, 0.0, 0.16)
+	win.hui_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.12)
 	t.set_stylebox("panel", "WindowPanel", win)
 	t.set_type_variation("InsetPanel", "PanelContainer")
 	var inset := OrnateBox.new()
-	inset.bg_top = Color(0, 0, 0, 0.32)
+	inset.bg_top = Color(0, 0, 0, 0.34)
 	inset.bg_bottom = Color(0, 0, 0, 0.22)
-	inset.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.16)
+	inset.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.2)
+	inset.chamfer = 4.0
+	inset.mottle_color = Color(0, 0, 0, 0.1)
 	inset.set_all_margins(10)
 	t.set_stylebox("panel", "InsetPanel", inset)
 	t.set_type_variation("CardPanel", "PanelContainer")
@@ -142,23 +157,25 @@ static func _build() -> Theme:
 	bar.set_margins(8, 4, 8, 6)
 	t.set_stylebox("panel", "TitleBar", bar)
 	t.set_type_variation("ToastPanel", "PanelContainer")
-	var toast := _ink_box(0, 0)
-	toast.set_margins(16, 8, 18, 9)
-	toast.accent_width = 3.0
-	toast.shadow_size = 8.0
-	toast.shadow_color = Color(0, 0, 0, 0.4)
+	var toast := OrnateBox.new()
+	toast.brush = 1.0
+	toast.brush_color = Color(0.025, 0.02, 0.02, 0.84)
+	toast.brush_u1 = 0.8
+	toast.border_width = 0.0
+	toast.set_margins(14, 9, 44, 10)
 	t.set_stylebox("panel", "ToastPanel", toast)
 	t.set_type_variation("HudPanel", "PanelContainer")
 	var hud := _ink_box(3, 8)
 	hud.bg_top = Color(0.04, 0.045, 0.055, 0.72)
 	hud.bg_bottom = Color(0.04, 0.045, 0.055, 0.72)
+	hud.chamfer = 5.0
 	t.set_stylebox("panel", "HudPanel", hud)
 	t.set_stylebox("panel", "ScrollContainer", StyleBoxEmpty.new())
 
 	# ---- 提示框（宣纸）
 	var tip := parchment_box()
-	tip.set_margins(14, 10, 14, 12)
-	tip.shadow_size = 10.0
+	tip.set_margins(16, 12, 16, 14)
+	tip.shadow_size = 12.0
 	t.set_stylebox("panel", "TooltipPanel", tip)
 	t.set_color("font_color", "TooltipLabel", PARCHMENT_INK)
 	t.set_font_size("font_size", "TooltipLabel", 16)
@@ -190,18 +207,28 @@ static func _build() -> Theme:
 		_btn_grad(Color(0.68, 0.2, 0.14), Color(0.4, 0.09, 0.06), GOLD_BRIGHT, 2),
 		_btn_grad(Color(0.36, 0.09, 0.07), Color(0.5, 0.13, 0.1), GOLD_BRIGHT, 2),
 		_btn_grad(Color(0.2, 0.14, 0.13, 0.7), Color(0.14, 0.1, 0.1, 0.7), Color(0.4, 0.34, 0.26, 0.6), 0))
-	t.set_font_size("font_size", "PrimaryButton", 21)
-	t.set_font("font", "PrimaryButton", font_title())
+	t.set_font_size("font_size", "PrimaryButton", 24)
+	t.set_font("font", "PrimaryButton", font_display())
+	t.set_color("font_outline_color", "PrimaryButton", Color(0.2, 0.03, 0.02, 0.8))
+	t.set_constant("outline_size", "PrimaryButton", 3)
 	t.set_color("font_color", "PrimaryButton", Color(1.0, 0.93, 0.8))
 	t.set_color("font_hover_color", "PrimaryButton", Color(1.0, 0.97, 0.88))
 
 	t.set_type_variation("JadeButton", "Button")
-	_button(t, "JadeButton", _btn_grad(Color(0.16, 0.42, 0.34), Color(0.07, 0.2, 0.17), GOLD, 2),
-		_btn_grad(Color(0.22, 0.54, 0.44), Color(0.1, 0.28, 0.23), GOLD_BRIGHT, 2),
-		_btn_grad(Color(0.08, 0.24, 0.2), Color(0.16, 0.4, 0.33), GOLD_BRIGHT, 2),
+	var jn := _btn_grad(Color(0.16, 0.42, 0.34), Color(0.07, 0.2, 0.17), GOLD, 2)
+	jn.jade = 0.3
+	var jh := _btn_grad(Color(0.22, 0.54, 0.44), Color(0.1, 0.28, 0.23), GOLD_BRIGHT, 2)
+	jh.jade = 0.38
+	var jp := _btn_grad(Color(0.08, 0.24, 0.2), Color(0.16, 0.4, 0.33), GOLD_BRIGHT, 2)
+	jp.jade = 0.22
+	_button(t, "JadeButton", jn, jh, jp,
 		_btn_grad(Color(0.14, 0.18, 0.17, 0.7), Color(0.1, 0.12, 0.12, 0.7), Color(0.35, 0.35, 0.3, 0.6), 0))
-	t.set_font("font", "JadeButton", font_title())
-	t.set_color("font_color", "JadeButton", Color(0.92, 1.0, 0.95))
+	t.set_font("font", "JadeButton", font_display())
+	t.set_font_size("font_size", "JadeButton", 22)
+	t.set_color("font_color", "JadeButton", Color(0.96, 1.0, 0.97))
+	t.set_color("font_hover_color", "JadeButton", Color(1.0, 1.0, 0.94))
+	t.set_color("font_outline_color", "JadeButton", Color(0.02, 0.12, 0.08, 0.85))
+	t.set_constant("outline_size", "JadeButton", 4)
 
 	# 主菜单大字按钮：常态透明，悬停出现横向墨痕
 	t.set_type_variation("MenuItem", "Button")
@@ -211,11 +238,9 @@ static func _build() -> Theme:
 	mi_normal.content_margin_top = 6
 	mi_normal.content_margin_bottom = 6
 	var mi_hover := OrnateBox.new()
-	mi_hover.bg_top = Color(0.0, 0.0, 0.0, 0.0)
-	mi_hover.bg_bottom = Color(0.0, 0.0, 0.0, 0.0)
+	mi_hover.brush = 1.0
+	mi_hover.brush_color = Color(0.58, 0.09, 0.06, 0.62)
 	mi_hover.border_width = 0.0
-	mi_hover.accent_width = 3.0
-	mi_hover.accent_color = GOLD
 	mi_hover.set_margins(34, 6, 30, 6)
 	t.set_stylebox("normal", "MenuItem", mi_normal)
 	t.set_stylebox("hover", "MenuItem", mi_hover)
@@ -223,8 +248,8 @@ static func _build() -> Theme:
 	t.set_stylebox("hover_pressed", "MenuItem", mi_hover)
 	t.set_stylebox("disabled", "MenuItem", mi_normal)
 	t.set_stylebox("focus", "MenuItem", StyleBoxEmpty.new())
-	t.set_font("font", "MenuItem", font_title())
-	t.set_font_size("font_size", "MenuItem", 30)
+	t.set_font("font", "MenuItem", font_display())
+	t.set_font_size("font_size", "MenuItem", 34)
 	t.set_color("font_color", "MenuItem", Color(0.9, 0.86, 0.76))
 	t.set_color("font_hover_color", "MenuItem", GOLD_BRIGHT)
 	t.set_color("font_pressed_color", "MenuItem", Color(1, 1, 1))
@@ -236,12 +261,18 @@ static func _build() -> Theme:
 	t.set_type_variation("ChipButton", "Button")
 	var chip_n := _btn_box(Color(0.1, 0.1, 0.11, 0.85), Color(GOLD.r, GOLD.g, GOLD.b, 0.28), 0)
 	chip_n.set_margins(12, 5, 12, 6)
+	chip_n.chamfer = 4.0
 	var chip_h := _btn_box(Color(0.2, 0.17, 0.13, 0.95), GOLD, 0)
 	chip_h.set_margins(12, 5, 12, 6)
-	var chip_p := _btn_grad(Color(0.2, 0.46, 0.38), Color(0.1, 0.27, 0.22), GOLD_BRIGHT, 2)
+	chip_h.chamfer = 4.0
+	var chip_p := _btn_grad(Color(0.2, 0.46, 0.38), Color(0.1, 0.27, 0.22), GOLD_BRIGHT, 0)
 	chip_p.set_margins(12, 5, 12, 6)
+	chip_p.chamfer = 4.0
+	chip_p.jade = 0.22
+	chip_p.inner_line_color = Color(0, 0, 0, 0)
 	var chip_d := _btn_box(Color(0.08, 0.08, 0.08, 0.5), Color(0.3, 0.3, 0.3, 0.3), 0)
 	chip_d.set_margins(12, 5, 12, 6)
+	chip_d.chamfer = 4.0
 	_button(t, "ChipButton", chip_n, chip_h, chip_p, chip_d)
 	t.set_font_size("font_size", "ChipButton", 16)
 
@@ -249,24 +280,24 @@ static func _build() -> Theme:
 	t.set_type_variation("TabButton", "Button")
 	var tab_n := OrnateBox.new()
 	tab_n.bg_top = Color(0, 0, 0, 0)
-	tab_n.bg_bottom = Color(0, 0, 0, 0.25)
+	tab_n.bg_bottom = Color(0, 0, 0, 0)
 	tab_n.border_width = 0.0
-	tab_n.set_margins(18, 8, 18, 9)
+	tab_n.set_margins(20, 7, 20, 9)
 	var tab_h := OrnateBox.new()
-	tab_h.bg_top = Color(0.3, 0.24, 0.14, 0.0)
-	tab_h.bg_bottom = Color(0.3, 0.24, 0.14, 0.45)
+	tab_h.brush = 1.0
+	tab_h.brush_color = Color(0.85, 0.66, 0.36, 0.16)
 	tab_h.border_width = 0.0
-	tab_h.set_margins(18, 8, 18, 9)
+	tab_h.set_margins(20, 7, 20, 9)
 	var tab_p := OrnateBox.new()
-	tab_p.bg_top = Color(0.35, 0.27, 0.13, 0.0)
-	tab_p.bg_bottom = Color(0.42, 0.32, 0.15, 0.6)
+	tab_p.brush = 1.0
+	tab_p.brush_color = Color(0.5, 0.08, 0.05, 0.78)
 	tab_p.border_width = 0.0
-	tab_p.ornament = 3
-	tab_p.ornament_color = GOLD_BRIGHT
-	tab_p.set_margins(18, 8, 18, 9)
+	tab_p.set_margins(20, 7, 20, 9)
 	_button(t, "TabButton", tab_n, tab_h, tab_p, tab_n)
-	t.set_font("font", "TabButton", font_title())
-	t.set_font_size("font_size", "TabButton", 20)
+	t.set_font("font", "TabButton", font_display())
+	t.set_font_size("font_size", "TabButton", 24)
+	t.set_color("font_outline_color", "TabButton", Color(0.05, 0.02, 0.01, 0.7))
+	t.set_constant("outline_size", "TabButton", 3)
 	t.set_color("font_color", "TabButton", TEXT_DIM)
 	t.set_color("font_pressed_color", "TabButton", GOLD_BRIGHT)
 	t.set_color("font_hover_pressed_color", "TabButton", GOLD_BRIGHT)
@@ -288,7 +319,8 @@ static func _build() -> Theme:
 	var lb_n := OrnateBox.new()
 	lb_n.bg_top = Color(1, 1, 1, 0.03)
 	lb_n.bg_bottom = Color(1, 1, 1, 0.01)
-	lb_n.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.12)
+	lb_n.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.14)
+	lb_n.chamfer = 4.0
 	lb_n.set_margins(14, 8, 12, 8)
 	var lb_h := lb_n.duplicate() as OrnateBox
 	lb_h.bg_top = Color(GOLD.r, GOLD.g, GOLD.b, 0.14)
@@ -356,9 +388,10 @@ static func _build() -> Theme:
 	t.set_color("font_color", "OptionButton", TEXT)
 	t.set_color("font_hover_color", "OptionButton", GOLD_BRIGHT)
 	for ty in ["PopupMenu", "PopupPanel"]:
-		var pp := _ink_box(0, 6)
+		var pp := _ink_box(3, 6)
 		pp.shadow_size = 10.0
 		pp.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.6)
+		pp.paper_color = Color(1.0, 0.9, 0.72, 0.04)
 		t.set_stylebox("panel", ty, pp)
 	var pm_hover := StyleBoxFlat.new()
 	pm_hover.bg_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.2)
@@ -399,20 +432,18 @@ static func _build() -> Theme:
 		t.set_color("selection_color", ty, Color(GOLD.r, GOLD.g, GOLD.b, 0.35))
 
 	# ---- 滑条
-	var track := StyleBoxFlat.new()
-	track.bg_color = Color(0, 0, 0, 0.55)
-	track.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.25)
-	track.set_border_width_all(1)
-	track.set_corner_radius_all(2)
-	track.content_margin_top = 3
-	track.content_margin_bottom = 3
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(GOLD.r * 0.8, GOLD.g * 0.8, GOLD.b * 0.7, 0.9)
-	fill.set_corner_radius_all(2)
-	fill.content_margin_top = 3
-	fill.content_margin_bottom = 3
-	var fill_h := fill.duplicate() as StyleBoxFlat
-	fill_h.bg_color = GOLD
+	var track := OrnateBox.new()
+	track.brush = 1.0
+	track.brush_color = Color(0, 0, 0, 0.6)
+	track.border_width = 0.0
+	track.set_margins(0, 4, 0, 4)
+	var fill := OrnateBox.new()
+	fill.brush = 1.0
+	fill.brush_color = Color(GOLD.r * 0.9, GOLD.g * 0.85, GOLD.b * 0.7, 0.92)
+	fill.border_width = 0.0
+	fill.set_margins(0, 4, 0, 4)
+	var fill_h := fill.duplicate() as OrnateBox
+	fill_h.brush_color = GOLD_BRIGHT
 	for ty in ["HSlider", "VSlider"]:
 		t.set_stylebox("slider", ty, track)
 		t.set_stylebox("grabber_area", ty, fill)
@@ -554,8 +585,8 @@ static func _button(t: Theme, ty: String, normal: StyleBox, hover: StyleBox, pre
 ## 通用水墨框。ornament：0 无 1 回纹角 2 小角钩 3 菱形角点
 static func _ink_box(ornament: int, margin: float) -> OrnateBox:
 	var b := OrnateBox.new()
-	b.bg_top = Color(0.1, 0.093, 0.086, 0.95)
-	b.bg_bottom = Color(0.046, 0.05, 0.066, 0.95)
+	b.bg_top = Color(0.108, 0.088, 0.074, 0.96)
+	b.bg_bottom = Color(0.045, 0.043, 0.055, 0.96)
 	b.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.7)
 	b.ornament = ornament
 	b.ornament_color = Color(0.95, 0.8, 0.5)
@@ -569,6 +600,8 @@ static func ink_box(ornament: int = 0, margin: float = 10.0) -> OrnateBox:
 
 static func card_box(selected: bool) -> OrnateBox:
 	var b := OrnateBox.new()
+	b.chamfer = 5.0
+	b.paper_color = Color(1.0, 0.9, 0.72, 0.03)
 	b.bg_top = Color(0.14, 0.13, 0.12, 0.7) if not selected else Color(0.16, 0.3, 0.26, 0.75)
 	b.bg_bottom = Color(0.07, 0.07, 0.08, 0.7) if not selected else Color(0.07, 0.14, 0.13, 0.75)
 	b.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.28) if not selected else GOLD
@@ -585,13 +618,16 @@ static func card_box(selected: bool) -> OrnateBox:
 static func parchment_box() -> OrnateBox:
 	var b := OrnateBox.new()
 	b.bg_top = Color(0.96, 0.91, 0.79, 1.0)
-	b.bg_bottom = Color(0.86, 0.78, 0.62, 1.0)
-	b.border_color = Color(0.45, 0.3, 0.16, 0.9)
+	b.bg_bottom = Color(0.87, 0.79, 0.63, 1.0)
+	b.border_color = Color(0.42, 0.27, 0.14, 0.9)
 	b.border_width = 1.5
-	b.inner_line_color = Color(0.5, 0.34, 0.18, 0.35)
+	b.inner_line_color = Color(0.62, 0.18, 0.1, 0.45)
 	b.inner_inset = 4.0
-	b.ornament = 3
-	b.ornament_color = Color(0.62, 0.2, 0.12)
+	b.ornament = 4
+	b.corner_len = 7.0
+	b.ornament_color = Color(0.6, 0.2, 0.1, 0.55)
+	b.paper_color = Color(0.45, 0.3, 0.15, 0.2)
+	b.mottle_color = Color(0.55, 0.38, 0.18, 0.16)
 	b.set_margins(14, 10, 14, 12)
 	return b
 
@@ -603,7 +639,9 @@ static func _btn_box(bg: Color, border: Color, ornament: int) -> OrnateBox:
 	b.border_color = border
 	b.ornament = ornament
 	b.corner_len = 6.0
+	b.chamfer = 5.0
 	b.ornament_color = GOLD_BRIGHT
+	b.paper_color = Color(1.0, 0.9, 0.72, 0.035)
 	b.set_margins(16, 6, 16, 7)
 	return b
 
@@ -615,9 +653,13 @@ static func _btn_grad(top: Color, bottom: Color, border: Color, ornament: int) -
 	b.border_color = border
 	b.ornament = ornament
 	b.corner_len = 7.0
+	b.chamfer = 7.0
 	b.ornament_color = GOLD_BRIGHT
 	b.top_glow = 1.5
-	b.set_margins(22, 8, 22, 9)
+	b.inner_line_color = Color(border.r, border.g, border.b, border.a * 0.35)
+	b.inner_inset = 3.5
+	b.paper_color = Color(1.0, 0.9, 0.72, 0.05)
+	b.set_margins(24, 8, 24, 9)
 	return b
 
 
@@ -805,21 +847,19 @@ static func wrap_label(text: String, size: int = 0, color: Color = Color(0, 0, 0
 	return l
 
 
-## 小节标题：◆ 标题 ───────
-static func header(text: String, size: int = 21) -> HBoxContainer:
+## 小节标题：朱砂小印点 + 书法标题 + 渐淡的金色笔触线
+static func header(text: String, size: int = 23) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
-	var d := TextureRect.new()
-	d.texture = icon("diamond")
-	d.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	d.custom_minimum_size = Vector2(12, 12)
+	var d := InkSeal.make("", 13.0, Color(0.78, 0.16, 0.1))
+	d.angle = 0.785
 	h.add_child(d)
 	var l := label(text, size, Color(0, 0, 0, 0), "HeaderLabel")
 	h.add_child(l)
-	var sep := GoldSeparator.new()
-	sep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sep.fade_left = false
-	sep.ornament = false
+	var sep := BrushLine.new()
+	sep.color = Color(GOLD.r, GOLD.g, GOLD.b, 0.45)
+	sep.thickness = 6.0
+	sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(sep)
 	return h
 

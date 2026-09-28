@@ -39,6 +39,8 @@ extends StyleBox
 @export var brush: float = 0.0
 @export var brush_color: Color = Color(0.02, 0.02, 0.03, 0.8)
 @export var brush_flip: bool = false
+## 笔触截取到 u（0..1）：<1 时收笔的飞白更少，适合承载文字
+@export var brush_u1: float = 1.0
 ## 阴影
 @export var shadow_size: float = 0.0
 @export var shadow_color: Color = Color(0, 0, 0, 0.5)
@@ -140,7 +142,18 @@ func _draw_brush_bg(ci: RID, rect: Rect2) -> void:
 		return
 	var over := minf(rect.size.y * 0.6, 26.0)
 	var r := Rect2(rect.position - Vector2(over * 0.5, rect.size.y * 0.12), rect.size + Vector2(over * 1.3, rect.size.y * 0.24))
-	InkArt.rect_tex(ci, t, r, Color(brush_color.r, brush_color.g, brush_color.b, brush_color.a * brush), brush_flip)
+	var col := Color(brush_color.r, brush_color.g, brush_color.b, brush_color.a * brush)
+	if brush_u1 < 0.999:
+		var y := r.get_center().y
+		var a := Vector2(r.position.x, y)
+		var b := Vector2(r.end.x, y)
+		if brush_flip:
+			var tmp := a
+			a = b
+			b = tmp
+		InkArt.brush_part(ci, a, b, r.size.y, col, 0.0, brush_u1)
+	else:
+		InkArt.rect_tex(ci, t, r, col, brush_flip)
 
 
 ## 几团柔和的墨晕（位置随尺寸确定，保持稳定）

@@ -1,9 +1,16 @@
 class_name ToastFeed
 extends Control
-## 提示流：左侧逐条滑入的小提示；kind == "realm" 时显示居中书法横幅（境界突破等）。
+## 提示流：左侧逐条滑入的墨痕小条（左端小印标明种类：闻/喜/警/危/得）；
+## kind == "realm" 时显示居中书法横幅（一笔浓墨铺开 → 金色书法浮现 → 朱印落款）。
 
 const MAX_TOASTS := 7
-const GLYPHS := {"info": "◇", "good": "◆", "warn": "▲", "bad": "■", "loot": "★", "realm": "◆"}
+## 种类印字
+const SEALS := {"info": "闻", "good": "喜", "warn": "警", "bad": "危", "loot": "得", "realm": "境"}
+## 印泥色
+const SEAL_COLORS := {
+	"info": Color(0.24, 0.3, 0.42), "good": Color(0.16, 0.48, 0.36), "warn": Color(0.72, 0.46, 0.1),
+	"bad": Color(0.76, 0.13, 0.08), "loot": Color(0.7, 0.42, 0.08), "realm": Color(0.76, 0.13, 0.08),
+}
 
 var _list: VBoxContainer
 var _banner_queue: Array[String] = []
@@ -57,17 +64,18 @@ func push(text: String, kind: String = "info") -> void:
 	p.theme_type_variation = "ToastPanel"
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := (UITheme.get_theme().get_stylebox("panel", "ToastPanel") as OrnateBox).duplicate() as OrnateBox
-	sb.accent_color = col
-	sb.bg_top = Color(col.r * 0.16, col.g * 0.16, col.b * 0.16, 0.9)
-	sb.border_color = Color(col.r, col.g, col.b, 0.35)
+	sb.brush_color = Color(col.r * 0.08 + 0.015, col.g * 0.08 + 0.015, col.b * 0.08 + 0.02, 0.86)
 	p.add_theme_stylebox_override("panel", sb)
 	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 8)
+	h.add_theme_constant_override("separation", 10)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var g := UITheme.label(str(GLYPHS.get(kind, "◇")), 14, col)
+	var g := InkSeal.make(str(SEALS.get(kind, "闻")), 26.0, SEAL_COLORS.get(kind, SEAL_COLORS["info"]))
+	g.angle = -0.08
 	h.add_child(g)
-	var l := UITheme.label(text, 18, col.lerp(UITheme.TEXT, 0.35))
+	var l := UITheme.label(text, 19, col.lerp(UITheme.TEXT, 0.4))
+	l.add_theme_color_override("font_outline_color", Color(0.02, 0.015, 0.01, 0.8))
+	l.add_theme_constant_override("outline_size", 3)
 	if text.length() > 24:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = 400
@@ -103,32 +111,31 @@ func _next_banner() -> void:
 	b.finished.connect(_next_banner)
 
 
-## 居中书法横幅：墨痕铺开 → 金字浮现 → 停留 → 淡出
+## 居中书法横幅：一笔浓墨自左铺开 → 金色书法浮现（两侧祥云）→ 朱印落款 → 停留 → 淡出
 class RealmBanner extends Control:
 	signal finished
 
 	var text: String = ""
 	var reveal: float = 0.0
+	var seal_t: float = 0.0
 	var _label: Label
-	var _sub: Label
-	var _seed: int = 0
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_seed = randi()
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	func _ready() -> void:
 		_label = Label.new()
 		_label.text = text
 		_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_label.add_theme_font_override("font", UITheme.font_title())
-		var fs := 60 if text.length() <= 14 else 44
+		_label.add_theme_font_override("font", UITheme.font_display())
+		var fs := 66 if text.length() <= 14 else 48
 		_label.add_theme_font_size_override("font_size", fs)
 		_label.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
-		_label.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.02, 0.95))
-		_label.add_theme_constant_override("outline_size", 10)
+		_label.add_theme_color_override("font_outline_color", Color(0.12, 0.05, 0.02, 0.95))
+		_label.add_theme_constant_override("outline_size", 9)
 		_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
 		_label.add_theme_constant_override("shadow_offset_y", 4)
 		_label.set_anchors_preset(Control.PRESET_CENTER)
@@ -138,9 +145,10 @@ class RealmBanner extends Control:
 		_label.modulate.a = 0.0
 		add_child(_label)
 		var tw := create_tween()
-		tw.tween_property(self, "reveal", 1.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(_label, "modulate:a", 1.0, 0.5).set_delay(0.15)
-		tw.tween_interval(2.6)
+		tw.tween_property(self, "reveal", 1.0, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(_label, "modulate:a", 1.0, 0.5).set_delay(0.18)
+		tw.tween_property(self, "seal_t", 1.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(2.4)
 		tw.tween_property(self, "modulate:a", 0.0, 0.6)
 		tw.tween_callback(func() -> void:
 			finished.emit()
@@ -151,36 +159,32 @@ class RealmBanner extends Control:
 
 	func _draw() -> void:
 		var c := size * 0.5 + Vector2(0, -90)
-		var half_w := minf(size.x * 0.42, 560.0) * reveal
-		var hh := 58.0
-		if half_w < 24.0 or size.x < 64.0:
+		var full_w := minf(size.x * 0.84, 1180.0)
+		var w := full_w * reveal
+		var hh := 150.0
+		if w < 24.0 or size.x < 64.0:
 			return
-		var rng := RandomNumberGenerator.new()
-		rng.seed = _seed
-		# 墨痕：上下边缘参差的横带
-		var top := PackedVector2Array()
-		var bot := PackedVector2Array()
-		var n := 40
-		for i in n + 1:
-			var f := float(i) / n
-			var x := c.x - half_w + f * half_w * 2.0
-			var taper := maxf(sin(f * PI) ** 0.35, 0.12)
-			top.append(Vector2(x, c.y - hh * taper - absf(rng.randf_range(-4, 4))))
-			bot.append(Vector2(x, c.y + hh * taper * 0.85 + absf(rng.randf_range(-5, 5))))
-		var poly := top.duplicate()
-		bot.reverse()
-		poly.append_array(bot)
-		var ink := Color(0.02, 0.02, 0.03, 0.78)
-		draw_colored_polygon(poly, ink)
-		# 金线
-		var gold := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.85)
-		draw_line(Vector2(c.x - half_w * 0.9, c.y - hh - 8), Vector2(c.x + half_w * 0.9, c.y - hh - 8), gold, 1.5)
-		draw_line(Vector2(c.x - half_w * 0.9, c.y + hh + 4), Vector2(c.x + half_w * 0.9, c.y + hh + 4), gold, 1.5)
-		for s: float in [-1.0, 1.0]:
-			var p := Vector2(c.x + s * half_w * 0.9, c.y - hh - 8)
-			draw_colored_polygon(PackedVector2Array([p + Vector2(0, -5), p + Vector2(5, 0), p + Vector2(0, 5), p + Vector2(-5, 0)]), gold)
-			var q := Vector2(c.x + s * half_w * 0.9, c.y + hh + 4)
-			draw_colored_polygon(PackedVector2Array([q + Vector2(0, -5), q + Vector2(5, 0), q + Vector2(0, 5), q + Vector2(-5, 0)]), gold)
+		var ci := get_canvas_item()
+		var x0 := c.x - full_w * 0.5
 		# 光晕
 		var glow := UITheme.icon("dot")
-		draw_texture_rect(glow, Rect2(c - Vector2(half_w, hh * 1.6), Vector2(half_w * 2.0, hh * 3.2)), false, Color(1.0, 0.8, 0.4, 0.12 * reveal))
+		draw_texture_rect(glow, Rect2(c - Vector2(full_w * 0.45, hh * 0.9), Vector2(full_w * 0.9, hh * 1.8)), false, Color(1.0, 0.75, 0.35, 0.14 * reveal))
+		# 浓墨一笔（截取已铺开的部分，笔触自左向右）
+		InkArt.brush_part(ci, Vector2(x0, c.y), Vector2(x0 + w, c.y), hh, Color(0.02, 0.018, 0.02, 0.86), 0.0, reveal)
+		InkArt.brush_part(ci, Vector2(x0 + 30.0, c.y + 6.0), Vector2(x0 + w * 0.96, c.y + 6.0), hh * 0.55, Color(0.25, 0.04, 0.03, 0.25), 0.05, reveal)
+		# 上下金线与祥云
+		var gold := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.8 * reveal)
+		var lw := full_w * 0.36
+		draw_line(Vector2(c.x - lw, c.y - hh * 0.46), Vector2(c.x + lw, c.y - hh * 0.46), gold, 1.5)
+		draw_line(Vector2(c.x - lw, c.y + hh * 0.44), Vector2(c.x + lw, c.y + hh * 0.44), gold, 1.5)
+		if _label != null:
+			var tw := _label.size.x
+			var bw := 120.0
+			var cy := c.y - 12.0
+			InkArt.cloud_band(ci, Rect2(Vector2(c.x - tw * 0.5 - bw - 18.0, cy - bw * 0.125), Vector2(bw, bw * 0.25)), Color(1.0, 0.84, 0.5, _label.modulate.a * 0.9), false)
+			InkArt.cloud_band(ci, Rect2(Vector2(c.x + tw * 0.5 + 18.0, cy - bw * 0.125), Vector2(bw, bw * 0.25)), Color(1.0, 0.84, 0.5, _label.modulate.a * 0.9), true)
+			# 朱印落款
+			if seal_t > 0.0:
+				var sz := 58.0 * (1.0 + (1.0 - seal_t) * 0.6)
+				var sp := Vector2(c.x + tw * 0.5 + bw + 52.0, c.y + 18.0)
+				InkArt.seal(ci, sp, sz, "问道", Color(0.8, 0.12, 0.08, seal_t), Color(1, 0.95, 0.86, seal_t), false, -0.1)
