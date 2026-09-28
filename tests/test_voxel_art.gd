@@ -436,10 +436,13 @@ func test_build_time_budget() -> void:
 	print("    角色生成（无缓存，%d 线程）中位数 %.1f ms：%s" % [OS.get_processor_count(), med, str(times)])
 	# 目标 ≤ 150 ms（4 核空闲机器实测约 70~110 ms）；测试阈值留出机器负载余量
 	_ok(med < 400.0, "单个角色生成 < 400 ms（%.1f ms）" % med)
-	var t1 := Time.get_ticks_usec()
-	var rig2 := CharacterBuilder.build({})
-	var cached := (Time.get_ticks_usec() - t1) / 1000.0
-	rig2.free()
+	# 缓存命中取三次最快值，排除机器负载下的调度抖动（缓存失效时每次都在 100 ms 以上）
+	var cached := INF
+	for i in 3:
+		var t1 := Time.get_ticks_usec()
+		var rig2 := CharacterBuilder.build({})
+		cached = minf(cached, (Time.get_ticks_usec() - t1) / 1000.0)
+		rig2.free()
 	print("    缓存命中 %.1f ms" % cached)
 	_ok(cached < 15.0, "缓存命中生成 < 15 ms（%.1f ms）" % cached)
 	var rng := RandomNumberGenerator.new()
