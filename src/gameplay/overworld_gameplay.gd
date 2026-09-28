@@ -114,7 +114,7 @@ func _process(delta: float) -> void:
 		_scan_markers()
 	_spawn_t -= delta
 	if _spawn_t <= 0.0:
-		_spawn_t = 1.0
+		_spawn_t = 0.25
 		_update_npcs()
 		_update_location()
 
@@ -219,6 +219,7 @@ func _setup_marker(m: Node3D) -> void:
 
 func _update_npcs() -> void:
 	var pp := player.global_position
+	var spawned := 0
 	for id in _anchors:
 		var rec := NpcSystem.get_npc(id)
 		if rec.is_empty() or not rec.get("alive", true):
@@ -230,7 +231,11 @@ func _update_npcs() -> void:
 			_npc_actors.erase(id)
 			a = null
 		if a == null and d < SPAWN_RADIUS:
+			# 每次最多生成一名（角色网格构建约 45 ms），避免进城时卡顿
+			if spawned >= 1:
+				continue
 			_spawn_npc(id, anchor)
+			spawned += 1
 		elif a != null and d > DESPAWN_RADIUS and a.combatant.alive and a.action == "":
 			NpcSystem.save_pd(id)
 			a.queue_free()
