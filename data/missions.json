@@ -1,16 +1,29 @@
 [
-  {"id": "hunt_beasts", "name": "猎杀妖兽", "type": "kill", "targets": ["wolf_grey", "fox_flame", "boar_iron"], "count": [3, 6], "min_rank": 0,
-   "reward": {"contribution": [20, 40], "stones": [10, 30], "rep": [15, 25]}, "text": "近来{target}频繁袭扰山下村落，前往猎杀 {count} 只。"},
-  {"id": "gather_herbs", "name": "采集灵草", "type": "deliver", "items": ["herb_lingcao", "herb_fire_ganoderma"], "count": [2, 5], "min_rank": 0,
-   "reward": {"contribution": [15, 35], "stones": [5, 20], "rep": [10, 20]}, "text": "丹房缺少{item}，上交 {count} 份。"},
-  {"id": "gather_ore", "name": "收集矿材", "type": "deliver", "items": ["ore_iron", "ore_gengjin"], "count": [1, 4], "min_rank": 0,
-   "reward": {"contribution": [20, 40], "stones": [10, 25], "rep": [10, 20]}, "text": "器阁需要{item}，上交 {count} 份。"},
-  {"id": "realm_fetch", "name": "秘境寻宝", "type": "deliver", "items": ["beast_core_1", "spirit_stone_mid", "treasure_sun_fruit"], "count": [1, 2], "min_rank": 1,
-   "reward": {"contribution": [50, 90], "stones": [30, 60], "rep": [30, 50]}, "text": "宗门需要{item}，此物多见于秘境之中。带回 {count} 份。"},
-  {"id": "slay_evil", "name": "斩除魔修", "type": "kill", "targets": ["xuesha_disciple"], "count": [1, 2], "min_rank": 1,
-   "reward": {"contribution": [60, 100], "stones": [40, 80], "rep": [40, 60]}, "text": "血煞宗魔修在青州出没，斩杀 {count} 名。"},
-  {"id": "spar_disciple", "name": "同门切磋", "type": "spar", "count": [1, 1], "min_rank": 0,
-   "reward": {"contribution": [15, 25], "stones": [0, 0], "rep": [15, 25]}, "text": "与同门切磋一场，检验修为。"},
-  {"id": "rescue", "name": "驰援同门", "type": "kill", "targets": ["wolf_grey", "boar_iron"], "count": [4, 6], "min_rank": 1,
-   "reward": {"contribution": [40, 70], "stones": [20, 40], "rep": [30, 50]}, "text": "有同门在外遇险，清除{target} {count} 只。"}
+  {"id": "hunt_beasts", "name": "猎杀妖兽", "type": "kill", "targets": ["wolf_grey", "fox_flame", "boar_iron", "snake_green", "spider_jade"], "count": [3, 6], "min_rank": 0, "reward": {"contribution": [20, 40], "stones": [10, 30], "rep": [15, 25]}, "text": "近来{target}频繁袭扰山下村落，前往猎杀 {count} 只。"},
+  {"id": "gather_herbs", "name": "采集灵草", "type": "deliver", "items": ["herb_lingcao", "herb_fire_ganoderma", "herb_huangjing", "herb_ice_heart", "flower_golden_thread"], "count": [2, 5], "min_rank": 0, "reward": {"contribution": [15, 35], "stones": [5, 20], "rep": [10, 20]}, "text": "丹房缺少{item}，上交 {count} 份。"},
+  {"id": "gather_ore", "name": "收集矿材", "type": "deliver", "items": ["ore_iron", "ore_gengjin", "ore_copper", "ore_cold_iron"], "count": [1, 4], "min_rank": 0, "reward": {"contribution": [20, 40], "stones": [10, 25], "rep": [10, 20]}, "text": "器阁需要{item}，上交 {count} 份。"},
+  {"id": "spar_disciple", "name": "同门切磋", "type": "spar", "count": [1, 1], "min_rank": 0, "reward": {"contribution": [15, 25], "stones": [0, 0], "rep": [15, 25]}, "text": "与同门切磋一场，检验修为。"},
+  {"id": "deliver_pills", "name": "丹房交货", "type": "deliver", "items": ["pill_heal_small", "pill_qi_small", "pill_exp_tiny", "pill_exp_small"], "count": [3, 6], "min_rank": 0, "reward": {"contribution": [20, 40], "stones": [10, 30], "rep": [10, 20]}, "text": "宗门弟子外出历练需要丹药，炼制或收购{item} {count} 枚上交丹房。"},
+  {"id": "deliver_talismans", "name": "符堂交付", "type": "deliver", "items": ["talisman_fireball", "talisman_ice", "talisman_stone", "talisman_swift"], "count": [3, 6], "min_rank": 0, "reward": {"contribution": [20, 40], "stones": [10, 30], "rep": [10, 20]}, "text": "符堂急需{item}补充库存，上交 {count} 张。"},
+  {"id": "deliver_weapons", "name": "器阁收兵", "type": "deliver", "items": ["sword_iron", "saber_iron", "spear_iron", "fist_iron"], "count": [1, 2], "min_rank": 0, "reward": {"contribution": [25, 45], "stones": [10, 30], "rep": [10, 20]}, "text": "器阁要为新入门的弟子配发兵刃，上交{item} {count} 件。"},
+  {"id": "deliver_hides", "name": "收购兽材", "type": "deliver", "items": ["wolf_pelt", "hide_fox", "hide_snake", "bone_beast", "silk_spider"], "count": [2, 5], "min_rank": 0, "reward": {"contribution": [15, 35], "stones": [10, 25], "rep": [10, 20]}, "text": "宗门需要{item}炼制法衣护甲，上交 {count} 份。"},
+  {"id": "deliver_formation", "name": "阵材收集", "type": "deliver", "items": ["ore_yellow_jade", "formation_base", "ore_iron", "wood_peach"], "count": [1, 3], "min_rank": 0, "reward": {"contribution": [20, 40], "stones": [10, 25], "rep": [10, 20]}, "text": "护山大阵需要修补，上交{item} {count} 份。"},
+
+  {"id": "realm_fetch", "name": "秘境寻宝", "type": "deliver", "items": ["beast_core_1", "spirit_stone_mid", "treasure_sun_fruit", "herb_seven_star", "puppet_core"], "count": [1, 2], "min_rank": 1, "reward": {"contribution": [50, 90], "stones": [30, 60], "rep": [30, 50]}, "text": "宗门需要{item}，此物多见于秘境之中。带回 {count} 份。"},
+  {"id": "slay_evil", "name": "斩除魔修", "type": "kill", "targets": ["xuesha_disciple", "robber"], "count": [1, 2], "min_rank": 1, "reward": {"contribution": [60, 100], "stones": [40, 80], "rep": [40, 60]}, "text": "{target}在青州出没，为祸一方，斩杀 {count} 名。"},
+  {"id": "rescue", "name": "驰援同门", "type": "kill", "targets": ["wolf_grey", "boar_iron", "bear_black", "snake_green"], "count": [4, 6], "min_rank": 1, "reward": {"contribution": [40, 70], "stones": [20, 40], "rep": [30, 50]}, "text": "有同门在外遇险，清除{target} {count} 只。"},
+  {"id": "hunt_snow", "name": "雪岭除害", "type": "kill", "targets": ["wolf_snow", "crane_white", "bear_black"], "count": [3, 5], "min_rank": 1, "reward": {"contribution": [40, 70], "stones": [20, 50], "rep": [25, 40]}, "text": "雪岭上的{target}伤了几名采药的外门弟子，前往猎杀 {count} 只。"},
+  {"id": "hunt_volcanic", "name": "火山猎妖", "type": "kill", "targets": ["fox_flame", "spider_fire", "golem_ember"], "count": [3, 5], "min_rank": 1, "reward": {"contribution": [40, 70], "stones": [20, 50], "rep": [25, 40]}, "text": "丹房的地火被{target}扰乱，前往赤岩猎杀 {count} 只。"},
+  {"id": "hunt_lake", "name": "湖泽清妖", "type": "kill", "targets": ["snake_water", "crane_white", "snake_black_water"], "count": [3, 5], "min_rank": 1, "reward": {"contribution": [40, 70], "stones": [20, 50], "rep": [25, 40]}, "text": "湖上渔民屡遭{target}袭击，前往清剿 {count} 只。"},
+  {"id": "deliver_cores", "name": "妖丹上缴", "type": "deliver", "items": ["beast_core_1", "beast_core_2"], "count": [2, 4], "min_rank": 1, "reward": {"contribution": [45, 80], "stones": [20, 50], "rep": [25, 40]}, "text": "丹房炼制宝丹需要{item}，上交 {count} 枚。"},
+
+  {"id": "gather_rare_herbs", "name": "珍稀灵药", "type": "deliver", "items": ["herb_purple_ganoderma", "flower_blue_lotus", "herb_dragon_blood", "herb_seven_star"], "count": [1, 3], "min_rank": 2, "reward": {"contribution": [80, 140], "stones": [50, 120], "rep": [40, 70]}, "text": "长老闭关炼丹，缺一味{item}，带回 {count} 株。"},
+  {"id": "hunt_boss", "name": "诛杀妖王", "type": "kill", "targets": ["snake_python", "golem_bronze", "fox_three_tail", "wolf_silver_king"], "count": [1, 1], "min_rank": 2, "reward": {"contribution": [150, 250], "stones": [100, 200], "rep": [80, 120]}, "text": "{target}已成气候，屡伤我宗弟子。宗门悬赏诛杀此獠。"},
+  {"id": "realm_relic", "name": "秘境取物", "type": "realm_item", "items": ["herb_nine_leaf", "treasure_stone_milk", "treasure_gold_essence", "puppet_core", "ore_mithril"], "count": [1, 1], "min_rank": 2, "reward": {"contribution": [120, 200], "stones": [80, 160], "rep": [60, 100]}, "text": "据宗门古籍记载，秘境深处藏有{item}。前去取回 {count} 份，切莫声张。"},
+  {"id": "spar_rival", "name": "宗门论剑", "type": "spar", "count": [1, 1], "min_rank": 2, "reward": {"contribution": [60, 100], "stones": [30, 60], "rep": [50, 80]}, "text": "敌对宗门弟子上门挑衅，代表宗门与其论剑一场，务必赢下。"},
+
+  {"id": "slay_elite", "name": "剿灭血煞", "type": "kill", "targets": ["xuesha_elite", "robber_leader"], "count": [1, 2], "min_rank": 3, "reward": {"contribution": [200, 320], "stones": [150, 300], "rep": [100, 150]}, "text": "{target}率众屠戮凡人村落，宗门命你前往剿灭，斩杀 {count} 名。"},
+  {"id": "hunt_king", "name": "镇压大妖", "type": "kill", "targets": ["bear_frost_king", "snake_jiao", "golem_war_general"], "count": [1, 1], "min_rank": 3, "reward": {"contribution": [300, 450], "stones": [200, 400], "rep": [120, 180]}, "text": "{target}妖力滔天，已近金丹，宗门命你前往镇压。"},
+
+  {"id": "slay_elder", "name": "诛杀魔头", "type": "kill", "targets": ["xuesha_elder"], "count": [1, 1], "min_rank": 4, "reward": {"contribution": [500, 800], "stones": [400, 800], "rep": [200, 300]}, "text": "{target}屠戮一方，青州正道共诛之。宗门命你为先锋，取其首级。"}
 ]

@@ -3,24 +3,45 @@
   {"id": "saber_heart", "name": "霸刀之心", "cost": 2, "category": "战斗", "desc": "刀法伤害 +20%，韧性 +15%。", "stats": {"saber_dmg": 0.2, "poise_pct": 0.15}},
   {"id": "spear_soul", "name": "枪魂", "cost": 2, "category": "战斗", "desc": "枪法伤害 +20%，攻击 +5%。", "stats": {"spear_dmg": 0.2, "attack_pct": 0.05}},
   {"id": "iron_fist", "name": "铁拳", "cost": 2, "category": "战斗", "desc": "拳法伤害 +25%，生命 +5%。", "stats": {"fist_dmg": 0.25, "max_hp_pct": 0.05}},
+  {"id": "hawk_eye", "name": "鹰眼", "cost": 1, "category": "战斗", "desc": "目力过人，锁定距离 +15 米，灵气弹伤害 +10%。", "stats": {"lock_range": 15, "bolt_mult": 0.1}},
+  {"id": "wuxing_affinity", "name": "五行亲和", "cost": 2, "category": "战斗", "desc": "天生亲近五行灵气，五系伤害各 +5%。", "stats": {"dmg_metal": 0.05, "dmg_wood": 0.05, "dmg_water": 0.05, "dmg_fire": 0.05, "dmg_earth": 0.05}},
+
   {"id": "vajra_body", "name": "金刚体魄", "cost": 2, "category": "体质", "desc": "生命 +15%，韧性 +30%。", "stats": {"max_hp_pct": 0.15, "poise_pct": 0.3}},
   {"id": "qi_sea", "name": "灵力如海", "cost": 2, "category": "体质", "desc": "灵力上限 +20%，灵力回复 +10%。", "stats": {"max_qi_pct": 0.2, "qi_regen_pct": 0.1}},
   {"id": "swallow", "name": "身轻如燕", "cost": 2, "category": "体质", "desc": "疾行与瞬步消耗 -20%，移速 +8%。", "stats": {"boost_cost": -0.2, "qb_cost": -0.2, "move_speed_pct": 0.08}},
+  {"id": "nine_yang", "name": "九阳之体", "cost": 3, "category": "体质", "desc": "纯阳之体，气血如炉。攻击 +8%，灼烧强度 +30%，火系伤害 +5%。", "stats": {"attack_pct": 0.08, "burn_power": 0.3, "dmg_fire": 0.05}},
+  {"id": "xuanyin", "name": "玄阴之体", "cost": 3, "category": "体质", "desc": "至阴之体，灵力绵长。灵力回复 +20%，束缚强度 +30%，水系伤害 +5%。", "stats": {"qi_regen_pct": 0.2, "bind_power": 0.3, "dmg_water": 0.05}},
+  {"id": "green_spirit", "name": "青木灵体", "cost": 2, "category": "体质", "desc": "草木见之而生。治疗效果 +15%，中毒强度 +25%，每秒回复 2 点生命。", "stats": {"heal_mult": 0.15, "poison_power": 0.25, "hp_regen": 2}},
+  {"id": "longevity", "name": "龟鹤延年", "cost": 2, "category": "体质", "desc": "天生长寿之相，寿元 +20%，状态抗性 +5%。", "stats": {"status_resist": 0.05}, "flags": ["longevity"]},
+
   {"id": "battle_insight", "name": "战意通玄", "cost": 2, "category": "修行", "desc": "战斗感悟 +50%。", "stats": {"insight_gain": 0.5}},
   {"id": "photographic", "name": "过目不忘", "cost": 2, "category": "修行", "desc": "功法修炼速度 +10%，法诀熟练度获取 +30%。", "stats": {"cult_speed": 0.1, "insight_gain": 0.3}},
   {"id": "dao_heart", "name": "道心坚定", "cost": 3, "category": "修行", "desc": "突破成功率 +10%，丹毒累积 -20%。", "stats": {"breakthrough": 0.1, "pill_tox": -0.2}},
+  {"id": "xiantian_daoti", "name": "先天道体", "cost": 4, "category": "修行", "desc": "万中无一的先天道体，修炼速度 +15%，突破成功率 +5%，生命 +5%。", "stats": {"cult_speed": 0.15, "breakthrough": 0.05, "max_hp_pct": 0.05}},
+  {"id": "strong_mind", "name": "神识过人", "cost": 2, "category": "修行", "desc": "神识远超同辈。灵力上限 +10%，法诀伤害 +8%，搜索速度 +10%。", "stats": {"max_qi_pct": 0.1, "spell_mult": 0.08, "search_speed": 0.1}},
+
   {"id": "alchemy_gift", "name": "丹道天成", "cost": 3, "category": "技艺", "desc": "炼丹 +2 级，丹药药效 +15%。", "stats": {"alchemy": 2, "pill_eff": 0.15}},
   {"id": "forge_gift", "name": "巧夺天工", "cost": 3, "category": "技艺", "desc": "炼器 +2 级。", "stats": {"forging": 2}},
   {"id": "herb_gift", "name": "草木亲和", "cost": 2, "category": "技艺", "desc": "灵植 +2 级，治疗效果 +10%。", "stats": {"herbalism": 2, "heal_mult": 0.1}},
+  {"id": "talisman_gift", "name": "符道奇才", "cost": 2, "category": "技艺", "desc": "制符 +2 级，冷却缩减 +3%。", "stats": {"talisman": 2, "cdr": 0.03}},
+  {"id": "formation_gift", "name": "阵道天才", "cost": 2, "category": "技艺", "desc": "阵法 +2 级，护体上限 +5%。", "stats": {"formation": 2, "max_shield_pct": 0.05}},
+
   {"id": "spirit_eye", "name": "灵眼", "cost": 2, "category": "探索", "desc": "搜索速度 +40%，秘境中可远远看出容器品阶。", "stats": {"search_speed": 0.4}, "flags": ["see_grades"]},
   {"id": "lucky_star", "name": "福星高照", "cost": 3, "category": "探索", "desc": "气运 +3，寻宝品阶 +10%。", "stats": {"luck": 3, "loot_bonus": 0.1}},
   {"id": "charming", "name": "风姿绰约", "cost": 1, "category": "人际", "desc": "好感获取 +25%。", "stats": {"favor_gain": 0.25}},
+  {"id": "noble_help", "name": "贵人相助", "cost": 2, "category": "人际", "desc": "命中常遇贵人。好感获取 +20%，气运 +1。", "stats": {"favor_gain": 0.2, "luck": 1}},
+
   {"id": "fox_blood", "name": "狐族血脉", "cost": 2, "category": "血脉", "desc": "身法灵动，暴击率 +4%，好感获取 +15%，移速 +5%。", "stats": {"crit_rate": 0.04, "favor_gain": 0.15, "move_speed_pct": 0.05}},
   {"id": "dragon_blood", "name": "龙族血脉", "cost": 3, "category": "血脉", "desc": "生命 +10%，攻击 +8%，状态抗性 +10%。", "stats": {"max_hp_pct": 0.1, "attack_pct": 0.08, "status_resist": 0.1}},
+
   {"id": "lone_star", "name": "天煞孤星", "cost": -3, "category": "缺陷", "desc": "好感获取 -40%，但暴击伤害 +20%。", "stats": {"favor_gain": -0.4, "crit_dmg": 0.2}},
   {"id": "frail", "name": "体弱多病", "cost": -2, "category": "缺陷", "desc": "生命 -15%，韧性 -15%。", "stats": {"max_hp_pct": -0.15, "poise_pct": -0.15}},
   {"id": "dull", "name": "愚钝", "cost": -2, "category": "缺陷", "desc": "感悟获取 -30%，修炼速度 -10%。", "stats": {"insight_gain": -0.3, "cult_speed": -0.1}},
   {"id": "hunted", "name": "仇家追杀", "cost": -3, "category": "缺陷", "desc": "血煞宗的人在找你，劫修出现频率大增。", "stats": {}, "flags": ["hunted"]},
   {"id": "meridian_block", "name": "经脉淤塞", "cost": -2, "category": "缺陷", "desc": "灵力回复 -20%。", "stats": {"qi_regen_pct": -0.2}},
-  {"id": "unlucky", "name": "霉运缠身", "cost": -2, "category": "缺陷", "desc": "气运 -3。", "stats": {"luck": -3, "loot_bonus": -0.1}}
+  {"id": "unlucky", "name": "霉运缠身", "cost": -2, "category": "缺陷", "desc": "气运 -3。", "stats": {"luck": -3, "loot_bonus": -0.1}},
+  {"id": "heart_demon", "name": "心魔深种", "cost": -3, "category": "缺陷", "desc": "幼时遭逢大变，心魔深种。突破成功率 -10%，闭关时易生心魔；但执念极深，感悟获取 +10%。", "stats": {"breakthrough": -0.1, "insight_gain": 0.1}, "flags": ["heart_demon"]},
+  {"id": "pill_weak", "name": "丹毒体质", "cost": -2, "category": "缺陷", "desc": "体质排斥丹药，丹毒累积 +30%，丹药药效 -10%。", "stats": {"pill_tox": 0.3, "pill_eff": -0.1}},
+  {"id": "broken_root", "name": "灵根残缺", "cost": -2, "category": "缺陷", "desc": "灵根有损，法诀伤害 -12%。", "stats": {"spell_mult": -0.12}},
+  {"id": "bloodlust", "name": "嗜杀", "cost": -1, "category": "缺陷", "desc": "杀意难收，旁人避之不及。好感获取 -25%，攻击 +5%。", "stats": {"favor_gain": -0.25, "attack_pct": 0.05}}
 ]
