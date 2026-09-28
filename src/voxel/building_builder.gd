@@ -1,9 +1,12 @@
 class_name BuildingBuilder
 ## 中式宫殿建筑部件（基于 BuildingMesh 盒子累加，0.25 米体素对齐）。
 ## 约定：局部坐标 x 右、y 上、z 后，建筑正面朝 -Z；所有函数在 BuildingMesh 的当前局部坐标下绘制。
-## 配色 pal（Dictionary）：roof 瓦、roof2 瓦当/脊、pillar 柱、wall 墙、trim 金饰、beam 彩画、stone 台基、wood 木作、door 门窗。
+## 配色 pal（Dictionary）：roof 瓦、roof2 瓦当/脊、pillar 柱、wall 墙、trim 金饰、beam 彩画、stone 台基、wood 木作、door 门窗；
+## 可选 roof_kind（BlockTex.K_ROOF 黛瓦 / K_GLAZED 琉璃瓦）。
+## 材质：每组盒子前设置 m.kind（BlockTex.K_*），纹理层由方块种类决定，颜色仍由配色给出。
 
 const V := 0.25
+const K = preload("res://src/world/block_tex.gd")
 
 const DEFAULT_PAL := {
 	"roof": Color(0.23, 0.25, 0.30),
@@ -17,6 +20,7 @@ const DEFAULT_PAL := {
 	"wood": Color(0.42, 0.26, 0.16),
 	"door": Color(0.48, 0.14, 0.10),
 	"lantern": Color(1.0, 0.36, 0.18),
+	"paper": Color(0.93, 0.84, 0.62),
 }
 
 
@@ -41,8 +45,11 @@ static func snap(v: float) -> float:
 static func platform(m: BuildingMesh, cx: float, cz: float, w: float, d: float, h: float, p: Dictionary) -> void:
 	var s := col(p, "stone")
 	var s2 := col(p, "stone2")
+	m.kind = K.K_STONE
 	m.box(Vector3(cx - w * 0.5, -0.5, cz - d * 0.5), Vector3(cx + w * 0.5, h - V, cz + d * 0.5), s2, true, true)
-	m.box(Vector3(cx - w * 0.5 - V, h - V, cz - d * 0.5 - V), Vector3(cx + w * 0.5 + V, h, cz + d * 0.5 + V), s, true)
+	# 压沿石（汉白玉）
+	m.kind = K.K_STONE_SMOOTH
+	m.box(Vector3(cx - w * 0.5 - V, h - V, cz - d * 0.5 - V), Vector3(cx + w * 0.5 + V, h, cz + d * 0.5 + V), s.lightened(0.05), true, false, s)
 
 
 ## 台阶：前沿中心 (cx, z_front)，向 -Z 延伸；宽 width，总高 height。附斜坡碰撞。
@@ -50,52 +57,66 @@ static func stairs(m: BuildingMesh, cx: float, z_front: float, width: float, hei
 	var n := maxi(int(round(height / V)), 1)
 	var sd := 0.5
 	var s := col(p, "stone")
+	m.kind = K.K_STONE
 	for i in n:
 		var z0 := z_front - (n - i) * sd
 		var z1 := z_front - (n - i - 1) * sd
-		m.box(Vector3(cx - width * 0.5, -0.25, z0), Vector3(cx + width * 0.5, (i + 1) * V, z1), s if i % 2 == 0 else s.darkened(0.06), false, true)
+		m.box(Vector3(cx - width * 0.5, -0.25, z0), Vector3(cx + width * 0.5, (i + 1) * V, z1), s if i % 2 == 0 else s.darkened(0.05), false, true)
 	if rails:
-		var r := col(p, "stone2")
+		# 汉白玉垂带栏杆
+		var r := s.lightened(0.1)
+		m.kind = K.K_STONE_SMOOTH
 		for sx in [-1.0, 1.0]:
 			var x: float = cx + sx * (width * 0.5 + V * 0.5)
 			for i in n:
 				var z0 := z_front - (n - i) * sd
 				m.box(Vector3(x - V * 0.5, 0, z0), Vector3(x + V * 0.5, (i + 1) * V + 0.5, z0 + sd), r)
+			# 抱鼓石
+			m.box(Vector3(x - V * 0.75, 0, z_front - n * sd - 0.5), Vector3(x + V * 0.75, 0.75, z_front - n * sd + 0.25), r.darkened(0.04))
 	m.ramp(Vector3(cx, 0.0, z_front - n * sd), Vector3(cx, height, z_front), width)
 
 
 ## 柱子（含柱础）
 static func pillar(m: BuildingMesh, x: float, z: float, y0: float, h: float, p: Dictionary, size: float = 0.5, collide: bool = true) -> void:
 	var s := col(p, "stone")
-	m.box(Vector3(x - size * 0.5 - V, y0, z - size * 0.5 - V), Vector3(x + size * 0.5 + V, y0 + V, z + size * 0.5 + V), s)
+	m.kind = K.K_STONE_SMOOTH
+	m.box(Vector3(x - size * 0.5 - V, y0, z - size * 0.5 - V), Vector3(x + size * 0.5 + V, y0 + V, z + size * 0.5 + V), s.lightened(0.08))
+	m.kind = K.K_PILLAR
 	m.box(Vector3(x - size * 0.5, y0 + V, z - size * 0.5), Vector3(x + size * 0.5, y0 + h, z + size * 0.5), col(p, "pillar"), collide)
 
 
-## 吊灯笼（自发光）
+## 吊灯笼（自发光纸灯笼）
 static func lantern(m: BuildingMesh, pos: Vector3, p: Dictionary, s: float = 1.0) -> void:
 	var lc := VoxelGrid.glow(col(p, "lantern"), 0.85)
 	var g := col(p, "trim")
+	m.kind = K.K_BEAM
 	m.box(pos + Vector3(-0.05, 0.0, -0.05) * s, pos + Vector3(0.05, 0.6, 0.05) * s, Color(0.15, 0.1, 0.08))
+	m.kind = K.K_GOLD
 	m.box(pos + Vector3(-0.2, -0.1, -0.2) * s, pos + Vector3(0.2, 0.0, 0.2) * s, g)
-	m.box(pos + Vector3(-0.3, -0.75, -0.3) * s, pos + Vector3(0.3, -0.1, 0.3) * s, lc)
+	m.kind = K.K_LANTERN
+	m.box(pos + Vector3(-0.3, -0.7, -0.3) * s, pos + Vector3(0.3, -0.15, 0.3) * s, lc)
+	m.box(pos + Vector3(-0.24, -0.75, -0.24) * s, pos + Vector3(0.24, -0.1, 0.24) * s, lc)
+	m.kind = K.K_GOLD
 	m.box(pos + Vector3(-0.2, -0.85, -0.2) * s, pos + Vector3(0.2, -0.75, 0.2) * s, g)
-	m.box(pos + Vector3(-0.04, -1.1, -0.04) * s, pos + Vector3(0.04, -0.85, 0.04) * s, Color(0.9, 0.7, 0.2))
+	m.kind = K.K_CLOTH
+	m.box(pos + Vector3(-0.04, -1.15, -0.04) * s, pos + Vector3(0.04, -0.85, 0.04) * s, Color(0.85, 0.22, 0.14))
 
 
-## 格栅窗/门扇：在 z=const 平面（厚 V），范围 x0..x1, y0..y1
+## 格栅窗/门扇：在 z=const 平面（厚 V），范围 x0..x1, y0..y1。窗纸带窗棂纹理（夜间透光），外框与中梃为实体。
 static func lattice(m: BuildingMesh, x0: float, x1: float, y0: float, y1: float, z: float, frame: Color, fill: Color) -> void:
+	m.kind = K.K_LATTICE
 	m.box(Vector3(x0, y0, z - V * 0.5), Vector3(x1, y1, z + V * 0.5), fill)
-	# 外框与横竖棂条（略凸出）
+	m.kind = K.K_BEAM
 	m.box(Vector3(x0, y0, z - V * 0.7), Vector3(x1, y0 + V * 0.5, z), frame)
 	m.box(Vector3(x0, y1 - V * 0.5, z - V * 0.7), Vector3(x1, y1, z), frame)
-	var n := maxi(int((x1 - x0) / 0.5), 1)
-	for i in n + 1:
-		var x := x0 + (x1 - x0) * i / n
-		m.box(Vector3(x - 0.05, y0, z - V * 0.7), Vector3(x + 0.05, y1, z), frame)
-	var rows := maxi(int((y1 - y0) / 0.5), 1)
-	for j in range(1, rows):
-		var y := y0 + (y1 - y0) * j / rows
-		m.box(Vector3(x0, y - 0.04, z - V * 0.7), Vector3(x1, y + 0.04, z), frame)
+	m.box(Vector3(x0, y0, z - V * 0.7), Vector3(x0 + 0.1, y1, z), frame)
+	m.box(Vector3(x1 - 0.1, y0, z - V * 0.7), Vector3(x1, y1, z), frame)
+	if x1 - x0 > 1.4:
+		var xm := (x0 + x1) * 0.5
+		m.box(Vector3(xm - 0.05, y0, z - V * 0.7), Vector3(xm + 0.05, y1, z), frame)
+	if y1 - y0 > 2.2:
+		var ym := y0 + (y1 - y0) * 0.64
+		m.box(Vector3(x0, ym - 0.05, z - V * 0.7), Vector3(x1, ym + 0.05, z), frame)
 
 
 # ================================================================ 屋顶
@@ -108,6 +129,7 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 	var tile := col(p, "roof")
 	var tile2 := col(p, "roof2")
 	var gold := col(p, "trim")
+	var rk: int = p.get("roof_kind", K.K_ROOF)
 	var layers := maxi(int(round(rise / V)), 2)
 	var min_half := V
 	var inset_max := hd - min_half
@@ -122,12 +144,14 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 		if not ridge:
 			hwk = maxf(hwk, V)
 		var y := y0 + k * V
-		var c := tile if k % 2 == 0 else tile.darkened(0.1)
+		var c := tile if k % 2 == 0 else tile.darkened(0.05)
 		if k == 0:
 			c = tile2
+		m.kind = rk
 		m.box(Vector3(cx - hwk, y, cz - hdk), Vector3(cx + hwk, y + V, cz + hdk), c, k < 2 and skirt <= 0.0)
 		# 垂脊（四角小方块）
 		if k > 0 and k < top_layer - 1:
+			m.kind = K.K_RIDGE
 			for sx in [-1.0, 1.0]:
 				for sz in [-1.0, 1.0]:
 					var px: float = cx + sx * (hwk - V * 0.5)
@@ -139,6 +163,7 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 		var n_seg := 5
 		for sx in [-1.0, 1.0]:
 			for sz in [-1.0, 1.0]:
+				m.kind = rk
 				for i in n_seg:
 					var t := float(i + 1) / n_seg
 					var hh := snap(lift_max * t * t)
@@ -163,8 +188,9 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 					var o: float = i * 0.22
 					var yb := y0 + lift_max * 0.6 + i * i * 0.05 * curl + i * 0.1
 					var sz2 := V * (1.1 - i * 0.08)
-					var c2 := tile2 if i < 5 else gold
-					m.box(Vector3(ox + sx * o - sz2, yb - V * 0.5, oz + sz * o - sz2), Vector3(ox + sx * o + sz2, yb + V * 1.2, oz + sz * o + sz2), c2)
+					m.kind = K.K_RIDGE if i < 5 else K.K_GOLD
+					m.box(Vector3(ox + sx * o - sz2, yb - V * 0.5, oz + sz * o - sz2), Vector3(ox + sx * o + sz2, yb + V * 1.2, oz + sz * o + sz2), tile2 if i < 5 else gold)
+				m.kind = K.K_RIDGE
 				m.box(Vector3(ox - V, y0, oz - V), Vector3(ox + V, y0 + lift_max * 0.6 + V, oz + V), tile2)
 	if skirt > 0.0:
 		return
@@ -172,8 +198,10 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 	if ridge:
 		# 正脊与鸱吻
 		var rw := maxf(hwk, V * 2.0)
+		m.kind = K.K_RIDGE
 		m.box(Vector3(cx - rw - V, y_top, cz - V), Vector3(cx + rw + V, y_top + 2.0 * V, cz + V), tile2)
 		m.box(Vector3(cx - rw, y_top + 2.0 * V, cz - V * 0.5), Vector3(cx + rw, y_top + 2.5 * V, cz + V * 0.5), tile)
+		m.kind = K.K_GOLD
 		for sx in [-1.0, 1.0]:
 			var ex: float = cx + sx * (rw + V)
 			m.box(Vector3(ex - V, y_top, cz - V), Vector3(ex + V, y_top + 6.0 * V, cz + V), gold)
@@ -182,18 +210,22 @@ static func roof(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y0
 		m.box(Vector3(cx - V, y_top + 2.5 * V, cz - V), Vector3(cx + V, y_top + 4.5 * V, cz + V), gold)
 	else:
 		# 宝顶
+		m.kind = K.K_GOLD
 		m.box(Vector3(cx - V * 1.5, y_top, cz - V * 1.5), Vector3(cx + V * 1.5, y_top + V, cz + V * 1.5), gold)
 		m.box(Vector3(cx - V, y_top + V, cz - V), Vector3(cx + V, y_top + 4.0 * V, cz + V), gold)
 		m.box(Vector3(cx - V * 0.5, y_top + 4.0 * V, cz - V * 0.5), Vector3(cx + V * 0.5, y_top + 7.0 * V, cz + V * 0.5), gold.lightened(0.2))
 
 
-## 斗拱带：沿矩形（半宽 hw 半深 hd）一圈，高度 y，交替彩色与金色小方块
+## 斗拱带：沿矩形（半宽 hw 半深 hd）一圈，高度 y：彩画额枋 + 金线 + 交替的斗拱小方块
 static func brackets(m: BuildingMesh, cx: float, cz: float, hw: float, hd: float, y: float, p: Dictionary) -> void:
 	var beam := col(p, "beam")
 	var gold := col(p, "trim")
 	var wood := col(p, "wood")
+	m.kind = K.K_PAINTED
 	m.box(Vector3(cx - hw, y, cz - hd), Vector3(cx + hw, y + 0.5, cz + hd), beam)
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - hw - V, y + 0.5, cz - hd - V), Vector3(cx + hw + V, y + 0.5 + V, cz + hd + V), gold)
+	m.kind = K.K_BEAM
 	var nx := int(hw * 2.0 / 1.0)
 	for i in nx + 1:
 		var x := cx - hw + i * 1.0
@@ -232,32 +264,42 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 	var wz0 := cz - d * 0.5
 	var wz1 := cz + d * 0.5
 	var wt := 0.5
-	# 下碱（墙裙）：沿墙一圈，正门处留门槛缺口
+	# 下碱（青砖墙裙）：沿墙一圈，正门处留门槛缺口
 	var skirt_c := col(p, "stone2")
+	m.kind = K.K_BRICK
 	m.box(Vector3(wx0, y0, wz1 - wt), Vector3(wx1, y0 + 0.75, wz1), skirt_c, true)
 	m.box(Vector3(wx0, y0, wz0), Vector3(wx0 + wt, y0 + 0.75, wz1), skirt_c, true)
 	m.box(Vector3(wx1 - wt, y0, wz0), Vector3(wx1, y0 + 0.75, wz1), skirt_c, true)
 	m.box(Vector3(wx0, y0, wz0), Vector3(cx - door_w * 0.5, y0 + 0.75, wz0 + wt), skirt_c, true)
 	m.box(Vector3(cx + door_w * 0.5, y0, wz0), Vector3(wx1, y0 + 0.75, wz0 + wt), skirt_c, true)
+	m.kind = K.K_STONE_SMOOTH
 	m.box(Vector3(cx - door_w * 0.5, y0, wz0), Vector3(cx + door_w * 0.5, y0 + 0.12, wz0 + wt), skirt_c.darkened(0.1))
-	# 后墙与两侧墙
+	# 后墙与两侧墙（白粉墙）
+	m.kind = K.K_WALL
 	m.box(Vector3(wx0, y0 + 0.75, wz1 - wt), Vector3(wx1, y0 + ch, wz1), wall, true)
 	m.box(Vector3(wx0, y0 + 0.75, wz0), Vector3(wx0 + wt, y0 + ch, wz1), wall, true)
 	m.box(Vector3(wx1 - wt, y0 + 0.75, wz0), Vector3(wx1, y0 + ch, wz1), wall, true)
 	# 正面：门与窗（格栅），门洞可通行
 	var door := col(p, "door")
 	var frame := col(p, "wood")
+	var paper := col(p, "paper")
 	var dh := minf(ch - 0.75, 3.25)
 	var zf := wz0 + V * 0.5
-	# 门两侧墙体
+	# 门两侧漆木隔扇
+	m.kind = K.K_PILLAR
 	m.box(Vector3(wx0, y0 + 0.75, wz0), Vector3(cx - door_w * 0.5, y0 + ch, wz0 + wt), door, true)
 	m.box(Vector3(cx + door_w * 0.5, y0 + 0.75, wz0), Vector3(wx1, y0 + ch, wz0 + wt), door, true)
 	m.box(Vector3(cx - door_w * 0.5, y0 + dh, wz0), Vector3(cx + door_w * 0.5, y0 + ch, wz0 + wt), door)
 	# 门框
+	m.kind = K.K_BEAM
 	m.box(Vector3(cx - door_w * 0.5 - V, y0, wz0 - V * 0.5), Vector3(cx - door_w * 0.5, y0 + dh + V, wz0 + wt), frame)
 	m.box(Vector3(cx + door_w * 0.5, y0, wz0 - V * 0.5), Vector3(cx + door_w * 0.5 + V, y0 + dh + V, wz0 + wt), frame)
 	m.box(Vector3(cx - door_w * 0.5 - V, y0 + dh, wz0 - V * 0.5), Vector3(cx + door_w * 0.5 + V, y0 + dh + V, wz0 + wt), frame)
-	# 室内地面（深色）
+	# 门上横披窗
+	if ch - dh > 1.1:
+		lattice(m, cx - door_w * 0.5 + 0.25, cx + door_w * 0.5 - 0.25, y0 + dh + 0.35, y0 + ch - 0.25, zf - V * 0.5, frame, paper)
+	# 室内地面（地砖）
+	m.kind = K.K_TILE_FLOOR
 	m.box(Vector3(wx0 + wt, y0, wz0 + wt), Vector3(wx1 - wt, y0 + 0.05, wz1 - wt), col(p, "stone2").darkened(0.3))
 	# 正面格栅窗（门两侧）
 	var bay := (w - door_w) * 0.5
@@ -272,7 +314,7 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 			else:
 				bx0 = cx + door_w * 0.5 + i * (bay - wt) / nb + 0.25
 				bx1 = cx + door_w * 0.5 + (i + 1) * (bay - wt) / nb - 0.25
-			lattice(m, bx0, bx1, y0 + 1.0, y0 + ch - 0.5, zf - V * 0.5, frame, Color(0.95, 0.85, 0.6) if i % 2 == 0 else Color(0.9, 0.8, 0.56))
+			lattice(m, bx0, bx1, y0 + 1.0, y0 + ch - 0.5, zf - V * 0.5, frame, paper if i % 2 == 0 else paper.darkened(0.04))
 	# 侧墙窗
 	if opts.get("windows", true):
 		var nwin := maxi(int(d / 4.0), 1)
@@ -280,8 +322,10 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 			var z0 := wz0 + (i + 0.5) * d / nwin - 0.75
 			for sx in [-1.0, 1.0]:
 				var x: float = (wx0 - V * 0.4) if sx < 0.0 else (wx1 + V * 0.4)
+				m.kind = K.K_BEAM
 				m.box(Vector3(x - V * 0.3, y0 + 1.5, z0), Vector3(x + V * 0.3, y0 + ch - 1.0, z0 + 1.5), frame)
-				m.box(Vector3(x - V * 0.4, y0 + 1.75, z0 + 0.25), Vector3(x + V * 0.4, y0 + ch - 1.25, z0 + 1.25), Color(0.25, 0.15, 0.1))
+				m.kind = K.K_LATTICE
+				m.box(Vector3(x - V * 0.4, y0 + 1.75, z0 + 0.25), Vector3(x + V * 0.4, y0 + ch - 1.25, z0 + 1.25), paper.darkened(0.08))
 	# 柱网：前廊柱 + 四角 + 侧面
 	var colx := w * 0.5 + V
 	var colz := d * 0.5 + porch
@@ -311,13 +355,15 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 		var ud := d * 0.5 - 0.25
 		var uy := ry + snap(rise * 0.9 * 0.32) + V
 		var uh := 2.25
+		m.kind = K.K_WALL
 		m.box(Vector3(cx - uw, uy - V, cz - ud), Vector3(cx + uw, uy + uh, cz + ud), wall)
+		m.kind = K.K_LATTICE
 		for i in maxi(int(uw * 2.0 / 2.0), 2):
 			var x := cx - uw + 0.5 + i * 2.0
 			if x + 1.0 > cx + uw:
 				break
-			m.box(Vector3(x, uy + 0.5, cz - ud - V * 0.5), Vector3(x + 1.25, uy + uh - 0.5, cz - ud), frame)
-			m.box(Vector3(x, uy + 0.5, cz + ud), Vector3(x + 1.25, uy + uh - 0.5, cz + ud + V * 0.5), frame)
+			m.box(Vector3(x, uy + 0.5, cz - ud - V * 0.5), Vector3(x + 1.25, uy + uh - 0.5, cz - ud), paper)
+			m.box(Vector3(x, uy + 0.5, cz + ud), Vector3(x + 1.25, uy + uh - 0.5, cz + ud + V * 0.5), paper)
 		for sx in [-1.0, 1.0]:
 			for sz in [-1.0, 1.0]:
 				pillar(m, cx + sx * uw, cz + sz * ud, uy - V, uh, p, 0.5, false)
@@ -330,9 +376,12 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 	if opts.get("plaque", true):
 		var pz := cz - colz - V
 		var gold := col(p, "trim")
+		m.kind = K.K_GOLD
 		m.box(Vector3(cx - 1.5, ey - 0.25, pz - V), Vector3(cx + 1.5, ey + 1.25, pz), gold)
+		m.kind = K.K_BEAM
 		m.box(Vector3(cx - 1.25, ey, pz - V * 1.4), Vector3(cx + 1.25, ey + 1.0, pz - V), col(p, "plaque") if p.has("plaque") else Color(0.12, 0.14, 0.22))
 		# 金字笔画（抽象）
+		m.kind = K.K_GOLD
 		for i in 3:
 			m.box(Vector3(cx - 0.9 + i * 0.7, ey + 0.25, pz - V * 1.6), Vector3(cx - 0.6 + i * 0.7, ey + 0.75, pz - V * 1.4), gold)
 	# 檐下灯笼
@@ -348,20 +397,23 @@ static func pagoda(m: BuildingMesh, cx: float, cz: float, w: float, floors: int,
 	stairs(m, cx, cz - (w + 3.0) * 0.5 - V, 2.0, 1.0, p, false)
 	var y := 1.0
 	var wall := col(p, "wall")
-	var frame := col(p, "wood")
+	var paper := col(p, "paper")
 	var half := w * 0.5
 	for f in floors:
 		var fh := 3.5 if f == 0 else 2.75
+		m.kind = K.K_WALL
 		m.box(Vector3(cx - half, y, cz - half), Vector3(cx + half, y + fh, cz + half), wall, f == 0)
 		for sx in [-1.0, 1.0]:
 			for sz in [-1.0, 1.0]:
 				pillar(m, cx + sx * half, cz + sz * half, y, fh, p, 0.5, false)
 		# 四面门窗
 		var dw := minf(half, 1.5)
+		m.kind = K.K_DOOR
 		m.box(Vector3(cx - dw * 0.5, y + 0.25, cz - half - V * 0.5), Vector3(cx + dw * 0.5, y + fh - 0.5, cz - half), col(p, "door"))
 		m.box(Vector3(cx - dw * 0.5, y + 0.25, cz + half), Vector3(cx + dw * 0.5, y + fh - 0.5, cz + half + V * 0.5), col(p, "door"))
-		m.box(Vector3(cx - half - V * 0.5, y + 0.75, cz - dw * 0.5), Vector3(cx - half, y + fh - 0.75, cz + dw * 0.5), frame)
-		m.box(Vector3(cx + half, y + 0.75, cz - dw * 0.5), Vector3(cx + half + V * 0.5, y + fh - 0.75, cz + dw * 0.5), frame)
+		m.kind = K.K_LATTICE
+		m.box(Vector3(cx - half - V * 0.5, y + 0.75, cz - dw * 0.5), Vector3(cx - half, y + fh - 0.75, cz + dw * 0.5), paper)
+		m.box(Vector3(cx + half, y + 0.75, cz - dw * 0.5), Vector3(cx + half + V * 0.5, y + fh - 0.75, cz + dw * 0.5), paper)
 		brackets(m, cx, cz, half, half, y + fh, p)
 		var ry := y + fh + 1.0
 		var last := f == floors - 1
@@ -371,6 +423,7 @@ static func pagoda(m: BuildingMesh, cx: float, cz: float, w: float, floors: int,
 			var top := ry + snap(half + 1.0) + 2.0
 			# 塔刹
 			var gold := col(p, "trim")
+			m.kind = K.K_GOLD
 			for i in 5:
 				var r := 0.5 - i * 0.07
 				m.box(Vector3(cx - r, top + i * 0.5, cz - r), Vector3(cx + r, top + i * 0.5 + 0.25, cz + r), gold)
@@ -378,6 +431,7 @@ static func pagoda(m: BuildingMesh, cx: float, cz: float, w: float, floors: int,
 			return top + 3.5
 		roof(m, cx, cz, rh, rh, ry, 1.0, p, false, 0.99, 0.8)
 		# 挂铃
+		m.kind = K.K_GOLD
 		for sx in [-1.0, 1.0]:
 			for sz in [-1.0, 1.0]:
 				m.box(Vector3(cx + sx * rh - 0.1, ry - 0.5, cz + sz * rh - 0.1), Vector3(cx + sx * rh + 0.1, ry, cz + sz * rh + 0.1), col(p, "trim"))
@@ -393,8 +447,9 @@ static func pavilion(m: BuildingMesh, cx: float, cz: float, w: float, h: float, 
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			pillar(m, cx + sx * half, cz + sz * half, base_h, h, p)
-	# 坐凳栏杆（三面）
+	# 坐凳栏杆（三面，美人靠）
 	var wood := col(p, "pillar")
+	m.kind = K.K_BEAM
 	for side in 3:
 		match side:
 			0:
@@ -404,6 +459,7 @@ static func pavilion(m: BuildingMesh, cx: float, cz: float, w: float, h: float, 
 			2:
 				m.box(Vector3(cx + half - 0.25, base_h + 0.25, cz - half), Vector3(cx + half + 0.25, base_h + 0.75, cz + half), wood)
 	# 楣子
+	m.kind = K.K_PAINTED
 	m.box(Vector3(cx - half, base_h + h - 0.5, cz - half - V), Vector3(cx + half, base_h + h, cz + half + V), col(p, "beam"))
 	roof(m, cx, cz, half + 1.5, half + 1.5, base_h + h, half + 1.25, p, false)
 
@@ -415,21 +471,30 @@ static func paifang(m: BuildingMesh, cx: float, cz: float, w: float, h: float, p
 	for i in 4:
 		var x: float = xs[i]
 		var ph := h if (i == 1 or i == 2) else h * 0.78
-		# 夹杆石
+		# 夹杆石（浮雕）
+		m.kind = K.K_CARVED
 		m.box(Vector3(x - 0.75, 0, cz - 1.0), Vector3(x + 0.75, 1.5, cz + 1.0), stone, true)
+		m.kind = K.K_STONE_SMOOTH
 		m.box(Vector3(x - 0.5, 1.5, cz - 0.75), Vector3(x + 0.5, 1.75, cz + 0.75), stone.lightened(0.08))
+		m.kind = K.K_PILLAR
 		m.box(Vector3(x - 0.375, 0, cz - 0.375), Vector3(x + 0.375, ph, cz + 0.375), col(p, "pillar"), true)
 	var beam := col(p, "beam")
 	var gold := col(p, "trim")
 	# 中间（明间）
 	var mx0: float = xs[1]
 	var mx1: float = xs[2]
+	m.kind = K.K_PAINTED
 	m.box(Vector3(mx0, h - 2.5, cz - 0.375), Vector3(mx1, h - 1.75, cz + 0.375), beam)
+	m.kind = K.K_GOLD
 	m.box(Vector3(mx0, h - 1.75, cz - 0.25), Vector3(mx1, h - 1.5, cz + 0.25), gold)
+	m.kind = K.K_PAINTED
 	m.box(Vector3(mx0 - 0.25, h - 0.75, cz - 0.5), Vector3(mx1 + 0.25, h, cz + 0.5), beam)
 	# 匾
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - 1.5, h - 1.75, cz - 0.6), Vector3(cx + 1.5, h - 0.25, cz - 0.375), gold)
+	m.kind = K.K_BEAM
 	m.box(Vector3(cx - 1.25, h - 1.5, cz - 0.7), Vector3(cx + 1.25, h - 0.5, cz - 0.6), col(p, "plaque") if p.has("plaque") else Color(0.12, 0.14, 0.22))
+	m.kind = K.K_GOLD
 	for i in 3:
 		m.box(Vector3(cx - 0.9 + i * 0.7, h - 1.25, cz - 0.8), Vector3(cx - 0.6 + i * 0.7, h - 0.75, cz - 0.7), gold)
 	brackets(m, cx, cz, (mx1 - mx0) * 0.5 + 0.25, 0.5, h, p)
@@ -439,6 +504,7 @@ static func paifang(m: BuildingMesh, cx: float, cz: float, w: float, h: float, p
 		var a: float = xs[0] if sgn < 0.0 else xs[2]
 		var b: float = xs[1] if sgn < 0.0 else xs[3]
 		var hh := h * 0.78
+		m.kind = K.K_PAINTED
 		m.box(Vector3(minf(a, b), hh - 1.75, cz - 0.3), Vector3(maxf(a, b), hh - 1.25, cz + 0.3), beam)
 		m.box(Vector3(minf(a, b), hh - 0.5, cz - 0.4), Vector3(maxf(a, b), hh, cz + 0.4), beam)
 		var scx := (a + b) * 0.5
@@ -446,7 +512,7 @@ static func paifang(m: BuildingMesh, cx: float, cz: float, w: float, h: float, p
 		roof(m, scx, cz, absf(b - a) * 0.5 + 1.25, 1.5, hh + 1.0, 1.25, p, true, 0.0, 1.0)
 
 
-## 院墙：从 a 到 b（沿 x 或 z 轴），高 h，带瓦顶
+## 院墙：从 a 到 b（沿 x 或 z 轴），高 h，青砖墙基 + 白墙 + 瓦顶
 static func wall(m: BuildingMesh, a: Vector2, b: Vector2, h: float, p: Dictionary, thick: float = 0.75) -> void:
 	var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y))
 	var hi := Vector2(maxf(a.x, b.x), maxf(a.y, b.y))
@@ -459,18 +525,20 @@ static func wall(m: BuildingMesh, a: Vector2, b: Vector2, h: float, p: Dictionar
 		lo.x -= t
 		hi.x += t
 	var wallc := col(p, "wall2") if p.has("wall2") else col(p, "wall")
+	m.kind = K.K_BRICK
 	m.box(Vector3(lo.x, -0.5, lo.y), Vector3(hi.x, 0.75, hi.y), col(p, "stone2"), true, true)
+	m.kind = K.K_WALL
 	m.box(Vector3(lo.x, 0.75, lo.y), Vector3(hi.x, h, hi.y), wallc, true)
 	# 瓦顶
 	var roofc := col(p, "roof")
 	var e := 0.5
+	m.kind = p.get("roof_kind", K.K_ROOF)
+	m.box(Vector3(lo.x - e, h, lo.y - e), Vector3(hi.x + e, h + V, hi.y + e), col(p, "roof2"))
+	m.box(Vector3(lo.x - e * 0.5, h + V, lo.y - e * 0.5), Vector3(hi.x + e * 0.5, h + 2.0 * V, hi.y + e * 0.5), roofc)
+	m.kind = K.K_RIDGE
 	if along_x:
-		m.box(Vector3(lo.x - e, h, lo.y - e), Vector3(hi.x + e, h + V, hi.y + e), col(p, "roof2"))
-		m.box(Vector3(lo.x - e * 0.5, h + V, lo.y - e * 0.5), Vector3(hi.x + e * 0.5, h + 2.0 * V, hi.y + e * 0.5), roofc)
 		m.box(Vector3(lo.x, h + 2.0 * V, lo.y + t * 0.5), Vector3(hi.x, h + 3.0 * V, hi.y - t * 0.5), roofc.darkened(0.15))
 	else:
-		m.box(Vector3(lo.x - e, h, lo.y - e), Vector3(hi.x + e, h + V, hi.y + e), col(p, "roof2"))
-		m.box(Vector3(lo.x - e * 0.5, h + V, lo.y - e * 0.5), Vector3(hi.x + e * 0.5, h + 2.0 * V, hi.y + e * 0.5), roofc)
 		m.box(Vector3(lo.x + t * 0.5, h + 2.0 * V, lo.y), Vector3(hi.x - t * 0.5, h + 3.0 * V, hi.y), roofc.darkened(0.15))
 
 
@@ -478,16 +546,21 @@ static func wall(m: BuildingMesh, a: Vector2, b: Vector2, h: float, p: Dictionar
 static func cauldron(m: BuildingMesh, cx: float, cz: float, s: float, p: Dictionary, fire: Color = Color(1.0, 0.5, 0.15)) -> void:
 	var bronze := Color(0.36, 0.30, 0.18)
 	var bronze2 := Color(0.46, 0.40, 0.22)
+	m.kind = K.K_STONE
 	m.box(Vector3(cx - 1.5 * s, 0, cz - 1.5 * s), Vector3(cx + 1.5 * s, 0.25, cz + 1.5 * s), col(p, "stone"), true)
+	m.kind = K.K_BRONZE
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			m.box(Vector3(cx + sx * 0.8 * s - 0.2 * s, 0.25, cz + sz * 0.8 * s - 0.2 * s), Vector3(cx + sx * 0.8 * s + 0.2 * s, 1.0 * s, cz + sz * 0.8 * s + 0.2 * s), bronze)
 	m.box(Vector3(cx - 1.1 * s, 1.0 * s, cz - 1.1 * s), Vector3(cx + 1.1 * s, 2.2 * s, cz + 1.1 * s), bronze, true)
 	m.box(Vector3(cx - 1.25 * s, 2.0 * s, cz - 1.25 * s), Vector3(cx + 1.25 * s, 2.35 * s, cz + 1.25 * s), bronze2)
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - 1.0 * s, 1.3 * s, cz - 1.15 * s), Vector3(cx + 1.0 * s, 1.8 * s, cz - 1.1 * s), col(p, "trim"))
+	m.kind = K.K_BRONZE
 	for sx in [-1.0, 1.0]:
 		m.box(Vector3(cx + sx * 0.7 * s - 0.15 * s, 2.35 * s, cz - 0.15 * s), Vector3(cx + sx * 0.7 * s + 0.15 * s, 3.0 * s, cz + 0.15 * s), bronze2)
 		m.box(Vector3(cx + sx * 0.7 * s - 0.15 * s, 2.85 * s, cz - 0.6 * s), Vector3(cx + sx * 0.7 * s + 0.15 * s, 3.0 * s, cz + 0.6 * s), bronze2)
+	m.kind = K.K_GLOW
 	m.box(Vector3(cx - 0.9 * s, 2.2 * s, cz - 0.9 * s), Vector3(cx + 0.9 * s, 2.3 * s, cz + 0.9 * s), VoxelGrid.glow(fire, 0.9))
 	m.box(Vector3(cx - 0.4 * s, 2.3 * s, cz - 0.4 * s), Vector3(cx + 0.4 * s, 2.6 * s, cz + 0.4 * s), VoxelGrid.glow(fire.lightened(0.3), 1.0))
 
@@ -496,12 +569,15 @@ static func cauldron(m: BuildingMesh, cx: float, cz: float, s: float, p: Diction
 static func stall(m: BuildingMesh, cx: float, cz: float, w: float, cloth: Color, p: Dictionary, seed_v: int = 0) -> void:
 	var wood := col(p, "wood")
 	var d := 2.0
+	m.kind = K.K_WOOD
 	m.box(Vector3(cx - w * 0.5, 0.0, cz - d * 0.5), Vector3(cx + w * 0.5, 0.9, cz - d * 0.5 + 1.0), wood, true)
 	m.box(Vector3(cx - w * 0.5 - V * 0.5, 0.9, cz - d * 0.5 - V * 0.5), Vector3(cx + w * 0.5 + V * 0.5, 1.0, cz - d * 0.5 + 1.0 + V * 0.5), wood.lightened(0.15))
+	m.kind = K.K_BEAM
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			m.box(Vector3(cx + sx * w * 0.5 - 0.1, 0, cz + sz * d * 0.5 - 0.1), Vector3(cx + sx * w * 0.5 + 0.1, 2.6 + (0.3 if sz > 0.0 else 0.0), cz + sz * d * 0.5 + 0.1), wood)
 	# 布篷（阶梯斜面，条纹）
+	m.kind = K.K_CLOTH
 	for i in 4:
 		var z0 := cz - d * 0.5 - 0.5 + i * 0.75
 		var y := 2.6 + i * 0.12
@@ -510,6 +586,7 @@ static func stall(m: BuildingMesh, cx: float, cz: float, w: float, cloth: Color,
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
 	var goods := [Color(0.9, 0.3, 0.2), Color(0.95, 0.8, 0.3), Color(0.4, 0.75, 0.4), Color(0.6, 0.5, 0.85), Color(0.85, 0.85, 0.8)]
+	m.kind = K.K_PLAIN
 	var x := cx - w * 0.5 + 0.2
 	while x < cx + w * 0.5 - 0.4:
 		var gw := rng.randf_range(0.25, 0.5)
@@ -522,11 +599,14 @@ static func stall(m: BuildingMesh, cx: float, cz: float, w: float, cloth: Color,
 ## 告示牌 / 任务榜：两柱 + 板 + 小顶 + 贴纸
 static func notice_board(m: BuildingMesh, cx: float, cz: float, w: float, p: Dictionary, board: Color = Color(0.45, 0.3, 0.18)) -> void:
 	var wood := col(p, "wood")
+	m.kind = K.K_PILLAR
 	for sx in [-1.0, 1.0]:
 		m.box(Vector3(cx + sx * w * 0.5 - 0.15, 0, cz - 0.15), Vector3(cx + sx * w * 0.5 + 0.15, 3.2, cz + 0.15), wood, true)
+	m.kind = K.K_WOOD
 	m.box(Vector3(cx - w * 0.5, 1.0, cz - 0.1), Vector3(cx + w * 0.5, 2.8, cz + 0.1), board, true)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(cx * 13.0 + cz * 7.0)
+	m.kind = K.K_CLOTH
 	for i in 6:
 		var px := cx - w * 0.5 + 0.3 + (i % 3) * (w - 0.6) / 3.0
 		var py := 1.25 + (i / 3) * 0.8
@@ -541,19 +621,25 @@ static func shop(m: BuildingMesh, cx: float, cz: float, w: float, d: float, p: D
 	var wall := col(p, "wall")
 	var y1 := 3.5
 	var y2 := 6.5
+	m.kind = K.K_STONE
 	m.box(Vector3(cx - w * 0.5 - 0.25, -0.5, cz - d * 0.5 - 0.25), Vector3(cx + w * 0.5 + 0.25, 0.25, cz + d * 0.5 + 0.25), col(p, "stone2"), true, true)
 	# 一层：后墙 + 侧墙，前面开敞柜台
+	m.kind = K.K_WALL
 	m.box(Vector3(cx - w * 0.5, 0.25, cz + d * 0.5 - 0.5), Vector3(cx + w * 0.5, y1, cz + d * 0.5), wall, true)
 	m.box(Vector3(cx - w * 0.5, 0.25, cz - d * 0.5), Vector3(cx - w * 0.5 + 0.5, y1, cz + d * 0.5), wall, true)
 	m.box(Vector3(cx + w * 0.5 - 0.5, 0.25, cz - d * 0.5), Vector3(cx + w * 0.5, y1, cz + d * 0.5), wall, true)
+	m.kind = K.K_WOOD
 	m.box(Vector3(cx - w * 0.5 + 0.5, 0.25, cz - d * 0.5 + 0.5), Vector3(cx + w * 0.5 - 0.5, 1.25, cz - d * 0.5 + 1.25), wood, true)
+	m.kind = K.K_PLANKS_FLOOR
 	m.box(Vector3(cx - w * 0.5 + 0.5, 0.25, cz - d * 0.5 + 1.25), Vector3(cx + w * 0.5 - 0.5, 0.3, cz + d * 0.5 - 0.5), wood.darkened(0.3))
 	# 货架
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v
 	for sh in 3:
 		var y := 1.0 + sh * 0.75
+		m.kind = K.K_WOOD
 		m.box(Vector3(cx - w * 0.5 + 0.75, y, cz + d * 0.5 - 1.0), Vector3(cx + w * 0.5 - 0.75, y + 0.12, cz + d * 0.5 - 0.5), wood)
+		m.kind = K.K_PLAIN
 		var x := cx - w * 0.5 + 0.9
 		while x < cx + w * 0.5 - 1.0:
 			var gw := rng.randf_range(0.2, 0.45)
@@ -563,19 +649,24 @@ static func shop(m: BuildingMesh, cx: float, cz: float, w: float, d: float, p: D
 	for sx in [-1.0, 1.0]:
 		pillar(m, cx + sx * (w * 0.5 - 0.25), cz - d * 0.5 + 0.25, 0.25, y1, p, 0.5)
 	# 二层（出挑）
+	m.kind = K.K_BEAM
 	m.box(Vector3(cx - w * 0.5 - 0.25, y1, cz - d * 0.5 - 0.5), Vector3(cx + w * 0.5 + 0.25, y1 + 0.5, cz + d * 0.5 + 0.25), wood, true)
+	m.kind = K.K_WALL
 	m.box(Vector3(cx - w * 0.5, y1 + 0.5, cz - d * 0.5 + 0.25), Vector3(cx + w * 0.5, y2, cz + d * 0.5), wall, true)
 	var nwin := maxi(int(w / 2.0), 1)
 	for i in nwin:
 		var x0 := cx - w * 0.5 + 0.5 + i * (w - 1.0) / nwin + 0.2
 		var x1 := cx - w * 0.5 + 0.5 + (i + 1) * (w - 1.0) / nwin - 0.2
-		lattice(m, x0, x1, y1 + 1.0, y2 - 0.5, cz - d * 0.5 + 0.2, wood, Color(0.92, 0.82, 0.58))
+		lattice(m, x0, x1, y1 + 1.0, y2 - 0.5, cz - d * 0.5 + 0.2, wood, col(p, "paper"))
 	# 栏杆
+	m.kind = K.K_BEAM
 	m.box(Vector3(cx - w * 0.5 - 0.25, y1 + 0.5, cz - d * 0.5 - 0.5), Vector3(cx + w * 0.5 + 0.25, y1 + 1.1, cz - d * 0.5 - 0.3), col(p, "pillar"))
 	roof(m, cx, cz, w * 0.5 + 1.25, d * 0.5 + 1.25, y2, minf(w, d) * 0.3 + 0.75, p, true, 0.0, 0.8)
 	# 竖招牌
 	var sx2 := cx + w * 0.5 - 1.0
+	m.kind = K.K_BEAM
 	m.box(Vector3(sx2 - 0.4, y1 - 2.4, cz - d * 0.5 - 0.35), Vector3(sx2 + 0.4, y1 - 0.2, cz - d * 0.5 - 0.15), sign)
+	m.kind = K.K_GOLD
 	m.box(Vector3(sx2 - 0.3, y1 - 2.2, cz - d * 0.5 - 0.4), Vector3(sx2 + 0.3, y1 - 0.4, cz - d * 0.5 - 0.35), col(p, "trim"))
 	lantern(m, Vector3(cx - w * 0.5 + 1.0, y1 - 0.2, cz - d * 0.5 - 0.3), p, 0.8)
 
@@ -585,31 +676,43 @@ static func giant_sword(m: BuildingMesh, cx: float, cz: float, h: float, p: Dict
 	var steel := Color(0.80, 0.84, 0.90)
 	var edge := VoxelGrid.glow(Color(0.75, 0.9, 1.0), 0.35)
 	var gold := col(p, "trim")
+	m.kind = K.K_CARVED
 	m.box(Vector3(cx - 1.5, 0, cz - 1.5), Vector3(cx + 1.5, 1.0, cz + 1.5), col(p, "stone2"), true)
+	m.kind = K.K_STONE_SMOOTH
 	m.box(Vector3(cx - 1.0, 1.0, cz - 1.0), Vector3(cx + 1.0, 1.5, cz + 1.0), col(p, "stone"), true)
+	# 剑身：金属，刃线发光
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - 0.5, 1.0, cz - 0.15), Vector3(cx + 0.5, h, cz + 0.15), steel, true)
+	m.kind = K.K_GLOW
 	m.box(Vector3(cx - 0.1, 1.5, cz - 0.2), Vector3(cx + 0.1, h - 0.25, cz + 0.2), edge)
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - 1.4, h, cz - 0.35), Vector3(cx + 1.4, h + 0.5, cz + 0.35), gold)
+	m.kind = K.K_CLOTH
 	m.box(Vector3(cx - 0.2, h + 0.5, cz - 0.2), Vector3(cx + 0.2, h + 2.5, cz + 0.2), Color(0.3, 0.12, 0.1))
+	m.kind = K.K_GOLD
 	m.box(Vector3(cx - 0.35, h + 2.5, cz - 0.35), Vector3(cx + 0.35, h + 3.0, cz + 0.35), gold)
 
 
 ## 石灯柱（非可破坏装饰版）
 static func stone_post(m: BuildingMesh, cx: float, cz: float, h: float, p: Dictionary, glow_c: Color = Color(1.0, 0.75, 0.4)) -> void:
 	var s := col(p, "stone")
+	m.kind = K.K_STONE_SMOOTH
 	m.box(Vector3(cx - 0.4, 0, cz - 0.4), Vector3(cx + 0.4, 0.4, cz + 0.4), s, true)
 	m.box(Vector3(cx - 0.2, 0.4, cz - 0.2), Vector3(cx + 0.2, h, cz + 0.2), s)
+	m.kind = K.K_LANTERN
 	m.box(Vector3(cx - 0.35, h, cz - 0.35), Vector3(cx + 0.35, h + 0.6, cz + 0.35), VoxelGrid.glow(glow_c, 0.8))
+	m.kind = K.K_STONE_SMOOTH
 	m.box(Vector3(cx - 0.5, h + 0.6, cz - 0.5), Vector3(cx + 0.5, h + 0.8, cz + 0.5), s)
 	m.box(Vector3(cx - 0.2, h + 0.8, cz - 0.2), Vector3(cx + 0.2, h + 1.0, cz + 0.2), s)
 
 
-## 铺装（石板）：矩形区域，棋盘略微变色
+## 铺装（石板）：矩形区域，棋盘略微变色；tile ≤ 1 米时用方砖
 static func paving(m: BuildingMesh, x0: float, z0: float, x1: float, z1: float, y: float, p: Dictionary, tile: float = 2.0) -> void:
 	var a := col(p, "stone")
 	var b := col(p, "stone2")
 	var nx := maxi(int(round((x1 - x0) / tile)), 1)
 	var nz := maxi(int(round((z1 - z0) / tile)), 1)
+	m.kind = K.K_TILE_FLOOR if tile <= 1.0 else K.K_FLAGSTONE
 	for j in nz:
 		for i in nx:
 			var c := a if (i + j) % 2 == 0 else a.lerp(b, 0.4)

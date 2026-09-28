@@ -78,6 +78,7 @@ const S_BLACKSAND := 18
 const S_SNOWROCK := 19
 const S_FIELD := 20
 const S_CANOPY := 21     ## 远景 LOD 树冠
+const S_CANOPY_PINE := 22  ## 远景 LOD 针叶树冠
 
 ## 地表调色（sRGB）：[顶面, 顶块侧面, 表土, 表土厚度, 岩层 A, 岩层 B]
 const SURF := [
@@ -103,6 +104,34 @@ const SURF := [
 	[Color(0.60, 0.62, 0.68), Color(0.56, 0.58, 0.64), Color(0.53, 0.56, 0.62), 1, Color(0.55, 0.58, 0.65), Color(0.47, 0.50, 0.58)],   # 雪岩
 	[Color(0.36, 0.26, 0.17), Color(0.40, 0.30, 0.20), Color(0.44, 0.33, 0.22), 2, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 药田
 	[Color(0.22, 0.44, 0.21), Color(0.20, 0.40, 0.19), Color(0.18, 0.36, 0.18), 7, Color(0.30, 0.22, 0.15), Color(0.30, 0.22, 0.15)],   # 树冠（LOD）
+	[Color(0.14, 0.32, 0.24), Color(0.13, 0.29, 0.22), Color(0.12, 0.27, 0.20), 7, Color(0.28, 0.21, 0.15), Color(0.28, 0.21, 0.15)],   # 针叶树冠（LOD）
+]
+
+## 地表材质层（BlockIds）：[顶, 顶块侧面, 表土, 岩层 A, 岩层 B]
+const SURF_LAYERS := [
+	[BlockIds.GRASS_TOP, BlockIds.GRASS_SIDE, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],             # 草地
+	[BlockIds.FOREST_FLOOR, BlockIds.GRASS_SIDE, BlockIds.DIRT, BlockIds.STONE, BlockIds.MOSSY_STONE],    # 林地
+	[BlockIds.SNOW, BlockIds.SNOW_SIDE, BlockIds.PACKED_SNOW, BlockIds.GRANITE, BlockIds.GRANITE],        # 雪
+	[BlockIds.STONE, BlockIds.STONE, BlockIds.STONE, BlockIds.STONE, BlockIds.STONE],                     # 岩石
+	[BlockIds.SAND, BlockIds.SAND, BlockIds.SAND, BlockIds.STONE, BlockIds.STONE],                        # 沙
+	[BlockIds.MUD, BlockIds.MUD, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],                          # 泥
+	[BlockIds.GRASS_TOP, BlockIds.GRASS_SIDE, BlockIds.DIRT, BlockIds.STONE, BlockIds.MOSSY_STONE],       # 湿草
+	[BlockIds.ASH, BlockIds.ASH, BlockIds.ASH, BlockIds.RED_ROCK, BlockIds.BASALT],                       # 火山灰
+	[BlockIds.RED_ROCK, BlockIds.RED_ROCK, BlockIds.RED_ROCK, BlockIds.RED_ROCK, BlockIds.RED_ROCK],      # 赤岩
+	[BlockIds.OBSIDIAN, BlockIds.OBSIDIAN, BlockIds.BASALT, BlockIds.RED_ROCK, BlockIds.BASALT],          # 黑曜石
+	[BlockIds.LAVA, BlockIds.LAVA, BlockIds.BASALT, BlockIds.RED_ROCK, BlockIds.BASALT],                  # 熔岩
+	[BlockIds.LOESS, BlockIds.LOESS, BlockIds.LOESS, BlockIds.CLAY_LAYERS, BlockIds.LOESS],               # 黄土
+	[BlockIds.DRY_GRASS, BlockIds.GRASS_SIDE, BlockIds.LOESS, BlockIds.CLAY_LAYERS, BlockIds.LOESS],      # 枯草
+	[BlockIds.PATH, BlockIds.PATH, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],                        # 道路
+	[BlockIds.FLAGSTONE, BlockIds.STONE_BRICK, BlockIds.STONE_BRICK, BlockIds.STONE, BlockIds.STONE],     # 铺地
+	[BlockIds.GRAVEL, BlockIds.GRAVEL, BlockIds.GRAVEL, BlockIds.STONE, BlockIds.STONE],                  # 砾石
+	[BlockIds.ASH, BlockIds.ASH, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],                          # 焦土
+	[BlockIds.GRASS_TOP, BlockIds.GRASS_SIDE, BlockIds.DIRT, BlockIds.GRANITE, BlockIds.GRANITE],         # 高山草甸
+	[BlockIds.BLACK_SAND, BlockIds.BLACK_SAND, BlockIds.BLACK_SAND, BlockIds.BASALT, BlockIds.RED_ROCK],  # 黑沙
+	[BlockIds.GRANITE, BlockIds.GRANITE, BlockIds.GRANITE, BlockIds.GRANITE, BlockIds.GRANITE],           # 雪岩
+	[BlockIds.FARMLAND, BlockIds.DIRT, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],                    # 药田
+	[BlockIds.LEAF_BROAD, BlockIds.LEAF_BROAD, BlockIds.LEAF_BROAD, BlockIds.LOG_BARK, BlockIds.LOG_BARK],  # 树冠（LOD）
+	[BlockIds.LEAF_PINE, BlockIds.LEAF_PINE, BlockIds.LEAF_PINE, BlockIds.LOG_BARK, BlockIds.LOG_BARK],     # 针叶树冠（LOD）
 ]
 
 ## 线程安全的运行时副本（Godot 4.4 中并发读取 const（只读）Array 会共用一个临时 Variant，导致内存错误）
@@ -115,6 +144,18 @@ static var _surf_depth := _surf_depth_arr()
 static var _region_rough := PackedFloat32Array(REGION_ROUGH)
 static var _biome_names := PackedStringArray(BIOME_NAMES)
 static var _ao := PackedFloat32Array([0.56, 0.72, 0.87, 1.0])
+static var _lay_top := _layer_col(0)
+static var _lay_side := _layer_col(1)
+static var _lay_sub := _layer_col(2)
+static var _lay_a := _layer_col(3)
+static var _lay_b := _layer_col(4)
+
+
+static func _layer_col(i: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for e in SURF_LAYERS:
+		out.append(float(e[i]))
+	return out
 
 
 static func _surf_col(i: int) -> PackedColorArray:
@@ -1164,7 +1205,7 @@ func build_lod_arrays(tx: int, tz: int) -> Array:
 			var tc := top_color(s, x, z, patch)
 			if cn != 0:
 				var hv := _hash2(x, z)
-				s = S_CANOPY
+				s = S_CANOPY if cn != 2 else S_CANOPY_PINE
 				match cn:
 					1:
 						tc = Color(0.20, 0.42, 0.20).lerp(Color(0.28, 0.50, 0.22), hv)
@@ -1194,6 +1235,7 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	var w := nx + 2
 	var ao := _ao
@@ -1202,6 +1244,11 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 	var s_a := _surf_a
 	var s_b := _surf_b
 	var s_depth := _surf_depth
+	var l_top := _lay_top
+	var l_side := _lay_side
+	var l_sub := _lay_sub
+	var l_a := _lay_a
+	var l_b := _lay_b
 	var up := Vector3.UP
 	var nxp := Vector3(1, 0, 0)
 	var nxn := Vector3(-1, 0, 0)
@@ -1244,6 +1291,11 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 			colors.append(_shade(tc, ao[a10]))
 			colors.append(_shade(tc, ao[a11]))
 			colors.append(_shade(tc, ao[a01]))
+			var ut := Vector2(l_top[s], 0.0)
+			uvs.append(ut)
+			uvs.append(ut)
+			uvs.append(ut)
+			uvs.append(ut)
 			if a00 + a11 >= a10 + a01:
 				indices.append_array([b, b + 1, b + 2, b, b + 2, b + 3])
 			else:
@@ -1271,16 +1323,20 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 					while y > hn2:
 						var yb: int
 						var col: Color
+						var lay: float
 						if seg == 0:
 							yb = y - 1
 							col = s_side[s]
+							lay = l_side[s]
 						elif seg == 1:
 							yb = maxi(y - s_depth[s], hn2)
 							col = s_sub[s]
+							lay = l_sub[s]
 						else:
 							var band := floori(float(y - 1 + off) / 3.0)
 							yb = band * 3 - off
 							col = s_a[s] if (band & 1) == 0 else s_b[s]
+							lay = l_a[s] if (band & 1) == 0 else l_b[s]
 							var k := 0.93 + 0.14 * _hash2(band, hx0 + lx + (hz0 + lz) * 7)
 							col = Color(col.r * k, col.g * k, col.b * k, col.a)
 						yb = maxi(yb, hn2)
@@ -1333,6 +1389,11 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 						normals.append(nrm)
 						normals.append(nrm)
 						normals.append(nrm)
+						var us := Vector2(lay, 0.0)
+						uvs.append(us)
+						uvs.append(us)
+						uvs.append(us)
+						uvs.append(us)
 						indices.append_array([q, q + 1, q + 2, q, q + 2, q + 3])
 						y = yb
 	if verts.is_empty():
@@ -1342,6 +1403,7 @@ static func mesh_columns(nx: int, nz: int, lh: PackedInt32Array, cell: float, or
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
 
@@ -1417,6 +1479,11 @@ func carve_crater_data(pos: Vector3, radius: float) -> Dictionary:
 
 
 # ================================================================ 地图
+
+## 高度图（L8，SIZE×SIZE，像素值 = 方块柱顶高度），供水面着色器计算水深与岸边泡沫
+func height_image() -> Image:
+	return Image.create_from_data(SIZE, SIZE, false, Image.FORMAT_L8, hmap)
+
 
 ## 俯视彩色地图（px×px），含水深、山体晕渲、道路与熔岩。可供地图 UI 使用。
 ## 按行多线程生成并缓存（弹坑后失效）。512 像素约 0.2~0.4 秒。

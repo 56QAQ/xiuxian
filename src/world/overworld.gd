@@ -1,6 +1,6 @@
 extends Node3D
 ## 大地图场景（scenes/overworld.tscn 的根节点脚本）。
-## 构建：昼夜环境 + 水面 + 地形流式加载 + POI（宗门/坊市/洞府/秘境入口/地标）+ 植被道具 + 可破坏物。
+## 构建：昼夜环境 + 水面 + 地形流式加载 + POI（宗门/坊市/洞府/秘境入口/地标）+ 植被道具 + 可破坏物 + 环境粒子。
 ## 时间：1 现实分钟 = 1 时辰（GS.advance_time(delta * 2 / 60)，每约 0.3 秒批量推进一次）。
 ## 对外：terrain（TerrainGen）、get_spawn_position()、set_focus(node)、_spawn_player()（调试自由相机，
 ## 将由玩家模块替换）。GS 未开局时使用默认种子，可单独运行。
@@ -14,6 +14,7 @@ var props: PropScatter
 var pois_root: Node3D
 var day_night: DayNight
 var water: WaterPlane
+var ambient: AmbientFX
 var player: Node3D
 ## 加载耗时（毫秒）
 var load_ms := 0.0
@@ -26,8 +27,10 @@ func _ready() -> void:
 	if not GS.active and not GS.world.has("hours"):
 		GS.world["hours"] = 8.0
 	terrain = TerrainGen.shared()
+	BlockTex.reset_env()
 	water = WaterPlane.new()
 	water.name = "Water"
+	water.terrain = terrain
 	add_child(water)
 	day_night = DayNight.new()
 	day_night.name = "DayNight"
@@ -37,6 +40,8 @@ func _ready() -> void:
 	streamer = TerrainStreamer.new(terrain)
 	streamer.name = "Terrain"
 	add_child(streamer)
+	ambient = AmbientFX.new(terrain, day_night)
+	add_child(ambient)
 	var t1 := Time.get_ticks_usec()
 	_build_pois()
 	var poi_ms := (Time.get_ticks_usec() - t1) / 1000.0
@@ -90,6 +95,8 @@ func set_focus(node: Node3D) -> void:
 		streamer.set_focus(node)
 	if props:
 		props.set_focus(node)
+	if ambient:
+		ambient.set_focus(node)
 
 
 ## 同步加载焦点周围的道具地块（截图/测试用）

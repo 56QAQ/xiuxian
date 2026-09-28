@@ -1,7 +1,10 @@
 class_name PropBuilder
 ## 体素植被与道具：各生物群系的树木、竹、柳、枫、枯木与赤晶、灌木、芦苇、岩石、草丛与花、灵草（herb_node）、矿脉（ore_node）。
-## 全部由程序生成 VoxelGrid → VoxelMesher 网格，按 (种类, 变体, LOD) 缓存；大量重复的用 MultiMesh 实例化。
+## 全部由程序生成 MatGrid（带方块种类的体素）→ BlockMesher 方块材质网格（树皮/叶/岩石纹理、风摆），
+## 按 (种类, 变体, LOD) 缓存；大量重复的用 MultiMesh 实例化。
 ## LOD1 为 2 倍体素降采样的远景网格。网格原点在树干底部中心（y=0 为地面）。
+
+const K = preload("res://src/world/block_tex.gd")
 
 ## 种类 → 体素边长、变体数、树干碰撞半径与高度（米）
 const KINDS := {
@@ -28,10 +31,10 @@ const KINDS := {
 	"grass_dry": {"vs": 0.0625, "variants": 2, "trunk": 0.0, "height": 0.0},
 	"grass_snow": {"vs": 0.0625, "variants": 2, "trunk": 0.0, "height": 0.0},
 	"flower": {"vs": 0.0625, "variants": 5, "trunk": 0.0, "height": 0.0},
-	"lotus": {"vs": 0.125, "variants": 2, "trunk": 0.0, "height": 0.0},
+	"lotus": {"vs": 0.125, "variants": 3, "trunk": 0.0, "height": 0.0},
 }
 
-const FLOWER_COLORS := [Color(0.95, 0.3, 0.3), Color(1.0, 0.85, 0.3), Color(0.95, 0.95, 0.95), Color(0.7, 0.45, 0.95), Color(1.0, 0.6, 0.75)]
+const FLOWER_COLORS := [Color(0.92, 0.30, 0.28), Color(0.98, 0.82, 0.30), Color(0.95, 0.95, 0.94), Color(0.66, 0.45, 0.90), Color(0.98, 0.62, 0.74)]
 
 static var _meshes: Dictionary = {}
 ## 可在工作线程中读取的副本（Godot 4.4 并发读取 const 容器不安全）
@@ -47,6 +50,13 @@ static func variants(kind: String) -> int:
 	return int(info(kind)["variants"])
 
 
+## 释放网格与方块材质缓存（测试退出前调用）
+static func clear_cache() -> void:
+	_meshes.clear()
+	DestructibleFactory.clear_cache()
+	BlockTex.clear_cache()
+
+
 ## 取得网格（缓存）。lod=1 为降采样远景网格。
 static func mesh(kind: String, variant: int = 0, lod: int = 0) -> ArrayMesh:
 	variant = posmod(variant, variants(kind))
@@ -59,7 +69,7 @@ static func mesh(kind: String, variant: int = 0, lod: int = 0) -> ArrayMesh:
 		g = downsample(g)
 		vs *= 2.0
 	var org := Vector3(-g.sx * vs * 0.5, 0.0, -g.sz * vs * 0.5)
-	var m := BuildingMesh.use_static(VoxelMesher.build(g, vs, org, lod == 0))
+	var m := BlockMesher.build(g, vs, org, lod == 0, 1.0 if lod == 0 else 0.6)
 	_meshes[key] = m
 	return m
 
@@ -75,8 +85,10 @@ static func warm_up(kinds: Array = []) -> void:
 				mesh(k, v, 1)
 
 
-## 2× 降采样：8 个子体素中 ≥3 个实心则实心，颜色取第一个实心
+## 2× 降采样：8 个子体素中 ≥3 个实心则实心，颜色（与种类）取第一个实心
 static func downsample(g: VoxelGrid) -> VoxelGrid:
+	if g is MatGrid:
+		return (g as MatGrid).downsampled()
 	var nx := (g.sx + 1) / 2
 	var ny := (g.sy + 1) / 2
 	var nz := (g.sz + 1) / 2
@@ -110,7 +122,7 @@ static func _cl(c: Color) -> Color:
 	return Color(clampf(c.r, 0.0, 1.0), clampf(c.g, 0.0, 1.0), clampf(c.b, 0.0, 1.0), clampf(c.a, 0.0, 1.0))
 
 
-## 带逐体素明暗扰动的椭球
+## 带逐体素明暗扰动的椭球（沿用网格当前的方块种类）
 static func _blob(g: VoxelGrid, c: Vector3, r: Vector3, col: Color, var_amt: float, seed_v: int, top_col: Color = Color(0, 0, 0, 0)) -> void:
 	var lo := Vector3i((c - r).floor())
 	var hi := Vector3i((c + r).ceil())
@@ -124,6 +136,9 @@ static func _blob(g: VoxelGrid, c: Vector3, r: Vector3, col: Color, var_amt: flo
 					var cc := col
 					if top_col.a > 0.0 and y > c.y + r.y * 0.35:
 						cc = top_col
+					# 叶团底部略暗（体积感）
+					if y < c.y - r.y * 0.3:
+						k *= 0.86
 					g.set_color(x, y, z, _cl(Color(cc.r * k, cc.g * k, cc.b * k, cc.a)))
 
 
@@ -136,11 +151,11 @@ static func grid(kind: String, v: int) -> VoxelGrid:
 		"ancient":
 			return _ancient(rng, v)
 		"broadleaf":
-			return _broadleaf(rng, v, [Color(0.30, 0.55, 0.24), Color(0.36, 0.60, 0.26), Color(0.26, 0.50, 0.28)][v % 3], Color(0.40, 0.66, 0.30))
+			return _broadleaf(rng, v, [Color(0.29, 0.52, 0.25), Color(0.34, 0.57, 0.27), Color(0.26, 0.48, 0.29)][v % 3], Color(0.40, 0.63, 0.31))
 		"maple":
-			return _broadleaf(rng, v, [Color(0.82, 0.22, 0.14), Color(0.90, 0.42, 0.14), Color(0.74, 0.16, 0.18)][v % 3], Color(0.95, 0.55, 0.2))
+			return _broadleaf(rng, v, [Color(0.78, 0.22, 0.14), Color(0.86, 0.40, 0.14), Color(0.70, 0.16, 0.16)][v % 3], Color(0.92, 0.52, 0.2), K.K_MAPLE)
 		"blossom":
-			return _broadleaf(rng, v, Color(0.96, 0.66, 0.76), Color(1.0, 0.82, 0.88))
+			return _broadleaf(rng, v, Color(0.94, 0.68, 0.76), Color(0.99, 0.82, 0.87), K.K_BLOSSOM)
 		"bamboo":
 			return _bamboo(rng, v)
 		"willow":
@@ -150,29 +165,29 @@ static func grid(kind: String, v: int) -> VoxelGrid:
 		"crystal":
 			return _crystal(rng, v)
 		"shrub":
-			return _shrub(rng, v, Color(0.26, 0.50, 0.22))
+			return _shrub(rng, v, Color(0.26, 0.48, 0.23))
 		"shrub_yellow":
-			return _shrub(rng, v, Color(0.66, 0.62, 0.28))
+			return _shrub(rng, v, Color(0.64, 0.60, 0.30))
 		"reed":
 			return _reed(rng, v)
 		"rock_gray":
-			return _rock(rng, v, Color(0.54, 0.54, 0.54), Color(0, 0, 0, 0))
+			return _rock(rng, v, Color(0.54, 0.54, 0.53), Color(0, 0, 0, 0))
 		"rock_moss":
-			return _rock(rng, v, Color(0.45, 0.48, 0.44), Color(0.32, 0.50, 0.24))
+			return _rock(rng, v, Color(0.45, 0.48, 0.44), Color(0.32, 0.48, 0.24))
 		"rock_snow":
-			return _rock(rng, v, Color(0.55, 0.58, 0.65), Color(0.94, 0.96, 1.0))
+			return _rock(rng, v, Color(0.55, 0.58, 0.65), Color(0.94, 0.96, 1.0), K.K_GRANITE, K.K_SNOW)
 		"rock_red":
-			return _rock(rng, v, Color(0.60, 0.27, 0.18), Color(0, 0, 0, 0))
+			return _rock(rng, v, Color(0.58, 0.27, 0.18), Color(0, 0, 0, 0), K.K_ROCK_RED)
 		"rock_yellow":
-			return _rock(rng, v, Color(0.78, 0.62, 0.36), Color(0, 0, 0, 0))
+			return _rock(rng, v, Color(0.76, 0.60, 0.36), Color(0, 0, 0, 0), K.K_ROCK_YELLOW)
 		"pebble":
 			return _pebble(rng, v)
 		"grass":
-			return _grass(rng, v, Color(0.36, 0.62, 0.26), Color(0.50, 0.74, 0.32))
+			return _grass(rng, v, Color(0.34, 0.58, 0.26), Color(0.52, 0.72, 0.34))
 		"grass_dry":
-			return _grass(rng, v, Color(0.62, 0.58, 0.30), Color(0.76, 0.70, 0.40))
+			return _grass(rng, v, Color(0.60, 0.56, 0.30), Color(0.76, 0.70, 0.42))
 		"grass_snow":
-			return _grass(rng, v, Color(0.42, 0.52, 0.40), Color(0.85, 0.9, 0.95))
+			return _grass(rng, v, Color(0.40, 0.50, 0.40), Color(0.85, 0.9, 0.95))
 		"flower":
 			return _flower(rng, v)
 		"lotus":
@@ -185,11 +200,12 @@ static func grid(kind: String, v: int) -> VoxelGrid:
 static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
 	var h := 20 + v * 3 + rng.randi_range(0, 2)
 	var w := 13
-	var g := VoxelGrid.new(w, h + 2, w)
+	var g := MatGrid.new(w, h + 2, w)
 	var c := w / 2
 	var bark := Color(0.34, 0.24, 0.17)
+	g.kind = K.K_BARK
 	g.fill_box(Vector3i(c, 0, c), Vector3i(c, h - 5, c), bark)
-	var leaf := Color(0.14, 0.33, 0.24) if snowy else Color(0.16, 0.38, 0.22)
+	var leaf := Color(0.14, 0.31, 0.25) if snowy else Color(0.17, 0.36, 0.24)
 	var snow := Color(0.93, 0.95, 1.0)
 	var tiers := 5 + v
 	for t in tiers:
@@ -204,13 +220,20 @@ static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
 					var d := sqrt(dx * dx + dz * dz)
 					if d <= r2 + _h(x, y0 + dy, z, v) * 0.8 - 0.4:
 						var k := 0.9 + 0.2 * _h(x, y0 + dy, z, v + 3)
+						if dy == 0:
+							k *= 0.85
 						var cc := _cl(Color(leaf.r * k, leaf.g * k, leaf.b * k))
+						g.kind = K.K_PINE
 						if snowy and dy == 2 and _h(x, y0, z, 9) > 0.25:
 							cc = snow
+							g.kind = K.K_SNOW
 						elif snowy and dy == 1 and d > r2 - 1.0 and _h(x, y0, z, 11) > 0.5:
 							cc = snow
+							g.kind = K.K_SNOW
 						g.set_color(x, y0 + dy, z, cc)
+	g.kind = K.K_SNOW if snowy else K.K_PINE
 	g.set_color(c, h, c, snow if snowy else leaf)
+	g.kind = K.K_PINE
 	g.set_color(c, h - 1, c, leaf)
 	return g
 
@@ -218,7 +241,7 @@ static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
 static func _ancient(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 34
 	var h := 40 + v * 3
-	var g := VoxelGrid.new(w, h, w)
+	var g := MatGrid.new(w, h, w)
 	var c := Vector3(w * 0.5, 0, w * 0.5)
 	var bark := Color(0.30, 0.22, 0.16)
 	var bark2 := Color(0.36, 0.27, 0.19)
@@ -235,9 +258,12 @@ static func _ancient(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 				var dz := z + 0.5 - (c.z + oz)
 				if dx * dx + dz * dz <= r * r:
 					var cc := bark if (x + y / 3) % 2 == 0 else bark2
+					g.kind = K.K_BARK
 					if y < 6 and _h(x, y, z, 5) > 0.7:
 						cc = moss
+						g.kind = K.K_MOSS
 					g.set_color(x, y, z, cc)
+	g.kind = K.K_BARK
 	# 板根
 	for i in 5:
 		var a := i * TAU / 5.0 + v
@@ -258,10 +284,12 @@ static func _ancient(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	# 树冠
 	var leaf: Color = [Color(0.20, 0.42, 0.20), Color(0.24, 0.48, 0.22), Color(0.18, 0.38, 0.24)][v % 3]
 	var top: Color = leaf.lightened(0.18)
+	g.kind = K.K_LEAF
 	for t in tips:
 		var rad := Vector3(rng.randf_range(6.0, 8.0), rng.randf_range(3.5, 4.5), rng.randf_range(6.0, 8.0))
 		_blob(g, t + Vector3(0, 1.5, 0), rad, leaf, 0.22, v * 13 + int(t.x), top)
 	# 垂藤
+	g.kind = K.K_WILLOW
 	for i in 26:
 		var x := rng.randi_range(3, w - 4)
 		var z := rng.randi_range(3, w - 4)
@@ -279,21 +307,25 @@ static func _ancient(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	return g
 
 
-static func _broadleaf(rng: RandomNumberGenerator, v: int, leaf: Color, top: Color) -> VoxelGrid:
+static func _broadleaf(rng: RandomNumberGenerator, v: int, leaf: Color, top: Color, leaf_kind: int = BlockTex.K_LEAF) -> VoxelGrid:
 	var w := 23
 	var h := 21 + v * 2
-	var g := VoxelGrid.new(w, h, w)
+	var g := MatGrid.new(w, h, w)
 	var c := Vector3(w * 0.5, 0, w * 0.5)
 	var bark := Color(0.36, 0.26, 0.18)
 	var trunk_h := 6 + v
+	g.kind = K.K_BARK
 	g.fill_cylinder_y(c.x, c.z, 1.0, 0, trunk_h + 2, bark)
 	var blobs := 4 + v
 	for i in blobs:
 		var a := i * TAU / blobs + rng.randf_range(-0.4, 0.4)
 		var r := rng.randf_range(3.5, 5.5)
 		var p := c + Vector3(cos(a) * r, trunk_h + rng.randf_range(3.0, 7.0), sin(a) * r)
+		g.kind = K.K_BARK
 		g.fill_line(c + Vector3(0, trunk_h, 0), p, 0.6, bark)
+		g.kind = leaf_kind
 		_blob(g, p, Vector3(rng.randf_range(4.0, 5.2), rng.randf_range(3.0, 3.8), rng.randf_range(4.0, 5.2)), leaf, 0.22, v * 7 + i, top)
+	g.kind = leaf_kind
 	_blob(g, c + Vector3(0, trunk_h + 8.5, 0), Vector3(5.0, 3.8, 5.0), leaf, 0.22, v * 5, top)
 	return g
 
@@ -301,10 +333,10 @@ static func _broadleaf(rng: RandomNumberGenerator, v: int, leaf: Color, top: Col
 static func _bamboo(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 18
 	var h := 44 + v * 4
-	var g := VoxelGrid.new(w, h, w)
-	var stalk := Color(0.40, 0.62, 0.28)
-	var node := Color(0.58, 0.74, 0.36)
-	var leaf := Color(0.30, 0.56, 0.26)
+	var g := MatGrid.new(w, h, w)
+	var stalk := Color(0.40, 0.60, 0.30)
+	var node := Color(0.56, 0.70, 0.38)
+	var leaf := Color(0.32, 0.54, 0.26)
 	var n := 11 + v * 3
 	for i in n:
 		var x := rng.randi_range(3, w - 4)
@@ -315,14 +347,17 @@ static func _bamboo(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 		for y in sh:
 			var xx := clampi(x + int(y * lean), 0, w - 1)
 			var zz := clampi(z + int(y * lean2), 0, w - 1)
+			g.kind = K.K_BAMBOO
 			g.set_color(xx, y, zz, node if y % 7 == 0 else stalk.darkened(_h(i, y, 0, v) * 0.1))
 			if y > sh * 0.45 and y % 5 == 0:
+				g.kind = K.K_BAMBOO_LEAF
 				for k in 3:
 					var dx := rng.randi_range(-2, 2)
 					var dz := rng.randi_range(-2, 2)
 					g.set_color(clampi(xx + dx, 0, w - 1), y + 1, clampi(zz + dz, 0, w - 1), leaf.lightened(rng.randf() * 0.15))
 		var tx := clampi(x + int(sh * lean), 0, w - 1)
 		var tz := clampi(z + int(sh * lean2), 0, w - 1)
+		g.kind = K.K_BAMBOO_LEAF
 		_blob(g, Vector3(tx + 0.5, sh - 1, tz + 0.5), Vector3(2.2, 2.5, 2.2), leaf, 0.25, i + v * 11)
 	return g
 
@@ -330,13 +365,15 @@ static func _bamboo(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 static func _willow(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 19
 	var h := 20 + v * 2
-	var g := VoxelGrid.new(w, h, w)
+	var g := MatGrid.new(w, h, w)
 	var c := Vector3(w * 0.5, 0, w * 0.5)
 	var bark := Color(0.34, 0.27, 0.20)
 	var trunk_h := 10 + v
+	g.kind = K.K_BARK
 	g.fill_cylinder_y(c.x, c.z, 1.0, 0, trunk_h, bark)
-	var leaf := Color(0.50, 0.70, 0.30)
-	var leaf2 := Color(0.42, 0.62, 0.26)
+	var leaf := Color(0.50, 0.68, 0.32)
+	var leaf2 := Color(0.42, 0.60, 0.28)
+	g.kind = K.K_WILLOW
 	_blob(g, c + Vector3(0, trunk_h + 3, 0), Vector3(6.5, 3.0, 6.5), leaf2, 0.2, v, leaf)
 	# 垂枝
 	for z in w:
@@ -363,10 +400,11 @@ static func _willow(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 static func _dead(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 20
 	var h := 28 + v * 4
-	var g := VoxelGrid.new(w, h, w)
+	var g := MatGrid.new(w, h, w)
 	var c := Vector3(w * 0.5, 0, w * 0.5)
 	var char_c := Color(0.13, 0.11, 0.11)
 	var ember := VoxelGrid.glow(Color(1.0, 0.35, 0.1), 0.7)
+	g.kind = K.K_BARK
 	g.fill_cylinder_y(c.x, c.z, 1.1, 0, h * 2 / 3, char_c)
 	for i in 4 + v:
 		var y0 := rng.randi_range(h / 3, h * 2 / 3)
@@ -376,6 +414,7 @@ static func _dead(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 		var tip2 := tip + Vector3(rng.randf_range(-3, 3), rng.randf_range(1, 4), rng.randf_range(-3, 3))
 		g.fill_line(tip, tip2, 0.4, char_c)
 	# 余烬裂纹
+	g.kind = K.K_LAVA
 	for i in 10:
 		var y := rng.randi_range(1, h / 2)
 		var a := rng.randf() * TAU
@@ -389,9 +428,11 @@ static func _dead(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 static func _crystal(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 16
 	var h := 24 + v * 3
-	var g := VoxelGrid.new(w, h, w)
+	var g := MatGrid.new(w, h, w)
 	var base := Color(0.20, 0.14, 0.15)
+	g.kind = K.K_BASALT
 	g.fill_ellipsoid(Vector3(w * 0.5, 0.5, w * 0.5), Vector3(4.5, 2.0, 4.5), base)
+	g.kind = K.K_CRYSTAL
 	for i in 4 + v:
 		var x := rng.randi_range(3, w - 4)
 		var z := rng.randi_range(3, w - 4)
@@ -409,7 +450,8 @@ static func _crystal(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 
 static func _shrub(rng: RandomNumberGenerator, v: int, leaf: Color) -> VoxelGrid:
 	var w := 10
-	var g := VoxelGrid.new(w, 7, w)
+	var g := MatGrid.new(w, 7, w)
+	g.kind = K.K_LEAF
 	for i in 2 + v:
 		var p := Vector3(rng.randf_range(3.5, 6.5), rng.randf_range(2.0, 3.0), rng.randf_range(3.5, 6.5))
 		_blob(g, p, Vector3(rng.randf_range(2.2, 3.2), rng.randf_range(1.8, 2.6), rng.randf_range(2.2, 3.2)), leaf, 0.25, v * 3 + i, leaf.lightened(0.15))
@@ -418,7 +460,8 @@ static func _shrub(rng: RandomNumberGenerator, v: int, leaf: Color) -> VoxelGrid
 
 static func _reed(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 12
-	var g := VoxelGrid.new(w, 18, w)
+	var g := MatGrid.new(w, 18, w)
+	g.kind = K.K_REED
 	var stem := Color(0.52, 0.62, 0.32)
 	var head := Color(0.50, 0.36, 0.22)
 	for i in 14 + v * 4:
@@ -433,10 +476,11 @@ static func _reed(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	return g
 
 
-static func _rock(rng: RandomNumberGenerator, v: int, c: Color, top: Color) -> VoxelGrid:
+static func _rock(rng: RandomNumberGenerator, v: int, c: Color, top: Color, rock_kind: int = BlockTex.K_ROCK, top_kind: int = BlockTex.K_MOSS) -> VoxelGrid:
 	var w := 7 + v * 2
 	var hh := 4 + v
-	var g := VoxelGrid.new(w, hh, w)
+	var g := MatGrid.new(w, hh, w)
+	g.kind = rock_kind
 	var n := FastNoiseLite.new()
 	n.seed = v * 31 + int(c.r * 100)
 	n.frequency = 0.3
@@ -449,6 +493,7 @@ static func _rock(rng: RandomNumberGenerator, v: int, c: Color, top: Color) -> V
 					var k := 0.9 + 0.2 * _h(x, y, z, v)
 					g.set_color(x, y, z, _cl(Color(c.r * k, c.g * k, c.b * k)))
 	if top.a > 0.0:
+		g.kind = top_kind
 		for z in w:
 			for x in w:
 				for y in range(hh - 1, -1, -1):
@@ -460,7 +505,8 @@ static func _rock(rng: RandomNumberGenerator, v: int, c: Color, top: Color) -> V
 
 
 static func _pebble(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
-	var g := VoxelGrid.new(6, 3, 6)
+	var g := MatGrid.new(6, 3, 6)
+	g.kind = K.K_ROCK
 	var c := Color(0.5, 0.5, 0.5).lerp(Color(0.6, 0.55, 0.45), v * 0.4)
 	g.fill_ellipsoid(Vector3(3, 0.5, 3), Vector3(2.6, 1.8, 2.0 + v * 0.3), c)
 	return g
@@ -468,7 +514,8 @@ static func _pebble(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 
 static func _grass(rng: RandomNumberGenerator, v: int, base: Color, tip: Color) -> VoxelGrid:
 	var w := 12
-	var g := VoxelGrid.new(w, 12, w)
+	var g := MatGrid.new(w, 12, w)
+	g.kind = K.K_GRASS_BLADE
 	for i in 16 + v * 4:
 		var x := rng.randi_range(1, w - 2)
 		var z := rng.randi_range(1, w - 2)
@@ -484,8 +531,9 @@ static func _grass(rng: RandomNumberGenerator, v: int, base: Color, tip: Color) 
 
 static func _flower(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	var w := 10
-	var g := VoxelGrid.new(w, 12, w)
-	var stem := Color(0.30, 0.55, 0.24)
+	var g := MatGrid.new(w, 12, w)
+	g.kind = K.K_GRASS_BLADE
+	var stem := Color(0.30, 0.52, 0.24)
 	var petal: Color = FLOWER_COLORS[v % FLOWER_COLORS.size()]
 	for i in 4:
 		var x := rng.randi_range(2, w - 3)
@@ -503,15 +551,25 @@ static func _flower(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 	return g
 
 
+## 荷叶（变体 1 带荷花，变体 2 为小荷叶）
 static func _lotus(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
-	var g := VoxelGrid.new(12, 4, 12)
-	var pad := Color(0.25, 0.52, 0.28)
-	g.fill_cylinder_y(6, 6, 5.0, 0, 0, pad)
+	var g := MatGrid.new(12, 5, 12)
+	g.kind = K.K_MOSS
+	var pad := Color(0.25, 0.50, 0.28)
+	var r := 5.0 if v != 2 else 3.2
+	g.fill_cylinder_y(6, 6, r, 0, 0, pad)
+	# 叶面缺口与略深的叶脉中心
 	g.clear_box(Vector3i(6, 0, 1), Vector3i(7, 0, 6))
+	g.set_color(6, 0, 6, pad.darkened(0.25))
 	if v == 1:
-		var pink := Color(1.0, 0.7, 0.8)
+		var pink := Color(0.98, 0.66, 0.76)
+		g.kind = K.K_BLOSSOM
 		g.fill_box(Vector3i(4, 1, 5), Vector3i(6, 2, 7), pink)
-		g.set_color(5, 3, 6, Color(1.0, 0.85, 0.9))
+		g.set_color(5, 3, 6, Color(1.0, 0.86, 0.9))
+		g.set_color(4, 3, 5, Color(0.99, 0.78, 0.84))
+		g.set_color(6, 3, 7, Color(0.99, 0.78, 0.84))
+		g.kind = K.K_GLOW
+		g.set_color(5, 2, 6, Color(1.0, 0.85, 0.35))
 	return g
 
 
@@ -520,11 +578,13 @@ static func _lotus(rng: RandomNumberGenerator, v: int) -> VoxelGrid:
 static func _herb_grid(item_id: String) -> Array:
 	match item_id:
 		"herb_fire_ganoderma":
-			var g := VoxelGrid.new(10, 9, 10)
+			var g := MatGrid.new(10, 9, 10)
+			g.kind = K.K_BARK
 			var stalk := Color(0.55, 0.30, 0.20)
 			var cap := VoxelGrid.glow(Color(1.0, 0.34, 0.12), 0.55)
 			var rim := VoxelGrid.glow(Color(1.0, 0.72, 0.3), 0.8)
 			g.fill_box(Vector3i(4, 0, 4), Vector3i(5, 4, 5), stalk)
+			g.kind = K.K_GLOW
 			g.fill_ellipsoid(Vector3(5, 5.5, 5), Vector3(4.5, 1.6, 4.0), cap)
 			for z in 10:
 				for x in 10:
@@ -535,11 +595,14 @@ static func _herb_grid(item_id: String) -> Array:
 							if dx * dx + dz * dz > 11.0:
 								g.set_color(x, y, z, rim)
 							break
+			g.kind = K.K_BARK
 			g.fill_box(Vector3i(1, 0, 6), Vector3i(2, 2, 7), stalk)
+			g.kind = K.K_GLOW
 			g.fill_ellipsoid(Vector3(2, 3, 7), Vector3(2.2, 1.0, 2.0), cap)
 			return [g, 0.07]
 		_:
-			var g := VoxelGrid.new(12, 12, 12)
+			var g := MatGrid.new(12, 12, 12)
+			g.kind = K.K_GRASS_BLADE
 			var leaf := Color(0.30, 0.72, 0.52)
 			var leaf2 := Color(0.45, 0.85, 0.62)
 			var dew := VoxelGrid.glow(Color(0.6, 0.95, 1.0), 1.0)
@@ -559,6 +622,7 @@ static func _herb_grid(item_id: String) -> Array:
 				var tz := clampi(int(6.0 + sin(a) * ln * 0.9), 0, 11)
 				g.set_color(tx, clampi(int(h * 0.2) + 1, 0, 11), tz, dew)
 			g.fill_box(Vector3i(5, 0, 5), Vector3i(6, 8, 6), leaf.darkened(0.1))
+			g.kind = K.K_GLOW
 			g.fill_box(Vector3i(5, 9, 5), Vector3i(6, 10, 6), dew)
 			return [g, 0.06]
 
@@ -570,7 +634,7 @@ static func make_herb(item_id: String) -> Node3D:
 		var r := _herb_grid(item_id)
 		var g: VoxelGrid = r[0]
 		var vs: float = r[1]
-		_meshes[key] = BuildingMesh.use_static(VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, 0, -g.sz * vs * 0.5)))
+		_meshes[key] = BlockMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, 0, -g.sz * vs * 0.5), true, 0.5)
 	var n := Node3D.new()
 	n.name = "Herb"
 	var mi := MeshInstance3D.new()
@@ -587,11 +651,12 @@ static func make_ore(item_id: String, variant: int = 0) -> StaticBody3D:
 	var key := "ore_%s_%d" % [item_id, variant % 2]
 	var vs := 0.25
 	if not _meshes.has(key):
-		var g := VoxelGrid.new(10, 7, 9)
+		var g := MatGrid.new(10, 7, 9)
 		var rock := Color(0.36, 0.35, 0.37)
 		var n := FastNoiseLite.new()
 		n.seed = variant + 17
 		n.frequency = 0.35
+		g.kind = K.K_BASALT
 		g.fill_ellipsoid(Vector3(5, 1.5, 4.5), Vector3(4.8, 4.5, 4.2), rock)
 		for z in 9:
 			for y in 7:
@@ -600,17 +665,21 @@ static func make_ore(item_id: String, variant: int = 0) -> StaticBody3D:
 						var nv := n.get_noise_3d(x, y, z)
 						if item_id == "ore_gengjin":
 							if nv > 0.25:
+								g.kind = K.K_GOLD
 								g.set_color(x, y, z, VoxelGrid.glow(Color(1.0, 0.9, 0.45), 0.6))
 						elif nv > 0.3:
+							g.kind = K.K_GOLD
 							g.set_color(x, y, z, Color(0.62, 0.66, 0.74))
 						elif nv < -0.4:
+							g.kind = K.K_BASALT
 							g.set_color(x, y, z, Color(0.26, 0.25, 0.28))
 		if item_id == "ore_gengjin":
+			g.kind = K.K_CRYSTAL
 			for i in 3:
 				var x := 3 + i * 2
 				for y in range(4, 7):
 					g.set_color(x, y, 4 + (i % 2), VoxelGrid.glow(Color(1.0, 0.95, 0.6), 0.9))
-		_meshes[key] = BuildingMesh.use_static(VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, -vs, -g.sz * vs * 0.5)))
+		_meshes[key] = BlockMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, -vs, -g.sz * vs * 0.5))
 	var body := StaticBody3D.new()
 	body.name = "Ore"
 	body.collision_layer = 1
