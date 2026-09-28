@@ -57,10 +57,22 @@ func _process(_delta: float) -> void:
 			_apply_music_level(i)
 
 
+## 界面等模块使用的音效名 → 已生成音效的别名
+const ALIASES := {
+	"ui_pick": "pickup", "ui_drop": "ui_click", "ui_equip": "equip", "ui_use": "ui_click", "ui_discard": "ui_close",
+	"ui_rotate": "ui_hover", "ui_buy": "coin", "ui_sell": "coin", "ui_error": "error", "ui_type": "ui_hover",
+	"ui_dice": "ui_click", "ui_confirm": "ui_click", "ui_loot": "pickup", "realm_up": "levelup",
+	"breakthrough_ok": "breakthrough", "breakthrough_fail": "thunder", "meditate_end": "ui_close",
+	"craft_ok": "quest_complete", "craft_fail": "error",
+}
+
+
 func _stream(sfx_name: String) -> AudioStream:
 	if _cache.has(sfx_name):
 		return _cache[sfx_name]
 	var path := SFX_DIR + sfx_name + ".wav"
+	if not ResourceLoader.exists(path) and ALIASES.has(sfx_name):
+		path = SFX_DIR + str(ALIASES[sfx_name]) + ".wav"
 	var s: AudioStream = null
 	if ResourceLoader.exists(path):
 		s = load(path)
