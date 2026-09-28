@@ -1,6 +1,7 @@
 class_name SummonedBlade
 extends Node3D
 ## 御剑术：环绕施法者的飞剑，定时斩向锁定/最近的敌人。
+## 表现按元素：金 飞剑 / 木 灵叶 / 火 火鸦 / 土 磐石，均带残影拖尾（见 VfxSpells.summon_visual）。
 
 var caster: Node3D
 var def: Dictionary
@@ -32,26 +33,15 @@ static func spawn(caster_body: Node3D, spell_def: Dictionary, lv: int, i: int, n
 	s._color = SpellRuntime.color_of(spell_def)
 	FX.root().add_child(s)
 	s.global_position = caster_body.global_position + Vector3.UP * 1.5
-	var w := WeaponBuilder.build({"kind": "sword", "length": 28, "blade": s._color.lightened(0.5).to_html(), "guard": "#e0c060", "glow": spell_def.get("element", "metal")})
-	s.add_child(w)
-	var glow := CPUParticles3D.new()
-	glow.amount = 10
-	glow.lifetime = 0.35
-	glow.mesh = FX.cube_mesh()
-	glow.material_override = FX.glow_mat(s._color)
-	glow.scale_amount_min = 0.03
-	glow.scale_amount_max = 0.07
-	glow.gravity = Vector3.ZERO
-	glow.local_coords = false
-	glow.color_ramp = FX._fade_gradient(s._color)
-	s.add_child(glow)
+	VfxSpells.summon_visual(s, VfxLib.spell_elem(spell_def), s._color)
 	return s
 
 
 func _physics_process(delta: float) -> void:
 	_t += delta
 	if caster == null or not is_instance_valid(caster) or _t > life or not CombatUtil.combatant_of(caster).alive:
-		FX.burst(global_position, _color, 8, 3.0, 0.06, 0.4)
+		FX.flash(global_position, _color, 0.8, 0.15)
+		FX.sparkle(global_position, _color, 8)
 		queue_free()
 		return
 	var ang := _t * 2.4 + TAU * index / maxf(total, 1)
@@ -62,15 +52,20 @@ func _physics_process(delta: float) -> void:
 		target = CombatUtil.nearest_hostile(caster, 30.0)
 	if target != null:
 		look_at(target.global_position + Vector3.UP, Vector3.UP)
-	else:
+	elif VfxLib.spell_elem(def) == "metal":
 		rotation = Vector3(-PI / 2.0, ang, 0)
+	else:
+		# 非飞剑：沿环绕切线方向飞行
+		rotation = Vector3(0, -ang, 0)
 	_cd -= delta
 	if _cd <= 0.0 and target != null:
 		_cd = 1.0 / maxf(fire_rate, 0.1)
 		var info := SpellRuntime.base_info(caster, def, level)
+		var e := VfxLib.spell_elem(def)
+		var shp: String = {"wood": "leaf", "fire": "orb", "earth": "rock"}.get(e, "blade")
 		Projectile.spawn({
 			"owner": caster, "pos": global_position, "dir": (target.global_position + Vector3.UP - global_position).normalized(),
-			"speed": speed, "size": 0.22, "range": 40.0, "homing": 0.5, "target": target, "shape": "blade",
-			"info": info, "element": def.get("element", "metal"),
+			"speed": speed, "size": 0.22, "range": 40.0, "homing": 0.5, "target": target, "shape": shp,
+			"info": info, "element": def.get("element", "metal"), "color": _color,
 		})
 		Audio.play_at("wind_blade", global_position, -8.0)

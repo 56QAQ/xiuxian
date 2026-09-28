@@ -1,6 +1,7 @@
 class_name SpellField
 extends Node3D
 ## 持续领域（青藤缠等）：周期性对范围内敌人造成伤害、附加状态并减速。
+## 表现：贴地动画领域（藤蔓/冰域/流沙/火海）+ 清晰的范围边缘 + 元素粒子（见 VfxSpells.field_visual）。
 
 var caster: Node3D
 var def: Dictionary
@@ -12,7 +13,7 @@ var slow: float = 0.0
 var _t: float = 0.0
 var _tick_t: float = 0.0
 var _color: Color
-var _particles: CPUParticles3D
+var _vis: Array[Node] = []
 
 
 static func spawn(caster_body: Node3D, pos: Vector3, spell_def: Dictionary, lv: int) -> SpellField:
@@ -33,37 +34,7 @@ static func spawn(caster_body: Node3D, pos: Vector3, spell_def: Dictionary, lv: 
 
 
 func _build() -> void:
-	var disc := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = radius
-	cm.bottom_radius = radius
-	cm.height = 0.06
-	cm.radial_segments = 32
-	disc.mesh = cm
-	var m := FX.glow_mat(_color).duplicate() as StandardMaterial3D
-	m.albedo_color = Color(_color.r, _color.g, _color.b, 0.28)
-	disc.material_override = m
-	disc.position.y = 0.08
-	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(disc)
-	_particles = CPUParticles3D.new()
-	_particles.amount = int(radius * 12)
-	_particles.lifetime = 1.2
-	_particles.mesh = FX.cube_mesh()
-	_particles.material_override = FX.glow_mat(_color)
-	_particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_particles.emission_sphere_radius = radius
-	_particles.direction = Vector3.UP
-	_particles.spread = 15.0
-	_particles.gravity = Vector3(0, 1.5, 0)
-	_particles.initial_velocity_min = 0.5
-	_particles.initial_velocity_max = 2.0
-	_particles.scale_amount_min = 0.06
-	_particles.scale_amount_max = 0.18
-	_particles.color_ramp = FX._fade_gradient(_color)
-	_particles.position.y = 0.3
-	add_child(_particles)
-	FX.ring(global_position + Vector3.UP * 0.1, radius, _color, 0.4)
+	_vis = VfxSpells.field_visual(self, radius, VfxLib.spell_elem(def), _color)
 
 
 func _physics_process(delta: float) -> void:
@@ -83,7 +54,7 @@ func _physics_process(delta: float) -> void:
 				c.apply_status("slow", 1.0, null)
 	if _t >= duration:
 		set_physics_process(false)
-		_particles.emitting = false
+		VfxSpells.field_fade(_vis, 0.5)
 		var tw := create_tween()
-		tw.tween_property(self, "scale", Vector3(1, 0.01, 1), 0.4)
+		tw.tween_interval(1.4)
 		tw.tween_callback(queue_free)
