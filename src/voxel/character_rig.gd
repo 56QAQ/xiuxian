@@ -185,6 +185,7 @@ func attach_to_hand(node: Node3D, hand: String = "r") -> void:
 		return
 	for c in h.get_children():
 		if c.has_meta("attachment"):
+			h.remove_child(c)
 			c.queue_free()
 	if node != null:
 		node.set_meta("attachment", true)
@@ -448,11 +449,19 @@ func _locomotion_pose(delta: float) -> Dictionary:
 	return p
 
 
-## 把 add 合并进 base；keep_right_arm=false 时右臂由 add 覆盖，否则保留持械姿势
+## 双手持握的兵器：移动时双臂都保持持械姿势
+const TWO_HANDED: Array[String] = ["spear"]
+const LEFT_ARM_BONES: Array[String] = ["arm_l", "forearm_l", "hand_l"]
+
+
+## 把 add 合并进 base；override_right_arm=false 时保留右臂的持械姿势（双手兵器同时保留左臂）
 func _merge(base: Dictionary, add: Dictionary, override_right_arm: bool) -> Dictionary:
 	var out := base.duplicate()
+	var keep_left := not override_right_arm and TWO_HANDED.has(stance)
 	for k in add:
 		if not override_right_arm and ARM_BONES.has(k):
+			continue
+		if keep_left and LEFT_ARM_BONES.has(k):
 			continue
 		out[k] = add[k]
 	return out

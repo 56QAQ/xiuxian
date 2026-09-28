@@ -156,9 +156,26 @@ func forward() -> Vector3:
 func has_clip(clip: String) -> bool:
 	if rig == null:
 		return false
-	if rig.has_method("has_clip"):
-		return bool(rig.call("has_clip", clip))
+	if rig is BeastRig:
+		var br := rig as BeastRig
+		return BeastRig.has_beast_clip(br.body, clip) or (br.body == "humanoid" and AnimLib.has_clip(clip)) or BeastRig.ALIASES.has(clip)
 	return AnimLib.has_clip(clip)
+
+
+## 攻击剪辑的出手时间（秒）
+func _clip_hit_time(clip: String, fallback: float) -> float:
+	if rig is BeastRig:
+		var br := rig as BeastRig
+		var cname := str(BeastRig.ALIASES.get(clip, clip))
+		var t := BeastRig.hit_time(br.body, cname)
+		if t < 0.0 and br.body == "humanoid":
+			var c := AnimLib.get_clip(cname)
+			for ev in c.get("events", []):
+				if str(ev.get("name", "")) == "hit":
+					t = float(ev.get("t", 0.0))
+		if t >= 0.0:
+			return t
+	return fallback
 
 
 # ================================================================ 攻击
@@ -174,7 +191,7 @@ func start_attack(a: Dictionary) -> void:
 	_hit_done = false
 	_charge_hit = {}
 	attack_cd[a["name"]] = float(a.get("cd", 2.0))
-	_hit_at = 0.32
+	_hit_at = _clip_hit_time(action, 0.32) + 0.03
 	var dur := 0.7
 	if rig is CharacterRig and has_clip(action):
 		var d := (rig as CharacterRig).play(action)

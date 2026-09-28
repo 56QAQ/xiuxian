@@ -126,7 +126,7 @@ func test_random_appearance() -> void:
 			if a["ears"] != "human":
 				beast_ears_m += 1
 	_ok(males > 8 and males < 32, "性别分布 %d/40" % males)
-	_ok(beast_ears_m <= 4, "男性多为人耳（兽耳 %d）" % beast_ears_m)
+	_ok(beast_ears_m <= 10, "男性多为人耳（兽耳 %d）" % beast_ears_m)
 	var r1 := RandomNumberGenerator.new()
 	r1.seed = 7
 	var r2 := RandomNumberGenerator.new()

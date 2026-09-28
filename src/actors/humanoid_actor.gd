@@ -854,9 +854,18 @@ func _face(delta: float) -> void:
 	rotation.y = _yaw
 
 
+## 战斗姿态计时：出手、受击、锁定时刷新；归零后收起架势（放松站姿）
+var _combat_t: float = 0.0
+
+
 func _update_rig() -> void:
 	if rig == null:
 		return
+	if lock_target != null or action in ["melee", "lunge", "cast", "dash", "stagger"] or charging or combatant.since_damage < 1.0:
+		_combat_t = 8.0
+	else:
+		_combat_t = maxf(_combat_t - get_physics_process_delta_time(), 0.0)
+	rig.stance = weapon_kind if _combat_t > 0.0 else "none"
 	var local := global_basis.inverse() * velocity
 	rig.set_locomotion(local, grounded and not hovering, boosting or qb_timer > 0.0, hovering or ascending)
 
