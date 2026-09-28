@@ -1,15 +1,26 @@
 class_name CharacterBuilder
-## 根据外貌参数生成体素角色（CharacterRig）。
+## 根据外貌参数生成体素角色（返回 HumanoidRig，它继承 CharacterRig，接口相同）。
 ##
-## 骨骼与尺寸约定（单位：体素，VOXEL = 0.025m；以下为 height=1 时）：
-##   hips      原点 (0, 28, 0)          髋部网格 y 24..32
-##   leg_l/r   原点 hips + (∓4, 0, 0)    大腿 14 高；shin_l/r 在其下 14 处（膝）；脚向前伸出
-##   spine     原点 hips + (0, 4, 0)     躯干 y 32..52（腰 8 + 胸 12）
-##   head      原点 spine + (0, 20, 0)   颈 2 + 头 16×16×16
-##   arm_l/r   原点 spine + (∓11, 18, 0) 上臂 12；forearm 在其下 12 处；hand 在 forearm 下 11 处
-## 外貌字典字段见 docs/DATA.md「appearance」。
+## 骨骼与尺寸约定（单位：体素，VOXEL = 0.025m；以下为 height=1 时，详见 CharSpec）：
+##   hips      原点 (0, 30, 0)             骨盆网格 y -4..3（相对 hips）
+##   leg_l/r   原点 hips + (∓leg_x, 0, 0)   大腿 15 高；shin_l/r 在其下 15 处（膝）；小腿+靴 15 高，脚向前伸出
+##   spine     原点 hips + (0, 3, 0)       躯干 y 0..17（腰 6 + 胸 12）
+##   head      原点 spine + (0, 18, 0)     颈 2 + 头 16×16×16（脸朝 -Z，在 z=-8 面）；头顶约 1.72m
+##   arm_l/r   原点 spine + (∓arm_x, 16, 0) 上臂 12；forearm 在其下 12 处（肘）；hand 在 forearm 下 11 处
+##   hand_l/r  原点 = 拳心；武器握把在此、沿本地 Z 穿过拳头（刃朝 -Z）
+## 女性 leg_x 3.5 / arm_x 10；男性 leg_x 4 / arm_x 12~13。
+## 弹簧骨骼（CharacterRig 自动二次运动）：hair_*（发束链）、ear_l/r（兽耳）、tail_0..3（狐尾链）、
+## cloth_*（裙甲/下摆，随腿摆动，见 HumanoidRig）。
+## 外貌字典字段见 docs/DATA.md「外貌字典」。部件网格按参数缓存（VoxMesh.cached），重复部件几乎零开销。
 
 const VOXEL := 0.025
+## 骨架布局（体素）
+const HIP_Y := 30
+const SPINE_DY := 3
+const HEAD_DY := 18
+const ARM_DY := 16
+const THIGH := 15
+const SHIN := 15
 
 const DEFAULT_APPEARANCE := {
 	"gender": "female",
@@ -23,7 +34,7 @@ const DEFAULT_APPEARANCE := {
 	"hair_color2": "#ff5a40",
 	"eye_color": "#f0a020",
 	"eye_style": "almond",
-	"brow_style": 0,
+	"brow_style": 2,
 	"mark": "none",
 	"mark_color": "#e02040",
 	"ears": "fox",
@@ -33,6 +44,12 @@ const DEFAULT_APPEARANCE := {
 	"outfit": "armor",
 	"outfit_colors": ["#b3201c", "#3b2618", "#e2b23c"],
 }
+
+const HAIR_STYLES: Array[String] = ["twin_tails", "ponytail", "long", "short", "bun", "flowing"]
+const EYE_STYLES: Array[String] = ["almond", "round", "sharp"]
+const OUTFITS: Array[String] = ["robe", "martial", "armor"]
+const EARS: Array[String] = ["human", "fox", "cat", "elf"]
+const MARKS: Array[String] = ["none", "lotus", "flame", "dot"]
 
 
 static func appearance_with_defaults(a: Dictionary) -> Dictionary:
@@ -50,98 +67,118 @@ static func col(v: Variant, fallback: Color = Color.MAGENTA) -> Color:
 	return fallback
 
 
-## 生成角色。equip_visual 可包含 {"weapon": 武器 visual 字典, "outfit": 覆盖服饰}
+## 生成角色。equip_visual 可包含 {"weapon": 武器 visual 字典, "outfit": 覆盖服饰（outfit / outfit_colors）}
 static func build(appearance: Dictionary, equip_visual: Dictionary = {}) -> CharacterRig:
 	var a := appearance_with_defaults(appearance)
-	if equip_visual.has("outfit"):
+	if equip_visual.has("outfit") and equip_visual["outfit"] is Dictionary:
 		for k in equip_visual["outfit"]:
 			a[k] = equip_visual["outfit"][k]
-	var rig := CharacterRig.new()
+	var s := CharSpec.from(a)
+	var rig := HumanoidRig.new()
 	rig.name = "CharacterRig"
 	rig.voxel_size = VOXEL
-	var build_f := clampf(float(a["build"]), 0.0, 1.0)
-	var widen := 1 if build_f > 0.66 else 0
-	var skin := col(a["skin"])
-	var cols: Array = a["outfit_colors"]
-	var c1 := col(cols[0])
-	var c2 := col(cols[1])
-	var c3 := col(cols[2])
 
-	var hips := _bone(rig, "hips", Vector3(0, 28, 0))
-	var spine := _bone(hips, "spine", Vector3(0, 4, 0))
-	var head := _bone(spine, "head", Vector3(0, 20, 0))
-	var arm_l := _bone(spine, "arm_l", Vector3(-11 - widen, 18, 0))
-	var arm_r := _bone(spine, "arm_r", Vector3(11 + widen, 18, 0))
+	var hips := _bone(rig, "hips", Vector3(0, HIP_Y, 0))
+	var spine := _bone(hips, "spine", Vector3(0, SPINE_DY, 0))
+	var head := _bone(spine, "head", Vector3(0, HEAD_DY, 0))
+	var arm_l := _bone(spine, "arm_l", Vector3(-s.arm_x, ARM_DY, 0))
+	var arm_r := _bone(spine, "arm_r", Vector3(s.arm_x, ARM_DY, 0))
 	var fore_l := _bone(arm_l, "forearm_l", Vector3(0, -12, 0))
 	var fore_r := _bone(arm_r, "forearm_r", Vector3(0, -12, 0))
 	var hand_l := _bone(fore_l, "hand_l", Vector3(0, -11, 0))
 	var hand_r := _bone(fore_r, "hand_r", Vector3(0, -11, 0))
-	var leg_l := _bone(hips, "leg_l", Vector3(-4, 0, 0))
-	var leg_r := _bone(hips, "leg_r", Vector3(4, 0, 0))
-	var shin_l := _bone(leg_l, "shin_l", Vector3(0, -14, 0))
-	var shin_r := _bone(leg_r, "shin_r", Vector3(0, -14, 0))
+	var leg_l := _bone(hips, "leg_l", Vector3(-s.leg_x, 0, 0))
+	var leg_r := _bone(hips, "leg_r", Vector3(s.leg_x, 0, 0))
+	var shin_l := _bone(leg_l, "shin_l", Vector3(0, -THIGH, 0))
+	var shin_r := _bone(leg_r, "shin_r", Vector3(0, -THIGH, 0))
 
-	# 髋部：16×8×8，原点在 y=4（相对网格底部）
-	var g := VoxelGrid.new(16 + widen * 2, 8, 8)
-	g.fill_box(Vector3i(0, 0, 0), Vector3i(g.sx - 1, 7, 7), c1)
-	g.fill_box(Vector3i(0, 6, 0), Vector3i(g.sx - 1, 7, 7), c2)
-	g.fill_box(Vector3i(0, 6, 0), Vector3i(g.sx - 1, 6, 0), c3)
-	_attach(hips, g, Vector3(-g.sx / 2.0, -4, -4))
-
-	# 躯干：腰 14 宽 8 高，胸 16 宽 12 高
-	g = VoxelGrid.new(16 + widen * 2, 20, 8)
-	var o := widen
-	g.fill_box(Vector3i(1 + o, 0, 0), Vector3i(14 + o, 7, 7), skin)
-	g.fill_box(Vector3i(0, 8, 0), Vector3i(15 + o * 2, 19, 7), skin)
-	g.fill_box(Vector3i(0, 10, 0), Vector3i(15 + o * 2, 16, 7), c2)
-	g.fill_box(Vector3i(0, 16, 0), Vector3i(15 + o * 2, 16, 7), c3)
-	g.fill_box(Vector3i(1 + o, 0, 0), Vector3i(14 + o, 1, 7), c3)
-	_attach(spine, g, Vector3(-g.sx / 2.0, 0, -4))
-
-	# 头：颈 + 16³
-	g = VoxelGrid.new(16, 18, 16)
-	g.fill_box(Vector3i(5, 0, 5), Vector3i(10, 1, 10), skin)
-	g.fill_box(Vector3i(0, 2, 0), Vector3i(15, 17, 15), skin)
-	_paint_face(g, a)
-	_attach(head, g, Vector3(-8, 0, -8))
+	var kb := body_key(s)
+	var kh := head_key(s)
+	_mesh(hips, VoxMesh.cached("pelvis|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.pelvis(s), VOXEL)))
+	_mesh(spine, VoxMesh.cached("torso|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.torso(s), VOXEL)))
+	# 左右对称部件：只生成右侧网格，左侧用镜像实例
+	var m_uarm := VoxMesh.cached("uarm|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.upper_arm(s, 1), VOXEL))
+	var m_farm := VoxMesh.cached("farm|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.forearm(s, 1), VOXEL))
+	var m_hand := VoxMesh.cached("hand|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.hand(s, 1), VOXEL))
+	var m_thigh := VoxMesh.cached("thigh|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.thigh(s, 1), VOXEL))
+	var m_shin := VoxMesh.cached("shin|" + kb, func() -> ArrayMesh: return VoxMesh.build_one(OutfitBuilder.shin(s, 1), VOXEL))
+	_mesh(arm_r, m_uarm)
+	_mesh(arm_l, m_uarm, true)
+	_mesh(fore_r, m_farm)
+	_mesh(fore_l, m_farm, true)
+	_mesh(hand_r, m_hand)
+	_mesh(hand_l, m_hand, true)
+	_mesh(leg_r, m_thigh)
+	_mesh(leg_l, m_thigh, true)
+	_mesh(shin_r, m_shin)
+	_mesh(shin_l, m_shin, true)
+	_mesh(head, VoxMesh.cached("head|" + kh, func() -> ArrayMesh: return VoxMesh.build_one(head_canvas(s), VOXEL)))
+	# 闭眼贴片（贴在脸前，极薄）
+	var blink := MeshInstance3D.new()
+	blink.name = "Blink"
+	blink.mesh = VoxMesh.cached("blink|" + kh, func() -> ArrayMesh:
+		var bc := VoxCanvas.new(Vector3i(-8, 5, 0), Vector3i(7, 11, 0))
+		FacePainter.paint_blink(bc, s)
+		return VoxMesh.build_one(bc, VOXEL))
+	blink.position = Vector3(0, 0, -8.0 * VOXEL - 0.0015)
+	blink.scale = Vector3(1, 1, 0.04)
+	blink.visible = false
+	head.add_child(blink)
 	head.scale = Vector3.ONE * clampf(float(a["head_scale"]), 0.85, 1.2)
-	_build_hair(head, a)
 
-	# 手臂
-	for side in [["l", arm_l, fore_l], ["r", arm_r, fore_r]]:
-		g = VoxelGrid.new(6, 12, 6)
-		g.fill_box(Vector3i(0, 0, 0), Vector3i(5, 11, 5), skin)
-		g.fill_box(Vector3i(0, 6, 0), Vector3i(5, 11, 5), c1)
-		g.fill_box(Vector3i(0, 6, 0), Vector3i(5, 6, 5), c3)
-		_attach(side[1], g, Vector3(-3, -12, -3))
-		g = VoxelGrid.new(6, 14, 6)
-		g.fill_box(Vector3i(0, 0, 0), Vector3i(5, 13, 5), skin)
-		g.fill_box(Vector3i(0, 4, 0), Vector3i(5, 11, 5), c2)
-		g.fill_box(Vector3i(0, 4, 0), Vector3i(5, 4, 5), c3)
-		_attach(side[2], g, Vector3(-3, -14, -3))
-
-	# 腿
-	for side in [leg_l, leg_r]:
-		g = VoxelGrid.new(8, 14, 8)
-		g.fill_box(Vector3i(0, 0, 0), Vector3i(7, 13, 7), skin)
-		g.fill_box(Vector3i(0, 8, 0), Vector3i(7, 13, 7), c1)
-		_attach(side, g, Vector3(-4, -14, -4))
-	for side in [shin_l, shin_r]:
-		g = VoxelGrid.new(8, 14, 11)
-		g.fill_box(Vector3i(0, 0, 3), Vector3i(7, 13, 10), c2)
-		g.fill_box(Vector3i(0, 0, 0), Vector3i(7, 3, 10), c2)
-		g.fill_box(Vector3i(0, 0, 0), Vector3i(7, 0, 10), c3.darkened(0.3))
-		g.fill_box(Vector3i(0, 12, 3), Vector3i(7, 13, 10), c3)
-		_attach(side, g, Vector3(-4, -14, -7))
+	HairStyles.build_springs(head, s, kh)
+	HairStyles.build_ears(head, s, str(a["ears"]), kh)
+	HairStyles.build_tail(hips, s, str(a["tail"]), "%s|%s" % [kb, str(a["ear_color"])])
+	OutfitBuilder.build_cloth(hips, s, kb)
 
 	rig.body_scale = clampf(float(a["height"]), 0.85, 1.15)
 	rig.scale = Vector3.ONE * rig.body_scale
 	rig.setup()
-	if equip_visual.has("weapon") and not (equip_visual["weapon"] as Dictionary).is_empty():
-		var w := WeaponBuilder.build(equip_visual["weapon"])
-		rig.attach_to_hand(w, "r")
-		rig.stance = str(equip_visual["weapon"].get("kind", "fist"))
+	if equip_visual.has("weapon") and equip_visual["weapon"] is Dictionary and not (equip_visual["weapon"] as Dictionary).is_empty():
+		WeaponBuilder.attach_to_rig(rig, equip_visual["weapon"])
 	return rig
+
+
+## 头部画布：颈 + 头颅 + 五官 + 耳 + 发帽 + 发饰 + 龙角 + 颈饰
+static func head_canvas(s: CharSpec) -> VoxCanvas:
+	var ears := str(s.a.get("ears", "human"))
+	var horns := str(s.a.get("horns", "none"))
+	var lo := Vector3i(-13, -2, -11)
+	var hi := Vector3i(12, 22, 12)
+	if ears == "elf":
+		lo.x = -16
+		hi.x = 15
+	if s.hair_style == "bun" or horns == "dragon":
+		hi.y = 27
+	var cv := VoxCanvas.new(lo, hi)
+	FacePainter.paint_head(cv, s)
+	if ears == "human" or ears == "elf":
+		FacePainter.paint_ears(cv, s, ears)
+	HairStyles.paint_cap(cv, s)
+	if ears == "elf":
+		FacePainter.paint_ears(cv, s, ears)
+	HairStyles.paint_extras(cv, s)
+	if horns == "dragon":
+		HairStyles.paint_horns(cv, s)
+	OutfitBuilder.paint_neck(cv, s)
+	return cv
+
+
+static func body_key(s: CharSpec) -> String:
+	var a := s.a
+	return "%s|%d%d%d%d%d%d|%d|%s|%s|%s" % [
+		"f" if s.female else "m", s.leg_w, s.waist_w, s.chest_w, s.torso_d, s.arm_w, s.arm_d,
+		int(s.chest * 3.0), str(a.get("skin", "")), s.outfit, str(a.get("outfit_colors", [])),
+	]
+
+
+static func head_key(s: CharSpec) -> String:
+	var a := s.a
+	var parts: Array[String] = ["f" if s.female else "m"]
+	for k in ["skin", "hair_style", "hair_color", "hair_color2", "eye_color", "eye_style", "brow_style", "mark", "mark_color", "ears", "ear_color", "horns", "outfit"]:
+		parts.append(str(a.get(k, "")))
+	parts.append(str(a.get("outfit_colors", [])))
+	return "|".join(parts)
 
 
 static func _bone(parent: Node3D, bone_name: String, pos_vox: Vector3) -> Node3D:
@@ -152,55 +189,106 @@ static func _bone(parent: Node3D, bone_name: String, pos_vox: Vector3) -> Node3D
 	return n
 
 
-## origin_vox：体素 (0,0,0) 相对骨骼原点的位置（体素单位）
-static func _attach(bone_node: Node3D, g: VoxelGrid, origin_vox: Vector3) -> MeshInstance3D:
-	var mi := VoxelMesher.build_instance(g, VOXEL, origin_vox * VOXEL)
+static func _mesh(bone_node: Node3D, mesh: ArrayMesh, mirror: bool = false) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
 	mi.name = "Mesh"
+	mi.mesh = mesh
+	if mirror:
+		mi.scale = Vector3(-1, 1, 1)
 	bone_node.add_child(mi)
 	return mi
 
 
-static func _paint_face(g: VoxelGrid, a: Dictionary) -> void:
-	# 头网格前面为 z=0（面朝 -Z）；头部体素 y 2..17
-	var eye := col(a["eye_color"])
-	var white := Color(0.97, 0.96, 0.95)
-	var dark := Color(0.12, 0.08, 0.08)
-	for side: int in [-1, 1]:
-		var cx: int = 8 + side * 3 - (1 if side < 0 else 0)
-		var x0: int = cx - 1
-		g.fill_box(Vector3i(x0, 7, 0), Vector3i(x0 + 2, 9, 0), white)
-		g.fill_box(Vector3i(x0 + (1 if side < 0 else 0), 7, 0), Vector3i(x0 + (2 if side < 0 else 1), 9, 0), eye)
-		g.set_color(x0 + (1 if side < 0 else 1), 9, 0, eye.lightened(0.5))
-		g.fill_box(Vector3i(x0, 10, 0), Vector3i(x0 + 2, 10, 0), dark)
-	g.fill_box(Vector3i(7, 5, 0), Vector3i(8, 5, 0), Color(0.75, 0.4, 0.4))
+# ================================================================ 随机外貌（NPC）
+
+static var _palette: Dictionary = {}
 
 
-static func _build_hair(head: Node3D, a: Dictionary) -> void:
-	var hc := col(a["hair_color"])
-	var hc2 := col(a["hair_color2"], hc.lightened(0.2))
-	var g := VoxelGrid.new(18, 12, 18)
-	# 发帽：覆盖头顶与后脑
-	g.fill_box(Vector3i(0, 4, 1), Vector3i(17, 11, 17), hc)
-	g.fill_box(Vector3i(0, 0, 9), Vector3i(17, 4, 17), hc)
-	g.clear_box(Vector3i(1, 0, 1), Vector3i(16, 9, 16))
-	g.fill_box(Vector3i(1, 10, 1), Vector3i(16, 11, 16), hc)
-	# 刘海
-	for x in range(1, 17):
-		var len_b := 3 + (x * 7) % 3
-		g.fill_box(Vector3i(x, 10 - len_b, 0), Vector3i(x, 10, 0), hc if x % 3 else hc2)
-	var mi := VoxelMesher.build_instance(g, VOXEL, Vector3(-9, 8, -9) * VOXEL)
-	mi.name = "HairMesh"
-	head.add_child(mi)
-	if str(a["hair_style"]) == "twin_tails":
-		for side: int in [-1, 1]:
-			var pivot := Node3D.new()
-			pivot.name = "hair_tail_" + ("l" if side < 0 else "r")
-			pivot.position = Vector3(side * 9.5, 16, 4) * VOXEL
-			pivot.set_meta("spring_length", 0.6)
-			head.add_child(pivot)
-			var tg := VoxelGrid.new(6, 26, 6)
-			for y in 26:
-				var r := 2.6 - absf(y - 6.0) * 0.08
-				tg.fill_ellipsoid(Vector3(3, y + 0.5, 3), Vector3(r, 0.6, r), hc if y % 4 else hc2)
-			var tmi := VoxelMesher.build_instance(tg, VOXEL, Vector3(-3, -26, -3) * VOXEL)
-			pivot.add_child(tmi)
+static func _load_palette() -> Dictionary:
+	if not _palette.is_empty():
+		return _palette
+	var f := FileAccess.open("res://data/appearance.json", FileAccess.READ)
+	if f != null:
+		var d: Variant = JSON.parse_string(f.get_as_text())
+		if d is Dictionary:
+			_palette = d
+	if _palette.is_empty():
+		_palette = {
+			"hair_colors": ["#1a1a22", "#8a4a2a", "#c8201e"], "eye_colors": ["#1a1a1a", "#f0a020"],
+			"skin_colors": ["#f3d2bd"], "outfit_palettes": [["#b3201c", "#3b2618", "#e2b23c"]],
+		}
+	return _palette
+
+
+static func _pick(rng: RandomNumberGenerator, arr: Array) -> Variant:
+	return arr[rng.randi_range(0, arr.size() - 1)]
+
+
+## 按权重挑选：pairs = [[值, 权重], ...]
+static func _wpick(rng: RandomNumberGenerator, pairs: Array) -> Variant:
+	var total := 0.0
+	for p in pairs:
+		total += float(p[1])
+	var r := rng.randf() * total
+	for p in pairs:
+		r -= float(p[1])
+		if r <= 0.0:
+			return p[0]
+	return pairs[pairs.size() - 1][0]
+
+
+## 随机生成好看的 NPC 外貌（调色板取自 data/appearance.json）。gender 为空时随机。
+static func random_appearance(rng: RandomNumberGenerator, gender: String = "") -> Dictionary:
+	var pal := _load_palette()
+	var female := gender == "female" if gender != "" else rng.randf() < 0.5
+	var a := {}
+	a["gender"] = "female" if female else "male"
+	a["height"] = snappedf(rng.randf_range(0.93, 1.0) if female else rng.randf_range(0.98, 1.07), 0.01)
+	a["build"] = snappedf(rng.randf_range(0.15, 0.6) if female else rng.randf_range(0.3, 0.9), 0.01)
+	a["head_scale"] = snappedf(rng.randf_range(0.97, 1.08) if female else rng.randf_range(0.94, 1.02), 0.01)
+	a["chest"] = snappedf(rng.randf_range(0.25, 0.7), 0.01) if female else 0.0
+	a["skin"] = _pick(rng, pal.get("skin_colors", ["#f3d2bd"]))
+	# 发色：自然色（黑/棕/白/金）更常见
+	var hair_pool: Array = pal.get("hair_colors", ["#1a1a22"])
+	var natural: Array = []
+	for hcol in hair_pool:
+		var c := col(hcol)
+		if c.s < 0.45 or c.v < 0.25 or (c.h > 0.04 and c.h < 0.16):
+			natural.append(hcol)
+	var hair: String = str(_pick(rng, natural if (rng.randf() < 0.7 and not natural.is_empty()) else hair_pool))
+	a["hair_color"] = hair
+	a["hair_color2"] = _highlight_of(col(hair), rng)
+	if female:
+		a["hair_style"] = _wpick(rng, [["twin_tails", 2], ["ponytail", 3], ["long", 3], ["short", 1], ["bun", 2], ["flowing", 3]])
+	else:
+		a["hair_style"] = _wpick(rng, [["short", 3], ["bun", 4], ["ponytail", 3], ["long", 2], ["flowing", 1]])
+	a["eye_color"] = _pick(rng, pal.get("eye_colors", ["#1a1a1a"]))
+	a["eye_style"] = _wpick(rng, [["almond", 3], ["round", 2], ["sharp", 2]]) if female else _wpick(rng, [["almond", 2], ["sharp", 3], ["round", 1]])
+	a["brow_style"] = rng.randi_range(0, 2)
+	a["mark"] = _wpick(rng, [["none", 6], ["lotus", 2], ["flame", 1], ["dot", 2]]) if female else _wpick(rng, [["none", 12], ["dot", 1], ["flame", 1]])
+	a["mark_color"] = _pick(rng, ["#e02040", "#d02030", "#f05060", "#e0a020", "#40a0e0"])
+	var ears: String
+	if female:
+		ears = _wpick(rng, [["human", 12], ["fox", 3], ["cat", 2], ["elf", 3]])
+	else:
+		ears = _wpick(rng, [["human", 18], ["fox", 1], ["elf", 1], ["cat", 0.5]])
+	a["ears"] = ears
+	var hc := col(hair)
+	a["ear_color"] = ("#" + hc.darkened(0.1).to_html(false)) if rng.randf() < 0.6 else _pick(rng, ["#7a4424", "#e8e0d8", "#2a2228", "#c87a3a"])
+	a["tail"] = "fox" if ears == "fox" and rng.randf() < 0.5 else "none"
+	a["horns"] = "dragon" if rng.randf() < 0.05 else "none"
+	a["outfit"] = _wpick(rng, [["robe", 5], ["martial", 3], ["armor", 2]])
+	a["outfit_colors"] = (_pick(rng, pal.get("outfit_palettes", [["#b3201c", "#3b2618", "#e2b23c"]])) as Array).duplicate()
+	return a
+
+
+## 挑染色：同色相更亮（深色头发用冷灰高光）
+static func _highlight_of(c: Color, rng: RandomNumberGenerator) -> String:
+	var h: Color
+	if c.v < 0.2:
+		h = Color(0.32, 0.33, 0.42)
+	elif c.s < 0.15:
+		h = c.lerp(Color(1, 1, 1), 0.5) if c.v < 0.8 else Color(0.82, 0.86, 0.98)
+	else:
+		h = Color.from_hsv(c.h + rng.randf_range(-0.03, 0.03), c.s * 0.8, minf(c.v * 1.3 + 0.08, 1.0))
+	return "#" + h.to_html(false)
