@@ -11,8 +11,8 @@ uniform vec3 deep_color : source_color = vec3(0.05, 0.17, 0.24);
 uniform vec3 foam_color : source_color = vec3(0.92, 0.95, 0.96);
 uniform vec3 sky_color : source_color = vec3(0.62, 0.76, 0.92);
 uniform float daylight = 1.0;
-uniform float absorption = 0.26;
-uniform float clarity = 0.8;
+uniform float absorption = 0.34;
+uniform float clarity = 0.72;
 uniform float foam_width = 0.55;
 uniform float wave_strength = 0.18;
 uniform float reflect_strength = 0.85;
@@ -54,8 +54,8 @@ float waves(vec2 p, float t) {
 	return h;
 }
 
-float scene_depth(vec2 uv, mat4 inv_proj) {
-	float d = texture(depth_tex, uv).r;
+float scene_depth(sampler2D dt, vec2 uv, mat4 inv_proj) {
+	float d = texture(dt, uv).r;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	vec3 ndc = vec3(uv, d) * 2.0 - 1.0;
 #else
@@ -84,7 +84,7 @@ void fragment() {
 	vec3 V = normalize(CAMERA_POSITION_WORLD - wpos);
 
 	// 水深：地形高度图（垂直水深）或深度纹理（沿视线厚度）
-	float scene_d = scene_depth(SCREEN_UV, INV_PROJECTION_MATRIX);
+	float scene_d = scene_depth(depth_tex, SCREEN_UV, INV_PROJECTION_MATRIX);
 	float water_d = -VERTEX.z;
 	float view_thick = max(scene_d - water_d, 0.0);
 	float vdepth = fallback_depth;
@@ -105,7 +105,7 @@ void fragment() {
 
 	// 折射
 	vec2 ruv = SCREEN_UV + nw.xz * 0.018 * clamp(thick * 0.3, 0.0, 1.0);
-	if (depth_ok && scene_depth(ruv, INV_PROJECTION_MATRIX) < water_d) {
+	if (depth_ok && scene_depth(depth_tex, ruv, INV_PROJECTION_MATRIX) < water_d) {
 		ruv = SCREEN_UV;
 	}
 	vec3 refr = textureLod(screen_tex, ruv, 0.0).rgb;
@@ -137,7 +137,7 @@ void fragment() {
 				if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) {
 					break;
 				}
-				float sd = scene_depth(suv, INV_PROJECTION_MATRIX);
+				float sd = scene_depth(depth_tex, suv, INV_PROJECTION_MATRIX);
 				float pd = -pos.z;
 				if (pd > sd && pd - sd < stp * 1.6 + 0.6 && sd > water_d + 0.3) {
 					vec2 edge = min(suv, 1.0 - suv);

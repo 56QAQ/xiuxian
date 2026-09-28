@@ -216,21 +216,27 @@ def t_plain(rng, v):
 	return result(ramp(val, P_NEUTRAL, 0.4), 0.5 + (n - 0.5) * 0.2, 0.85)
 
 
-def grass_field(rng, pal_, density=90, base_v=0.44, spread=0.34):
-	base = fbm(rng, 4, 3)
+def grass_field(rng, pal_, density=60, base_v=0.46, spread=0.3):
+	"""草地：成簇的草丛（Voronoi 簇，簇间暗缝）+ 簇上亮叶尖，少量抖动。"""
+	base = fbm(rng, 4, 2)
+	f1, f2, idx, pts = voronoi(rng, 11)
+	tone = rng.uniform(-0.12, 0.12, len(pts))
+	edge = np.clip((f2 - f1) / 2.2, 0, 1)
+	clump = np.clip(1.0 - f1 / 6.0, 0, 1)
 	b = np.zeros((S, S))
 	for _ in range(density):
 		x = rng.integers(0, S)
 		y = rng.integers(0, S)
+		if edge[y, x] < 0.35:
+			continue
 		ln = rng.integers(2, 4)
-		sgn = 1.0 if rng.random() < 0.62 else -1.0
 		lean = rng.choice([-1, 0, 0, 1])
 		for k in range(ln):
-			b[(y - k) % S, (x + (lean if k == ln - 1 else 0)) % S] = sgn * (1.0 - k * 0.2)
-	jit = (rng.random((S, S)) - 0.5) * 0.08
-	val = base_v + spread * (base - 0.5) + 0.2 * b + jit
-	h = np.clip(0.45 + 0.35 * b + 0.2 * base, 0, 1)
-	return ramp(val, pal_, 0.5), h, b
+			b[(y - k) % S, (x + (lean if k == ln - 1 else 0)) % S] = 1.0 - k * 0.25
+	val = base_v + spread * (base - 0.5) + tone[idx] + 0.14 * (clump - 0.5) + 0.2 * b - 0.22 * (1 - edge) ** 3
+	val += (rng.random((S, S)) - 0.5) * 0.04
+	h = np.clip(0.3 + 0.4 * clump + 0.3 * b - 0.3 * (1 - edge) ** 3, 0, 1)
+	return ramp(val, pal_, 0.3), h, b
 
 
 @reg("grass_top", variants=3, rot=2, flags=NATURAL)
@@ -377,7 +383,8 @@ def t_sand(rng, v):
 	rip = np.sin((XX * 0.35 + YY * 0.8 + warp * 7.0) * (2 * np.pi / 8.0))
 	# 周期修正：保证可平铺（沿对角的正弦周期为 S 的约数）
 	rip = np.sin(2 * np.pi * (XX * 1 + YY * 4) / S + warp * 5.0)
-	val = 0.5 + 0.22 * (n - 0.5) + 0.09 * rip + (rng.random((S, S)) - 0.5) * 0.1
+	rip = np.sign(rip) * np.abs(rip) ** 0.6
+	val = 0.5 + 0.2 * (n - 0.5) + 0.13 * rip + (rng.random((S, S)) - 0.5) * 0.08
 	rgb = ramp(val, P_SAND, 0.7)
 	dark = speck(rng, 14)
 	lightp = speck(rng, 10)
@@ -517,19 +524,36 @@ def t_obsidian(rng, v):
 
 @reg("lava", rot=2, flags=F_LAVA | F_EMIT_MASK)
 def t_lava(rng, v):
-	f1, f2, idx, pts = voronoi(rng, 7)
+	# 熔岩：大块暗色结壳漂在明亮的熔流上，壳内偶有发光裂纹
+	pts = jitter_grid(rng, 2, 2, 0.6)
+	f1, f2, idx, _ = voronoi(rng, pts=pts)
 	edge = f2 - f1
 	n = fbm(rng, 4, 3)
-	hot = 1.0 - np.clip((edge - 0.4) / 3.2, 0, 1)
-	hot = np.clip(hot * 0.85 + (n - 0.5) * 0.5, 0, 1)
-	crust = hot < 0.35
-	val = hot * 0.9 + (n - 0.5) * 0.15
-	rgb = ramp(val, P_LAVA, 0.5)
-	crust_rgb = ramp(0.25 + n * 0.5 + light(np.clip(edge / 4, 0, 1), 3.0) * 0.2 - 0.2, P_BASALT, 0.4) * np.array([1.25, 0.95, 0.85])
-	rgb[crust] = crust_rgb[crust]
-	mask = np.clip(hot * 1.3 - 0.1, 0, 1)
-	h = np.where(crust, 0.8, 0.3)
-	return result(rgb, h, np.where(crust, 0.85, 0.35), mask=mask)
+	n2 = fbm(rng, 8, 2)
+	river = 1.0 - smoothstep_np(2.2, 5.0, edge + (n - 0.5) * 3.0)
+	crust = river < 0.45
+	# 熔流：越靠近河心越亮
+	hot = np.clip(river * 1.1 + (n2 - 0.5) * 0.3, 0, 1)
+	rgb = ramp(0.35 + hot * 0.65, P_LAVA, 0.35)
+	# 结壳：玄武岩色，左上受光，边缘被熔流烧红
+	ch = np.clip((edge - 2.0) / 5.0, 0, 1)
+	lt = light(ch * 0.8 + n2 * 0.2, 3.0)
+	cv = 0.3 + (n2 - 0.5) * 0.35 + (lt - 1.0) * 0.4
+	crgb = ramp(cv, P_BASALT, 0.4) * np.array([1.2, 0.95, 0.85])
+	rim = crust & (river > 0.25)
+	crgb[rim] = mix(crgb[rim], P_LAVA[3], 0.5)
+	cf1, cf2, _, _ = voronoi(rng, 10)
+	cracks = crust & ((cf2 - cf1) < 0.5) & (ch > 0.15)
+	crgb[cracks] = P_LAVA[4]
+	rgb[crust] = crgb[crust]
+	mask = np.where(crust, np.where(cracks, 0.8, np.where(rim, 0.35, 0.05)), 0.4 + 0.6 * hot)
+	h = np.where(crust, 0.6 + ch * 0.4, 0.2)
+	return result(rgb, h, np.where(crust, 0.85, 0.3), mask=mask)
+
+
+def smoothstep_np(a, b, x):
+	t = np.clip((x - a) / (b - a), 0.0, 1.0)
+	return t * t * (3 - 2 * t)
 
 
 @reg("loess", rot=1, flags=NATURAL)
@@ -1247,7 +1271,8 @@ def t_gold(rng, v):
 	lx = XX % 8
 	ly = YY % 8
 	eng = ((lx == 1) & (ly > 0) & (ly < 7)) | ((ly == 1) & (lx > 0) & (lx < 7)) | ((lx == 5) & (ly > 2) & (ly < 7)) | ((ly == 5) & (lx > 2) & (lx < 6))
-	val[eng] -= 0.25
+	eng &= (YY % 16 < 8) & (XX % 16 < 8)
+	val[eng] -= 0.12
 	hl = speck(rng, 10)
 	val[hl] = 1.0
 	h = 0.7 - ham * 0.2
@@ -1351,6 +1376,10 @@ def build():
 			nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
 			alb = np.dstack([rgb, r["mask"]])
 			det = np.dstack([nrm[..., 0] * 0.5 + 0.5, nrm[..., 1] * 0.5 + 0.5, r["rough"], r["cav"]])
+			# A 通道上限 250/255：保证每层（含各级 mipmap）都被识别为带透明度，导入后所有层都是 RGBA8
+			# （否则 4.4 兼容渲染器会因层格式不一致拒绝创建纹理数组）；对发光遮罩/凹缝遮蔽的影响可忽略
+			alb[..., 3] = np.minimum(alb[..., 3], 250.0 / 255.0)
+			det[..., 3] = np.minimum(det[..., 3], 250.0 / 255.0)
 			rows_alb.append(np.round(alb * 255).clip(0, 255).astype(np.uint8))
 			rows_det.append(np.round(det * 255).clip(0, 255).astype(np.uint8))
 			lin = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)

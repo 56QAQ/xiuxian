@@ -122,12 +122,12 @@ void sky() {
 		float n = fbm(cq * 0.9);
 		float n2 = fbm(cq * 2.1 + vec2(5.1, 1.7));
 		float dens = n * 0.8 + n2 * 0.2;
-		float cov = smoothstep(1.0 - cloud_cover - 0.08, 1.0 - cloud_cover + 0.22, dens);
+		float cov = smoothstep(1.0 - cloud_cover - 0.12, 1.0 - cloud_cover + 0.3, dens);
 		// 分层着色：朝阳面亮、背面暗，并做柔和的色阶（写意）
 		vec2 lp = LIGHT0_ENABLED ? LIGHT0_DIRECTION.xz * 0.08 : vec2(0.0);
 		float sh = fbm((cq - lp) * 0.9) * 0.8 + n2 * 0.2;
 		float lit = clamp(0.5 + (dens - sh) * 6.0, 0.0, 1.0);
-		lit = smoothstep(0.15, 0.85, floor(lit * 3.0 + 0.5) / 3.0 * 0.6 + lit * 0.4);
+		lit = smoothstep(0.1, 0.9, mix(lit, floor(lit * 3.0 + 0.5) / 3.0, 0.3));
 		vec3 cc = mix(cloud_shadow, cloud_light, lit);
 		// 金边（逆光时云缘发亮）
 		float rim = (1.0 - cov) * cov * 4.0;

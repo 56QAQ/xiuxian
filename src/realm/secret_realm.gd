@@ -2,19 +2,58 @@ extends Node3D
 ## 秘境（搜打撤）：程序生成的主题区域，散布容器、妖兽与寻宝修士；限时崩塌；撤离阵撤离。
 ## 入口参数：GS.realm_request = {realm_id, seed, return_pos?}
 
+## 主题：top 地表三色（sRGB）、surf 对应的地表类型（TerrainGen.S_*，决定方块纹理）、edge 边缘峭壁地表、
+## side/deep 碎屑色、sun 太阳色、sun_pitch 太阳仰角、amp 起伏、props 装饰物、water/lava 水位/岩浆位、
+## pal 大气调色板（字段见 Atmosphere.DAY）、fx 环境粒子权重（AmbientFX）、snow 全局积雪
 const THEMES := {
-	"forest": {"top": [Color(0.33, 0.6, 0.26), Color(0.4, 0.66, 0.3), Color(0.28, 0.52, 0.24)], "side": Color(0.45, 0.33, 0.22), "deep": Color(0.4, 0.38, 0.36),
-		"sky": Color(0.55, 0.75, 0.6), "fog": Color(0.6, 0.78, 0.62), "sun": Color(1.0, 0.95, 0.85), "amp": 7.0, "props": ["tree", "tree", "bush", "rock"], "water": 2.5},
-	"ruins": {"top": [Color(0.55, 0.56, 0.5), Color(0.42, 0.52, 0.36), Color(0.6, 0.6, 0.56)], "side": Color(0.5, 0.48, 0.45), "deep": Color(0.38, 0.37, 0.36),
-		"sky": Color(0.62, 0.62, 0.7), "fog": Color(0.62, 0.62, 0.68), "sun": Color(0.95, 0.9, 0.85), "amp": 4.0, "props": ["pillar", "wall", "rock", "tree"], "water": -10.0},
-	"volcano": {"top": [Color(0.22, 0.2, 0.2), Color(0.3, 0.24, 0.22), Color(0.18, 0.16, 0.16)], "side": Color(0.32, 0.22, 0.18), "deep": Color(0.2, 0.16, 0.15),
-		"sky": Color(0.5, 0.25, 0.2), "fog": Color(0.55, 0.3, 0.22), "sun": Color(1.0, 0.7, 0.5), "amp": 9.0, "props": ["crystal", "rock", "rock", "deadtree"], "lava": 3.0, "water": -10.0},
-	"ice": {"top": [Color(0.92, 0.95, 1.0), Color(0.85, 0.9, 0.98), Color(0.75, 0.85, 0.95)], "side": Color(0.6, 0.75, 0.9), "deep": Color(0.5, 0.6, 0.75),
-		"sky": Color(0.7, 0.8, 0.95), "fog": Color(0.82, 0.88, 0.96), "sun": Color(0.9, 0.95, 1.0), "amp": 8.0, "props": ["icespike", "pine", "rock"], "water": 2.0},
-	"water": {"top": [Color(0.4, 0.66, 0.4), Color(0.85, 0.8, 0.6), Color(0.35, 0.58, 0.36)], "side": Color(0.6, 0.55, 0.45), "deep": Color(0.45, 0.45, 0.42),
-		"sky": Color(0.55, 0.72, 0.9), "fog": Color(0.6, 0.75, 0.88), "sun": Color(1.0, 0.97, 0.9), "amp": 6.0, "props": ["tree", "rock", "bush"], "water": 5.5},
-	"battlefield": {"top": [Color(0.4, 0.34, 0.28), Color(0.35, 0.3, 0.27), Color(0.45, 0.38, 0.3)], "side": Color(0.35, 0.28, 0.22), "deep": Color(0.28, 0.24, 0.2),
-		"sky": Color(0.55, 0.45, 0.4), "fog": Color(0.55, 0.48, 0.42), "sun": Color(1.0, 0.85, 0.7), "amp": 5.0, "props": ["deadtree", "rock", "wall", "pillar"], "water": -10.0},
+	"forest": {"top": [Color(0.33, 0.58, 0.27), Color(0.40, 0.63, 0.30), Color(0.28, 0.50, 0.25)], "side": Color(0.45, 0.33, 0.22), "deep": Color(0.4, 0.38, 0.36),
+		"surf": [TerrainGen.S_GRASS, TerrainGen.S_WETGRASS, TerrainGen.S_FOREST], "edge": TerrainGen.S_STONE, "shore": TerrainGen.S_SAND,
+		"sun": Color(1.0, 0.93, 0.78), "sun_pitch": -48.0, "amp": 7.0, "props": ["tree", "tree", "bush", "rock"], "water": 2.5,
+		"pal": {"zenith": Color(0.32, 0.56, 0.74), "horizon": Color(0.74, 0.86, 0.80), "haze": Color(0.80, 0.90, 0.82), "glow": Color(1.0, 0.9, 0.66),
+			"ambient": Color(0.46, 0.58, 0.52), "amb_e": 0.62, "fog": Color(0.62, 0.78, 0.66), "fog_d": 0.8, "fog_end": 210.0,
+			"vol": Color(0.85, 0.95, 0.85), "vol_d": 0.012, "ink": Color(0.30, 0.46, 0.40), "mist": Color(0.74, 0.86, 0.78),
+			"cloud_l": Color(1.0, 1.0, 0.95), "cloud_s": Color(0.66, 0.76, 0.72), "sun": Color(1.0, 0.93, 0.78), "sun_e": 1.5, "exposure": 1.0, "cloud": 0.4},
+		"fx": {"motes": 0.9, "petals": 0.35, "fireflies": 0.3, "leaves": 0.3}, "snow": 0.0},
+	"ruins": {"top": [Color(0.58, 0.58, 0.54), Color(0.40, 0.50, 0.34), Color(0.56, 0.56, 0.52)], "side": Color(0.5, 0.48, 0.45), "deep": Color(0.38, 0.37, 0.36),
+		"surf": [TerrainGen.S_PAVED, TerrainGen.S_GRASS, TerrainGen.S_GRAVEL], "edge": TerrainGen.S_STONE, "shore": TerrainGen.S_GRAVEL,
+		"sun": Color(0.95, 0.9, 0.85), "sun_pitch": -40.0, "amp": 4.0, "props": ["pillar", "wall", "rock", "tree"], "water": -10.0,
+		"pal": {"zenith": Color(0.40, 0.44, 0.56), "horizon": Color(0.70, 0.70, 0.76), "haze": Color(0.74, 0.74, 0.80), "glow": Color(0.95, 0.85, 0.75),
+			"ambient": Color(0.50, 0.52, 0.60), "amb_e": 0.64, "fog": Color(0.62, 0.62, 0.70), "fog_d": 0.82, "fog_end": 190.0,
+			"vol": Color(0.8, 0.8, 0.9), "vol_d": 0.012, "ink": Color(0.34, 0.36, 0.46), "mist": Color(0.70, 0.70, 0.78),
+			"cloud_l": Color(0.9, 0.9, 0.95), "cloud_s": Color(0.56, 0.58, 0.68), "sun": Color(0.95, 0.9, 0.85), "sun_e": 1.2, "exposure": 1.05, "cloud": 0.62},
+		"fx": {"motes": 1.0, "dust": 0.35}, "snow": 0.0},
+	"volcano": {"top": [Color(0.24, 0.21, 0.21), Color(0.52, 0.26, 0.18), Color(0.16, 0.13, 0.16)], "side": Color(0.32, 0.22, 0.18), "deep": Color(0.2, 0.16, 0.15),
+		"surf": [TerrainGen.S_ASH, TerrainGen.S_REDROCK, TerrainGen.S_OBSIDIAN], "edge": TerrainGen.S_REDROCK, "shore": TerrainGen.S_BLACKSAND,
+		"sun": Color(1.0, 0.66, 0.45), "sun_pitch": -35.0, "amp": 9.0, "props": ["crystal", "rock", "rock", "deadtree"], "lava": 3.0, "water": -10.0,
+		"pal": {"zenith": Color(0.22, 0.10, 0.10), "horizon": Color(0.62, 0.30, 0.20), "haze": Color(0.70, 0.38, 0.26), "glow": Color(1.0, 0.5, 0.25),
+			"ambient": Color(0.46, 0.30, 0.28), "amb_e": 0.55, "fog": Color(0.45, 0.24, 0.18), "fog_d": 0.86, "fog_end": 180.0,
+			"vol": Color(1.0, 0.55, 0.35), "vol_d": 0.014, "ink": Color(0.16, 0.08, 0.08), "mist": Color(0.55, 0.28, 0.20),
+			"cloud_l": Color(0.75, 0.40, 0.30), "cloud_s": Color(0.25, 0.12, 0.12), "sun": Color(1.0, 0.66, 0.45), "sun_e": 1.2, "exposure": 1.05, "cloud": 0.6},
+		"fx": {"embers": 1.0, "ash": 1.0, "motes": 0.2}, "snow": 0.0},
+	"ice": {"top": [Color(0.93, 0.95, 1.0), Color(0.86, 0.90, 0.97), Color(0.72, 0.84, 0.95)], "side": Color(0.6, 0.75, 0.9), "deep": Color(0.5, 0.6, 0.75),
+		"surf": [TerrainGen.S_SNOW, TerrainGen.S_SNOW, TerrainGen.S_ICE], "edge": TerrainGen.S_SNOWROCK, "shore": TerrainGen.S_ICE,
+		"sun": Color(0.92, 0.96, 1.0), "sun_pitch": -38.0, "amp": 8.0, "props": ["icespike", "pine", "rock"], "water": 2.0,
+		"pal": {"zenith": Color(0.46, 0.62, 0.82), "horizon": Color(0.80, 0.88, 0.96), "haze": Color(0.88, 0.93, 0.98), "glow": Color(0.95, 0.95, 1.0),
+			"ambient": Color(0.62, 0.72, 0.86), "amb_e": 0.7, "fog": Color(0.80, 0.87, 0.95), "fog_d": 0.84, "fog_end": 190.0,
+			"vol": Color(0.9, 0.95, 1.0), "vol_d": 0.012, "ink": Color(0.50, 0.60, 0.74), "mist": Color(0.84, 0.90, 0.97),
+			"cloud_l": Color(1.0, 1.0, 1.0), "cloud_s": Color(0.72, 0.80, 0.90), "sun": Color(0.92, 0.96, 1.0), "sun_e": 1.35, "exposure": 0.92, "cloud": 0.55},
+		"fx": {"snow": 0.8, "motes": 0.5}, "snow": 0.7},
+	"water": {"top": [Color(0.38, 0.62, 0.38), Color(0.84, 0.78, 0.58), Color(0.34, 0.56, 0.35)], "side": Color(0.6, 0.55, 0.45), "deep": Color(0.45, 0.45, 0.42),
+		"surf": [TerrainGen.S_WETGRASS, TerrainGen.S_SAND, TerrainGen.S_GRASS], "edge": TerrainGen.S_STONE, "shore": TerrainGen.S_SAND,
+		"sun": Color(1.0, 0.95, 0.86), "sun_pitch": -45.0, "amp": 6.0, "props": ["tree", "rock", "bush", "willow"], "water": 5.5,
+		"pal": {"zenith": Color(0.30, 0.52, 0.78), "horizon": Color(0.72, 0.84, 0.90), "haze": Color(0.80, 0.90, 0.94), "glow": Color(1.0, 0.92, 0.78),
+			"ambient": Color(0.48, 0.62, 0.70), "amb_e": 0.62, "fog": Color(0.66, 0.80, 0.86), "fog_d": 0.8, "fog_end": 220.0,
+			"vol": Color(0.85, 0.95, 1.0), "vol_d": 0.012, "ink": Color(0.34, 0.50, 0.58), "mist": Color(0.78, 0.88, 0.92),
+			"cloud_l": Color(1.0, 1.0, 0.98), "cloud_s": Color(0.66, 0.76, 0.84), "sun": Color(1.0, 0.95, 0.86), "sun_e": 1.5, "exposure": 0.98, "cloud": 0.45},
+		"fx": {"motes": 0.8, "fireflies": 0.45, "petals": 0.3}, "snow": 0.0},
+	"battlefield": {"top": [Color(0.42, 0.35, 0.28), Color(0.36, 0.31, 0.27), Color(0.47, 0.40, 0.31)], "side": Color(0.35, 0.28, 0.22), "deep": Color(0.28, 0.24, 0.2),
+		"surf": [TerrainGen.S_SCORCH, TerrainGen.S_MUD, TerrainGen.S_GRAVEL], "edge": TerrainGen.S_REDROCK, "shore": TerrainGen.S_MUD,
+		"sun": Color(1.0, 0.66, 0.40), "sun_pitch": -22.0, "amp": 5.0, "props": ["deadtree", "rock", "wall", "pillar"], "water": -10.0,
+		"pal": {"zenith": Color(0.34, 0.30, 0.36), "horizon": Color(0.86, 0.60, 0.42), "haze": Color(0.88, 0.66, 0.48), "glow": Color(1.0, 0.6, 0.3),
+			"ambient": Color(0.52, 0.44, 0.42), "amb_e": 0.56, "fog": Color(0.66, 0.50, 0.40), "fog_d": 0.86, "fog_end": 230.0,
+			"vol": Color(1.0, 0.8, 0.6), "vol_d": 0.012, "ink": Color(0.26, 0.20, 0.20), "mist": Color(0.74, 0.56, 0.44),
+			"cloud_l": Color(1.0, 0.72, 0.5), "cloud_s": Color(0.40, 0.30, 0.32), "sun": Color(1.0, 0.66, 0.40), "sun_e": 1.3, "exposure": 1.0, "cloud": 0.5},
+		"fx": {"ash": 0.6, "embers": 0.3, "dust": 0.5, "motes": 0.3}, "snow": 0.0},
 }
 
 var def: Dictionary = {}
@@ -72,57 +111,34 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	GS.in_realm = false
 	Events.hud_objective.emit("")
+	BlockTex.reset_env()
 
 
 # ================================================================ 环境
 
 func _build_env() -> void:
 	var env := WorldEnvironment.new()
-	var e := Environment.new()
-	e.background_mode = Environment.BG_SKY
-	var sky := Sky.new()
-	var sm := ProceduralSkyMaterial.new()
-	var sc: Color = theme["sky"]
-	sm.sky_top_color = sc.darkened(0.3)
-	sm.sky_horizon_color = sc.lightened(0.2)
-	sm.ground_bottom_color = sc.darkened(0.5)
-	sm.ground_horizon_color = sc
-	sky.sky_material = sm
-	e.sky = sky
-	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	e.ambient_light_energy = 0.6
-	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	e.ssao_enabled = true
-	e.glow_enabled = true
-	e.glow_intensity = 0.8
-	e.fog_enabled = true
-	e.fog_light_color = theme["fog"]
-	e.fog_density = 0.012
+	var e := Atmosphere.make_environment()
+	var pal: Dictionary = theme["pal"]
+	# 秘境较小：天空远山低一些，雾在边缘峭壁外收拢
+	var sky_mat := e.sky.sky_material as ShaderMaterial
+	sky_mat.set_shader_parameter("mountain_scale", 0.8)
+	sky_mat.set_shader_parameter("cloud_time", rng.randf() * 500.0)
 	env.environment = e
 	add_child(env)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52, rng.randf_range(0, 360), 0)
-	sun.light_color = theme["sun"]
-	sun.light_energy = 1.1
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 90.0
+	Atmosphere.setup_sun(sun, 90.0)
+	sun.rotation_degrees = Vector3(float(theme.get("sun_pitch", -45.0)), rng.randf_range(0, 360), 0)
 	add_child(sun)
-	# 飘散的灵气光点
-	var motes := CPUParticles3D.new()
-	motes.amount = 160
-	motes.lifetime = 8.0
-	motes.mesh = FX.cube_mesh()
-	motes.material_override = FX.glow_mat(Color(0.8, 1.0, 0.9, 0.8))
-	motes.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	motes.emission_box_extents = Vector3(size * 0.5, 10, size * 0.5)
-	motes.gravity = Vector3(0, 0.15, 0)
-	motes.scale_amount_min = 0.04
-	motes.scale_amount_max = 0.09
-	motes.direction = Vector3.UP
-	motes.initial_velocity_max = 0.4
-	motes.position = Vector3(size * 0.5, 14, size * 0.5)
-	motes.preprocess = 8.0
-	add_child(motes)
+	Atmosphere.apply(e, sky_mat, sun, pal)
+	# 方块材质环境：关闭大地图的海拔积雪，水位、全局积雪按主题
+	var water := float(theme.get("water", -10.0))
+	BlockTex.set_env({"snow_params": Vector4(999.0, 1000.0, 360.0, 250.0), "snow_global": float(theme.get("snow", 0.0)),
+		"water_level": water + 0.6 if water > 0.0 else -100.0, "night_glow": 0.0})
+	# 环境粒子（灵气光点、萤火、雪、余烬……）
+	var fx := AmbientFX.new()
+	add_child(fx)
+	fx.setup_static(theme.get("fx", {"motes": 0.8}))
 
 
 func _build_terrain() -> void:
@@ -139,6 +155,9 @@ func _build_terrain() -> void:
 	h.resize(size * size)
 	tops.resize(size * size)
 	var palette: Array = theme["top"]
+	var surf_t: Array = theme["surf"]
+	var surf := PackedByteArray()
+	surf.resize(size * size)
 	var water := float(theme.get("water", -10.0))
 	var lava := float(theme.get("lava", -10.0))
 	for z in size:
@@ -150,39 +169,52 @@ func _build_terrain() -> void:
 			h[x + z * size] = hv
 			var cn := n2.get_noise_2d(x * 3.1, z * 3.1)
 			var col: Color = palette[0]
+			var st: int = surf_t[0]
 			if cn > 0.25:
 				col = palette[1]
+				st = surf_t[1]
 			elif cn < -0.3:
 				col = palette[2]
+				st = surf_t[2]
 			col = col.lightened(cn * 0.05)
 			# 方块级明暗抖动，避免大面积纯色
 			var jitter := (float((x * 73856093) ^ (z * 19349663)) / 2147483647.0)
 			col = col.lightened(fposmod(jitter * 13.0, 1.0) * 0.06 - 0.03)
 			if hv <= water:
-				col = Color(0.78, 0.74, 0.58)
+				st = int(theme.get("shore", TerrainGen.S_SAND))
+				col = (TerrainGen.SURF[st][0] as Color).lerp(col, 0.25)
 			if hv <= lava:
 				col = VoxelGrid.glow(Color(1.0, 0.45, 0.1), 0.9)
+				st = TerrainGen.S_LAVA
 			if e > 0.5:
-				col = (theme["side"] as Color).lerp(col, 0.4)
+				st = int(theme.get("edge", TerrainGen.S_STONE))
+				col = (TerrainGen.SURF[st][0] as Color).lerp(col, 0.3)
 			tops[x + z * size] = col
+			surf[x + z * size] = st
 	terrain = HeightfieldTerrain.new()
 	terrain.name = "Terrain"
 	terrain.side_color = theme["side"]
 	terrain.deep_color = theme["deep"]
 	add_child(terrain)
-	terrain.setup(size, size, h, tops)
-	# 水面
+	terrain.setup(size, size, h, tops, surf)
+	# 水面（与大地图同一水面着色器，水深取自地形高度图）
 	if water > 0.0:
 		var wm := MeshInstance3D.new()
 		var pm := PlaneMesh.new()
 		pm.size = Vector2(size, size)
 		wm.mesh = pm
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.2, 0.45, 0.65, 0.7)
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.roughness = 0.1
-		mat.metallic_specular = 0.8
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://assets/shaders/water.gdshader")
+		mat.set_shader_parameter("use_height_tex", true)
+		mat.set_shader_parameter("height_tex", ImageTexture.create_from_image(terrain.height_image()))
+		mat.set_shader_parameter("height_rect", Vector4(0, 0, size, size))
+		mat.set_shader_parameter("water_level", water + 0.6)
+		mat.set_shader_parameter("absorption", 0.5)
+		if str(def.get("theme", "")) == "ice":
+			mat.set_shader_parameter("shallow_color", Color(0.62, 0.84, 0.92))
+			mat.set_shader_parameter("deep_color", Color(0.10, 0.26, 0.40))
 		wm.material_override = mat
+		wm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		wm.position = Vector3(size * 0.5, water + 0.6, size * 0.5)
 		add_child(wm)
 	# 边界：看不见的墙

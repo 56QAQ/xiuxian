@@ -211,7 +211,7 @@ void fragment() {
 	AO = cav;
 	AO_LIGHT_AFFECT = 0.25;
 	SPECULAR = (flags & F_GLOSSY) != 0 ? 0.62 : 0.35;
-	METALLIC = (flags & F_METAL) != 0 ? 0.8 : 0.0;
+	METALLIC = (flags & F_METAL) != 0 ? 0.55 : 0.0;
 	NORMAL = normalize((VIEW_MATRIX * vec4(nw, 0.0)).xyz);
 	if ((flags & F_FOLIAGE) != 0) {
 		BACKLIGHT = c * 0.45;

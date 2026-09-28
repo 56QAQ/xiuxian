@@ -16,11 +16,17 @@ const DAY := {
 	"ambient": Color(0.50, 0.60, 0.72), "amb_e": 0.62, "fog": Color(0.74, 0.83, 0.90), "fog_d": 0.78, "fog_end": 1150.0,
 	"vol": Color(0.92, 0.94, 0.96), "vol_d": 0.0025, "ink": Color(0.46, 0.58, 0.66), "mist": Color(0.84, 0.90, 0.93),
 	"cloud_l": Color(1.0, 1.0, 0.98), "cloud_s": Color(0.68, 0.74, 0.84), "sun": Color(1.0, 0.96, 0.88), "sun_e": 1.7,
-	"exposure": 0.95, "cloud": 0.42,
+	"exposure": 0.88, "cloud": 0.45,
 }
 
 
+## 当前是否为 Forward+（SSAO、SSIL、体积雾只在 Forward+ 下开启，避免兼容渲染器下的警告）
+static func is_forward_plus() -> bool:
+	return RenderingServer.get_current_rendering_method() == "forward_plus"
+
+
 static func make_environment() -> Environment:
+	var fplus := is_forward_plus()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
@@ -33,9 +39,9 @@ static func make_environment() -> Environment:
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 0.95
 	if "tonemap_agx_contrast" in env:
-		env.set("tonemap_agx_contrast", 1.12)
+		env.set("tonemap_agx_contrast", 1.2)
 	# 屏幕空间环境光遮蔽与间接光
-	env.ssao_enabled = true
+	env.ssao_enabled = fplus
 	env.ssao_radius = 1.4
 	env.ssao_intensity = 1.5
 	env.ssao_power = 1.5
@@ -43,7 +49,7 @@ static func make_environment() -> Environment:
 	env.ssao_horizon = 0.06
 	env.ssao_light_affect = 0.12
 	env.ssao_ao_channel_affect = 0.25
-	env.ssil_enabled = true
+	env.ssil_enabled = fplus
 	env.ssil_radius = 6.0
 	env.ssil_intensity = 0.8
 	env.ssil_sharpness = 0.98
@@ -74,7 +80,7 @@ static func make_environment() -> Environment:
 	env.fog_height = 15.0
 	env.fog_height_density = 0.018
 	# 体积雾：光柱与晨雾（仅 Forward+）
-	env.volumetric_fog_enabled = true
+	env.volumetric_fog_enabled = fplus
 	env.volumetric_fog_density = 0.003
 	env.volumetric_fog_albedo = Color(0.92, 0.94, 0.96)
 	env.volumetric_fog_anisotropy = 0.6

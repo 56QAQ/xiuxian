@@ -79,6 +79,7 @@ const S_SNOWROCK := 19
 const S_FIELD := 20
 const S_CANOPY := 21     ## 远景 LOD 树冠
 const S_CANOPY_PINE := 22  ## 远景 LOD 针叶树冠
+const S_ICE := 23          ## 冰面（秘境）
 
 ## 地表调色（sRGB）：[顶面, 顶块侧面, 表土, 表土厚度, 岩层 A, 岩层 B]
 const SURF := [
@@ -96,7 +97,7 @@ const SURF := [
 	[Color(0.83, 0.67, 0.39), Color(0.80, 0.63, 0.36), Color(0.78, 0.60, 0.34), 4, Color(0.74, 0.54, 0.30), Color(0.87, 0.73, 0.47)],   # 黄土
 	[Color(0.67, 0.65, 0.33), Color(0.72, 0.61, 0.35), Color(0.78, 0.60, 0.34), 3, Color(0.74, 0.54, 0.30), Color(0.87, 0.73, 0.47)],   # 枯草
 	[Color(0.64, 0.56, 0.42), Color(0.56, 0.46, 0.33), Color(0.52, 0.38, 0.25), 2, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 道路
-	[Color(0.68, 0.67, 0.64), Color(0.62, 0.61, 0.58), Color(0.56, 0.55, 0.53), 1, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 铺地
+	[Color(0.60, 0.59, 0.56), Color(0.56, 0.55, 0.52), Color(0.52, 0.51, 0.49), 1, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 铺地
 	[Color(0.56, 0.54, 0.50), Color(0.52, 0.50, 0.47), Color(0.50, 0.48, 0.45), 2, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 砾石
 	[Color(0.24, 0.20, 0.18), Color(0.30, 0.24, 0.20), Color(0.40, 0.30, 0.22), 2, Color(0.46, 0.44, 0.42), Color(0.40, 0.38, 0.36)],   # 焦土
 	[Color(0.45, 0.60, 0.42), Color(0.46, 0.49, 0.36), Color(0.44, 0.36, 0.27), 2, Color(0.55, 0.58, 0.65), Color(0.47, 0.50, 0.58)],   # 高山草甸
@@ -105,6 +106,7 @@ const SURF := [
 	[Color(0.36, 0.26, 0.17), Color(0.40, 0.30, 0.20), Color(0.44, 0.33, 0.22), 2, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 药田
 	[Color(0.22, 0.44, 0.21), Color(0.20, 0.40, 0.19), Color(0.18, 0.36, 0.18), 7, Color(0.30, 0.22, 0.15), Color(0.30, 0.22, 0.15)],   # 树冠（LOD）
 	[Color(0.14, 0.32, 0.24), Color(0.13, 0.29, 0.22), Color(0.12, 0.27, 0.20), 7, Color(0.28, 0.21, 0.15), Color(0.28, 0.21, 0.15)],   # 针叶树冠（LOD）
+	[Color(0.70, 0.84, 0.95), Color(0.62, 0.78, 0.92), Color(0.78, 0.84, 0.92), 2, Color(0.55, 0.58, 0.65), Color(0.47, 0.50, 0.58)],   # 冰面
 ]
 
 ## 地表材质层（BlockIds）：[顶, 顶块侧面, 表土, 岩层 A, 岩层 B]
@@ -132,6 +134,7 @@ const SURF_LAYERS := [
 	[BlockIds.FARMLAND, BlockIds.DIRT, BlockIds.DIRT, BlockIds.STONE, BlockIds.STONE],                    # 药田
 	[BlockIds.LEAF_BROAD, BlockIds.LEAF_BROAD, BlockIds.LEAF_BROAD, BlockIds.LOG_BARK, BlockIds.LOG_BARK],  # 树冠（LOD）
 	[BlockIds.LEAF_PINE, BlockIds.LEAF_PINE, BlockIds.LEAF_PINE, BlockIds.LOG_BARK, BlockIds.LOG_BARK],     # 针叶树冠（LOD）
+	[BlockIds.ICE, BlockIds.ICE, BlockIds.PACKED_SNOW, BlockIds.GRANITE, BlockIds.ICE],                    # 冰面
 ]
 
 ## 线程安全的运行时副本（Godot 4.4 中并发读取 const（只读）Array 会共用一个临时 Variant，导致内存错误）
