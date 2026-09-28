@@ -35,6 +35,7 @@ var bolt_element: String = Elem.NONE
 var is_player: bool = false
 var trail: WeaponTrail
 var nameplate: Nameplate
+var _stale_rigs: Array[CharacterRig] = []
 
 # ---------------------------------------------------------------- 意图（控制器写入）
 var in_move: Vector3 = Vector3.ZERO
@@ -136,8 +137,14 @@ func setup(player_data: PlayerData, faction: String, player: bool = false) -> vo
 
 ## 重新生成外观（换装后调用）
 func rebuild_visual() -> void:
+	# 新外观在后台线程生成网格；生成完成前保留旧模型（冻结在原姿势）以免换装时闪烁
 	if rig != null:
-		rig.queue_free()
+		if rig.anim_event.is_connected(_on_anim_event):
+			rig.anim_event.disconnect(_on_anim_event)
+		if rig.meshes_pending():
+			rig.queue_free()
+		else:
+			_stale_rigs.append(rig)
 	var w := pd.equipped("weapon")
 	var ev := {}
 	weapon_kind = pd.weapon_kind()
@@ -149,9 +156,13 @@ func rebuild_visual() -> void:
 	# 凡品法衣不覆盖捏人时选择的服饰外观；灵品以上的法衣/战甲才改变外观
 	if armor != null and armor.get_grade() >= 1 and armor.def().get("equip", {}).has("visual"):
 		ev["outfit"] = armor.def()["equip"]["visual"]
-	rig = CharacterBuilder.build(appearance, ev)
+	rig = CharacterBuilder.build_async(appearance, ev)
 	rig.stance = weapon_kind
 	add_child(rig)
+	if rig.meshes_pending():
+		rig.meshes_ready.connect(_drop_stale_rigs, CONNECT_ONE_SHOT)
+	else:
+		_drop_stale_rigs()
 	rig.anim_event.connect(_on_anim_event)
 	if trail != null:
 		trail.rig = rig
@@ -159,6 +170,13 @@ func rebuild_visual() -> void:
 	bolt_element = str(tech.get("element", Elem.NONE))
 	if not Elem.is_valid(bolt_element):
 		bolt_element = pd.main_element()
+
+
+func _drop_stale_rigs() -> void:
+	for r in _stale_rigs:
+		if is_instance_valid(r):
+			r.queue_free()
+	_stale_rigs.clear()
 
 
 func refresh_stats() -> void:

@@ -29,6 +29,8 @@ func change_to(path: String, fade_time: float = 0.35) -> void:
 	await tw.finished
 	get_tree().paused = false
 	Engine.time_scale = 1.0
+	# 等后台体素网格任务（异步构建、远景 LOD）收尾，避免旧场景释放时仍有线程在跑
+	VoxMesh.finish_pending()
 	var err := get_tree().change_scene_to_file(path)
 	if err != OK:
 		push_error("切换场景失败 %s: %s" % [path, error_string(err)])
@@ -38,6 +40,10 @@ func change_to(path: String, fade_time: float = 0.35) -> void:
 	tw2.tween_property(_fade, "color:a", 0.0, fade_time)
 	await tw2.finished
 	_busy = false
+
+
+func _exit_tree() -> void:
+	VoxMesh.finish_pending()
 
 
 func goto_main_menu() -> void:

@@ -32,6 +32,10 @@ func _ready() -> void:
 		if director.has_method("step"):
 			director.call("step", root, i)
 		await get_tree().process_frame
+	# 异步体素网格（角色/妖兽/远景 LOD）收尾后再多走两帧，让模型显示出来
+	VoxMesh.finish_pending()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	if DisplayServer.get_name() == "headless":
 		print("无头模式：跳过截图")
 		get_tree().quit(0)

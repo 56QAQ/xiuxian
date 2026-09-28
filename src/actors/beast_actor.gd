@@ -81,7 +81,7 @@ func _build_rig() -> void:
 	var model := str(def.get("model", "wolf"))
 	if ResourceLoader.exists("res://src/voxel/beast_builder.gd"):
 		var bb: Variant = load("res://src/voxel/beast_builder.gd")
-		rig = bb.call("build", model, colors, size)
+		rig = bb.call("build_async", model, colors, size)
 	if rig == null:
 		rig = _fallback_rig(model, colors)
 	add_child(rig)
