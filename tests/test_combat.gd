@@ -74,10 +74,16 @@ func test_arena_smoke() -> void:
 	var player: HumanoidActor = arena.session.player
 	_ok(player != null and player.combatant.alive, "玩家生成")
 	_ok(arena.enemies.size() == 3, "敌人生成")
-	var max_hp := player.combatant.stat("max_hp")
-	var max_sh := player.combatant.stat("max_shield")
-	# 玩家自动出招：锁定最近的敌人，靠近并连段
+	var took := [false]
+	var dealt := [false]
+	player.combatant.damaged.connect(func(_i: Dictionary, _r: Dictionary) -> void: took[0] = true)
+	var on_hit := func(h: Dictionary) -> void:
+		if h.get("source") == player and str(h.get("kind", "")) != "dot":
+			dealt[0] = true
+	Events.hit_landed.connect(on_hit)
+	# 玩家自动出招：锁定最近的敌人，靠近并连段（保持存活以覆盖完整流程）
 	for i in 900:
+		player.combatant.hp = maxf(player.combatant.hp, player.combatant.stat("max_hp") * 0.5)
 		if player.combatant.alive:
 			var tgt := CombatUtil.nearest_hostile(player, 80.0)
 			player.lock_target = tgt
@@ -93,13 +99,11 @@ func test_arena_smoke() -> void:
 				if i % 150 == 60:
 					player.in_spell = 0
 		await get_tree().physics_frame
-	var took := player.combatant.hp < max_hp or player.combatant.shield < max_sh or not player.combatant.alive
-	_ok(took, "敌人对玩家发起了攻击")
-	var dealt := false
-	for e in arena.enemies:
-		if not is_instance_valid(e) or not e.combatant.alive or e.combatant.hp < e.combatant.stat("max_hp") or e.combatant.shield < e.combatant.stat("max_shield"):
-			dealt = true
-	_ok(dealt, "玩家对敌人造成了伤害")
+		if took[0] and dealt[0] and i > 300:
+			break
+	Events.hit_landed.disconnect(on_hit)
+	_ok(took[0], "敌人对玩家发起了攻击")
+	_ok(dealt[0], "玩家对敌人造成了伤害")
 	arena.queue_free()
 	HitStop.reset()
 	await get_tree().process_frame
