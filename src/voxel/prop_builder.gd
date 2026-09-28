@@ -198,6 +198,8 @@ static func grid(kind: String, v: int) -> VoxelGrid:
 # ================================================================ 树
 
 static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
+	if v == 2:
+		return _huangshan(rng, snowy)
 	var h := 20 + v * 3 + rng.randi_range(0, 2)
 	var w := 13
 	var g := MatGrid.new(w, h + 2, w)
@@ -231,10 +233,72 @@ static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
 							cc = snow
 							g.kind = K.K_SNOW
 						g.set_color(x, y0 + dy, z, cc)
-	g.kind = K.K_SNOW if snowy else K.K_PINE
-	g.set_color(c, h, c, snow if snowy else leaf)
+	# 树梢：从最上一层枝叶一直连到顶（避免悬空的方块）
+	var top0 := 4 + (tiers - 1) * (h - 6) / tiers + 2
+	var tip := mini(h, top0 + 2)
 	g.kind = K.K_PINE
-	g.set_color(c, h - 1, c, leaf)
+	for y in range(top0, tip):
+		g.set_color(c, y, c, leaf)
+	g.kind = K.K_SNOW if snowy else K.K_PINE
+	g.set_color(c, tip, c, snow if snowy else leaf)
+	return g
+
+
+## 黄山松（迎客松）：斜倚的虬干，几根平伸的枝，枝端是扁平如云的松针层（顶面亮、底面暗），可积雪
+static func _huangshan(rng: RandomNumberGenerator, snowy: bool) -> VoxelGrid:
+	var w := 25
+	var h := 22
+	var g := MatGrid.new(w, h, w)
+	var c := Vector3(w * 0.5, 0, w * 0.5)
+	var bark := Color(0.32, 0.23, 0.17)
+	var leaf := Color(0.15, 0.33, 0.25) if snowy else Color(0.17, 0.37, 0.25)
+	var snow := Color(0.93, 0.95, 1.0)
+	var lean := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized()
+	var trunk_h := 15
+	var prev := c
+	g.kind = K.K_BARK
+	for y in trunk_h:
+		var t := float(y) / trunk_h
+		var off := lean * (sin(t * 2.2) * 2.6 + t * 1.5)
+		var p := Vector3(c.x + off.x, y, c.z + off.y)
+		g.fill_line(prev, p, 1.0 - t * 0.35, bark)
+		prev = p
+	var top := prev
+	# 平伸的枝与云片状松针层
+	var pads: Array[Vector3] = []
+	var n_br := 4 + rng.randi() % 2
+	for i in n_br:
+		var y0 := int(lerpf(6.0, trunk_h - 1.0, float(i) / (n_br - 1)))
+		var t := float(y0) / trunk_h
+		var base := Vector3(c.x + lean.x * (sin(t * 2.2) * 2.6 + t * 1.5), y0, c.z + lean.y * (sin(t * 2.2) * 2.6 + t * 1.5))
+		var ang := rng.randf() * TAU if i > 0 else atan2(lean.y, lean.x) + PI
+		var ln := rng.randf_range(4.5, 8.0) * (1.0 - t * 0.3)
+		var tip := base + Vector3(cos(ang) * ln, rng.randf_range(0.5, 2.0), sin(ang) * ln)
+		g.kind = K.K_BARK
+		g.fill_line(base, tip, 0.5, bark)
+		pads.append(tip)
+	pads.append(top + Vector3(0, 1, 0))
+	for p in pads:
+		var rx := rng.randf_range(2.8, 4.2)
+		var rz := rng.randf_range(2.4, 3.6)
+		for z in range(int(p.z - rx - 1), int(p.z + rx + 2)):
+			for x in range(int(p.x - rx - 1), int(p.x + rx + 2)):
+				var d := Vector2((x + 0.5 - p.x) / rx, (z + 0.5 - p.z) / rz).length()
+				if d > 1.0 + _h(x, 0, z, 7) * 0.25:
+					continue
+				for dy in 2:
+					var y := int(p.y) + dy
+					var k := 0.88 + 0.2 * _h(x, y, z, 3)
+					g.kind = K.K_PINE
+					var cc := _cl(Color(leaf.r * k, leaf.g * k, leaf.b * k))
+					if dy == 0:
+						cc = cc.darkened(0.2)
+					elif snowy and _h(x, y, z, 9) > 0.2:
+						cc = snow
+						g.kind = K.K_SNOW
+					if dy == 1 and d > 0.85:
+						continue
+					g.set_color(x, y, z, cc)
 	return g
 
 

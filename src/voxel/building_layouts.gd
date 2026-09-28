@@ -164,7 +164,7 @@ static func sect_palette(sid: String) -> Dictionary:
 		"tianjian":
 			# 雪峰剑宗：黛瓦（顶面积雪由着色器生成）、银白粉墙、朱柱、青绿彩画
 			return BuildingBuilder.pal_with({"roof": c3.darkened(0.25), "roof2": c3.darkened(0.05), "pillar": Color(0.56, 0.13, 0.11), "wall": c1,
-				"trim": c2, "beam": Color(0.20, 0.38, 0.48), "stone": Color(0.76, 0.77, 0.80), "stone2": Color(0.60, 0.62, 0.66), "plaque": Color(0.14, 0.18, 0.28),
+				"trim": c2, "beam": Color(0.20, 0.38, 0.48), "stone": Color(0.66, 0.67, 0.70), "stone2": Color(0.54, 0.56, 0.60), "plaque": Color(0.14, 0.18, 0.28),
 				"paper": Color(0.94, 0.88, 0.72)})
 		"qingmu":
 			# 古林木宗：绿琉璃瓦、原木柱、米黄墙

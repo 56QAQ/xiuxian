@@ -40,7 +40,7 @@ const K_GRASS := 26         ## 草方块
 const K_DIRT := 27
 const K_COBBLE := 28
 const K_MOSSY := 29
-const K_SNOW := 30
+const K_SNOW := 30          ## 雪（道具/树上的积雪：各面均为雪）
 const K_ICE := 31
 const K_PINE := 32
 const K_MAPLE := 33
@@ -97,7 +97,7 @@ const KIND_FACES := [
 	[BlockIds.DIRT, BlockIds.DIRT, BlockIds.DIRT],
 	[BlockIds.COBBLE, BlockIds.COBBLE, BlockIds.COBBLE],
 	[BlockIds.MOSSY_STONE, BlockIds.MOSSY_STONE, BlockIds.MOSSY_STONE],
-	[BlockIds.SNOW, BlockIds.SNOW_SIDE, BlockIds.PACKED_SNOW],
+	[BlockIds.SNOW, BlockIds.SNOW, BlockIds.SNOW],
 	[BlockIds.ICE, BlockIds.ICE, BlockIds.ICE],
 	[BlockIds.LEAF_PINE, BlockIds.LEAF_PINE, BlockIds.LEAF_PINE],
 	[BlockIds.LEAF_MAPLE, BlockIds.LEAF_MAPLE, BlockIds.LEAF_MAPLE],

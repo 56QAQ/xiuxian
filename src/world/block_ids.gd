@@ -165,12 +165,12 @@ const INFO := [
 ## 每层线性空间平均色（着色器用于求细节比值）
 const AVG := [
 	Color(0.20813, 0.20813, 0.19832),  # plain
-	Color(0.05518, 0.16721, 0.02681),  # grass_top
-	Color(0.04942, 0.15323, 0.02525),  # grass_top_1
-	Color(0.03815, 0.12160, 0.02189),  # grass_top_2
+	Color(0.05401, 0.16660, 0.02666),  # grass_top
+	Color(0.05602, 0.17225, 0.02724),  # grass_top_1
+	Color(0.05365, 0.16511, 0.02648),  # grass_top_2
 	Color(0.12701, 0.06335, 0.03260),  # dirt
 	Color(0.13681, 0.06878, 0.03545),  # dirt_1
-	Color(0.10371, 0.07061, 0.02868),  # grass_side
+	Color(0.10385, 0.07769, 0.02910),  # grass_side
 	Color(0.13188, 0.14039, 0.13668),  # stone
 	Color(0.13128, 0.13975, 0.13792),  # stone_1
 	Color(0.12378, 0.13052, 0.12924),  # cobble
@@ -193,9 +193,9 @@ const AVG := [
 	Color(0.43176, 0.24426, 0.06537),  # rammed_earth
 	Color(0.05853, 0.03934, 0.02343),  # mud
 	Color(0.05179, 0.02843, 0.01396),  # farmland
-	Color(0.25838, 0.19269, 0.04828),  # dry_grass
-	Color(0.24371, 0.18219, 0.04549),  # dry_grass_1
-	Color(0.04195, 0.11053, 0.02056),  # forest_floor
+	Color(0.27007, 0.20085, 0.04969),  # dry_grass
+	Color(0.21833, 0.16878, 0.04084),  # dry_grass_1
+	Color(0.04387, 0.12108, 0.02184),  # forest_floor
 	Color(0.05146, 0.04032, 0.03883),  # ash
 	Color(0.13997, 0.15630, 0.17763),  # granite
 	Color(0.13908, 0.15514, 0.17612),  # granite_1
@@ -206,7 +206,7 @@ const AVG := [
 	Color(0.04564, 0.02368, 0.01235),  # log_bark
 	Color(0.22810, 0.11960, 0.04886),  # log_end
 	Color(0.02243, 0.07727, 0.01714),  # leaf_broad
-	Color(0.00614, 0.02279, 0.01310),  # leaf_pine
+	Color(0.00711, 0.02656, 0.01506),  # leaf_pine
 	Color(0.38328, 0.03384, 0.00758),  # leaf_maple
 	Color(0.04794, 0.13495, 0.02060),  # leaf_bamboo
 	Color(0.06701, 0.14362, 0.02121),  # leaf_willow

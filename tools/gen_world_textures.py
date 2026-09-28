@@ -216,27 +216,31 @@ def t_plain(rng, v):
 	return result(ramp(val, P_NEUTRAL, 0.4), 0.5 + (n - 0.5) * 0.2, 0.85)
 
 
-def grass_field(rng, pal_, density=60, base_v=0.46, spread=0.3):
-	"""草地：成簇的草丛（Voronoi 簇，簇间暗缝）+ 簇上亮叶尖，少量抖动。"""
+def grass_field(rng, pal_, density=110, base_v=0.46, spread=0.3):
+	"""草地：柔和的草丛明暗（大块低频 + 簇）+ 大量短草叶（亮叶尖、暗根），避免硬边以免远看像铺地。"""
 	base = fbm(rng, 4, 2)
-	f1, f2, idx, pts = voronoi(rng, 11)
-	tone = rng.uniform(-0.12, 0.12, len(pts))
-	edge = np.clip((f2 - f1) / 2.2, 0, 1)
-	clump = np.clip(1.0 - f1 / 6.0, 0, 1)
+	f1, f2, idx, pts = voronoi(rng, 7)
+	tone = rng.uniform(-0.07, 0.07, len(pts))
+	edge = np.clip((f2 - f1) / 3.0, 0, 1)
+	clump = np.clip(1.0 - f1 / 8.0, 0, 1)
 	b = np.zeros((S, S))
 	for _ in range(density):
 		x = rng.integers(0, S)
 		y = rng.integers(0, S)
-		if edge[y, x] < 0.35:
-			continue
-		ln = rng.integers(2, 4)
+		ln = rng.integers(2, 5)
 		lean = rng.choice([-1, 0, 0, 1])
+		bright = rng.random() < 0.7
 		for k in range(ln):
-			b[(y - k) % S, (x + (lean if k == ln - 1 else 0)) % S] = 1.0 - k * 0.25
-	val = base_v + spread * (base - 0.5) + tone[idx] + 0.14 * (clump - 0.5) + 0.2 * b - 0.22 * (1 - edge) ** 3
-	val += (rng.random((S, S)) - 0.5) * 0.04
-	h = np.clip(0.3 + 0.4 * clump + 0.3 * b - 0.3 * (1 - edge) ** 3, 0, 1)
-	return ramp(val, pal_, 0.3), h, b
+			xx = (x + (lean if k >= ln - 1 else 0)) % S
+			yy = (y - k) % S
+			if bright:
+				b[yy, xx] = max(b[yy, xx], 0.55 + 0.45 * k / max(ln - 1, 1))
+			else:
+				b[yy, xx] = min(b[yy, xx], -0.7)
+	val = base_v + spread * (base - 0.5) + tone[idx] + 0.08 * (clump - 0.5) + 0.16 * b - 0.06 * (1 - edge) ** 2
+	val += (rng.random((S, S)) - 0.5) * 0.03
+	h = np.clip(0.4 + 0.25 * clump + 0.35 * b, 0, 1)
+	return ramp(val, pal_, 0.25), h, b
 
 
 @reg("grass_top", variants=3, rot=2, flags=NATURAL)
@@ -850,20 +854,20 @@ def t_leaf_broad(rng, v):
 
 @reg("leaf_pine", rot=2, flags=F_WIND_LEAF | F_FOLIAGE | F_SNOW)
 def t_leaf_pine(rng, v):
-	val = np.full((S, S), 0.06)
+	val = np.full((S, S), 0.2)
 	h = np.zeros((S, S))
 	for _ in range(95):
 		x, y = rng.integers(0, S, 2)
 		dx = rng.choice([-1, 1])
 		ln = int(rng.integers(3, 6))
-		base = rng.uniform(0.35, 0.8)
+		base = rng.uniform(0.38, 0.68)
 		for k in range(ln):
 			px = (x + k * dx) % S
 			py = (y + k // 2) % S
-			val[py, px] = base - k * 0.07
+			val[py, px] = base - k * 0.05
 			h[py, px] = 0.9 - k * 0.1
 			if k == 0:
-				val[(py + 1) % S, px] = base * 0.55
+				val[(py + 1) % S, px] = base * 0.7
 	rgb = ramp(val, P_PINE, 0.35)
 	return result(rgb, h, 0.85)
 
