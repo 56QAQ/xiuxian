@@ -290,13 +290,13 @@ static func _quad(rig: BeastRig, model: String, c1: Color, c2: Color, c3: Color,
 		e.set_meta("spring_length", 0.15)
 		head.add_child(e)
 		_mesh(e, "q_ear|" + key, func() -> ArrayMesh:
-			var cv := VoxCanvas.new(Vector3i(-4, -1, -3), Vector3i(3, 9, 2))
-			var h := 6
-			var w := 3.0
+			var cv := VoxCanvas.new(Vector3i(-5, -1, -3), Vector3i(4, 11, 2))
+			var h := 8
+			var w := 3.4
 			match ears:
 				"fox":
-					h = 8
-					w = 3.6
+					h = 9
+					w = 3.8
 				"small":
 					h = 3
 					w = 2.5
@@ -308,7 +308,7 @@ static func _quad(rig: BeastRig, model: String, c1: Color, c2: Color, c3: Color,
 				var hw := w * (1.0 - t) + 0.4
 				if ears == "round":
 					hw = w * sqrt(maxf(1.0 - pow(t * 1.1, 2.0), 0.05))
-				for x in range(-4, 4):
+				for x in range(-5, 5):
 					if absf(x + 0.5) <= hw:
 						cv.put(x, y, 0, VoxCanvas.tone(c1 if t < 0.7 or model != "fox" else c3, 0.9))
 						cv.put(x, y, 1, VoxCanvas.tone(c1, 0.85))
@@ -621,8 +621,8 @@ static func _crane(rig: BeastRig, white: Color, black: Color, red: Color, key: S
 				for y in range(y0 - 2, y0 + 2):
 					cv.put(x, y, z, VoxCanvas.tone(black, 0.9 + 0.2 * float((x + z) & 1)))
 		return VoxMesh.build_one(cv, VOXEL))
-	var n0 := _bone(hips, "neck_0", Vector3(0, 4, -8), Vector3(35, 0, 0))
-	var n1 := _bone(n0, "neck_1", Vector3(0, 0, -9), Vector3(-45, 0, 0))
+	var n0 := _bone(hips, "neck_0", Vector3(0, 4, -8), Vector3(62, 0, 0))
+	var n1 := _bone(n0, "neck_1", Vector3(0, 0, -9), Vector3(-30, 0, 0))
 	for nb in [[n0, "c_n0"], [n1, "c_n1"]]:
 		var node: Node3D = nb[0]
 		var is_upper: bool = str(nb[1]) == "c_n1"
@@ -633,7 +633,7 @@ static func _crane(rig: BeastRig, white: Color, black: Color, red: Color, key: S
 					for x in range(-2, 2):
 						cv.put(x, y, z, VoxCanvas.tone(black if is_upper else white, 0.92 + 0.1 * float((x + y + z) & 1)))
 			return VoxMesh.build_one(cv, VOXEL))
-	var head := _bone(n1, "head", Vector3(0, 0, -10), Vector3(10, 0, 0))
+	var head := _bone(n1, "head", Vector3(0, 0, -10), Vector3(-28, 0, 0))
 	_mesh(head, "c_head|" + key, func() -> ArrayMesh:
 		var cv := VoxCanvas.new(Vector3i(-4, -4, -16), Vector3i(3, 5, 4))
 		cv.box(Vector3i(-2, -2, -4), Vector3i(1, 2, 1), black)

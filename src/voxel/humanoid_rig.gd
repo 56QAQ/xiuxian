@@ -53,11 +53,18 @@ func _process(delta: float) -> void:
 				_blink_timer = 2.2 + float(_rng_seed % 35) / 10.0
 
 
-## 在弹簧更新之前调整被驱动骨骼的静止方向
+## 在弹簧更新之前调整被驱动骨骼的静止方向；之后按 meta "spring_damping" 追加阻尼（抑制起步/急停时的过度甩动）
 func _update_springs(delta: float) -> void:
 	if not _drivers.is_empty():
 		_drive(delta)
 	super._update_springs(delta)
+	for s in _springs:
+		var node: Node3D = s["bone"]
+		if not is_instance_valid(node):
+			continue
+		var d := float(node.get_meta("spring_damping", 0.12))
+		if d > 0.0:
+			s["prev"] = (s["prev"] as Vector3).lerp(s["tip"], d)
 
 
 ## 腿的前摆角（弧度，前为正）与外展角（外为正）

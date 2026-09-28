@@ -423,7 +423,9 @@ static func _banner(root: Node3D, v: Dictionary, z0: int, gold: Color, gc: Color
 			var d := absi(z - cz) + absi(y - cy)
 			if d == R or d == R - 1:
 				var wave2 := int(round(sin(z * 0.45) * 0.8))
-				cv.put(wave2 - 1, y, z, gold if d == R else VoxCanvas.tone(gold, 0.8))
+				var fc2 := gold if d == R else VoxCanvas.tone(gold, 0.8)
+				cv.put(wave2 - 1, y, z, fc2)
+				cv.put(wave2 + 1, y, z, fc2)
 	var glyph: Array = GLYPHS.get(elem, GLYPHS["none"])
 	for r in 7:
 		var row: String = glyph[r]
@@ -432,7 +434,11 @@ static func _banner(root: Node3D, v: Dictionary, z0: int, gold: Color, gc: Color
 				var z2 := cz - 3 + k
 				var y2 := cy + 3 - r
 				var wave3 := int(round(sin(z2 * 0.45) * 0.8))
-				cv.put(wave3 - 1, y2, z2, VoxelGrid.glow(ghi, 0.15) if flame else gold)
+				var gcol := VoxelGrid.glow(ghi, 0.15) if flame else gold
+				cv.put(wave3 - 1, y2, z2, gcol)
+				# 背面镜像（从另一侧看字不反）
+				var z3 := cz + 3 - k
+				cv.put(int(round(sin(z3 * 0.45) * 0.8)) + 1, y2, z3, gcol)
 	# 火焰边：沿下缘与靠枪头一侧（z=0 边）向外窜出的发光火舌（前后两层，长短交错）
 	if flame:
 		var fc := [Color("a01808"), Color("e0400c"), Color("ff7a18"), Color("ffc030"), Color("fff0a0")]

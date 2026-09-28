@@ -87,7 +87,6 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 	var k0: float = AO_CURVE[0]
 	var k1: float = AO_CURVE[1]
 	var k2: float = AO_CURVE[2]
-	var aok := PackedFloat32Array([k0, k1, k2, 1.0])
 	for z in range(1, sz - 1):
 		for y in range(1, sy - 1):
 			var row := y * sx + z * sxy
@@ -100,6 +99,8 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 				if d[i + 1] != 0 and d[i - 1] != 0 and d[i + sx] != 0 and d[i - sx] != 0 and d[i + sxy] != 0 and d[i - sxy] != 0:
 					continue
 				var col := Color.hex(raw & 0xFFFFFFFF)
+				# 四个 AO 等级的明暗色（每个体素只算一次）
+				var shaded: Array[Color] = [Color(col.r * k0, col.g * k0, col.b * k0, col.a), Color(col.r * k1, col.g * k1, col.b * k1, col.a), Color(col.r * k2, col.g * k2, col.b * k2, col.a), col]
 				var pmin := origin + Vector3(x, y, z) * vs
 				for f in 6:
 					var ni := i + nof[f]
@@ -128,14 +129,10 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 					normals.append(nf)
 					normals.append(nf)
 					normals.append(nf)
-					var m0 := aok[a0]
-					var m1 := aok[a1]
-					var m2 := aok[a2]
-					var m3 := aok[a3]
-					colors.append(Color(col.r * m0, col.g * m0, col.b * m0, col.a))
-					colors.append(Color(col.r * m1, col.g * m1, col.b * m1, col.a))
-					colors.append(Color(col.r * m2, col.g * m2, col.b * m2, col.a))
-					colors.append(Color(col.r * m3, col.g * m3, col.b * m3, col.a))
+					colors.append(shaded[a0])
+					colors.append(shaded[a1])
+					colors.append(shaded[a2])
+					colors.append(shaded[a3])
 					if a0 + a2 >= a1 + a3:
 						indices.append(base)
 						indices.append(base + 1)

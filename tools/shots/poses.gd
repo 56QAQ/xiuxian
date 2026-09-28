@@ -12,9 +12,9 @@ const COMBAT := [
 	["stagger", 0.1, "saber_iron", {"gender": "male", "outfit": "armor", "hair_style": "short", "ears": "human", "hair_color": "#1a1a22"}],
 ]
 const MOVE := [
-	["run", 0.6, "flag_spear_fire", {}],
-	["boost", 0.6, "sword_green", {"hair_style": "long", "outfit": "robe", "ears": "human", "hair_color": "#1a1a22", "hair_color2": "#50506a"}],
-	["fly", 0.8, "", {"hair_style": "flowing", "outfit": "robe", "ears": "elf", "hair_color": "#f0f0f4", "hair_color2": "#c8d4ff"}],
+	["run", 1.6, "flag_spear_fire", {}],
+	["boost", 1.2, "sword_green", {"hair_style": "long", "outfit": "robe", "ears": "human", "hair_color": "#1a1a22", "hair_color2": "#50506a"}],
+	["fly", 1.4, "", {"hair_style": "flowing", "outfit": "robe", "ears": "elf", "hair_color": "#f0f0f4", "hair_color2": "#c8d4ff"}],
 	["meditate", 1.0, "", {"gender": "male", "hair_style": "bun", "outfit": "robe", "ears": "human", "hair_color": "#1a1a22", "outfit_colors": ["#3a6ad0", "#1a2a50", "#c8e0ff"]}],
 	["death", 1.4, "saber_iron", {"gender": "male", "outfit": "martial", "hair_style": "ponytail", "ears": "human", "hair_color": "#e8c060", "hair_color2": "#fff0a0", "outfit_colors": ["#2a2a30", "#101014", "#c02030"]}],
 ]
@@ -34,7 +34,7 @@ func frames() -> int:
 func build(root: Node) -> void:
 	var list: Array = MOVE if _arg("set") == "move" else COMBAT
 	var n := list.size()
-	ArtStudio.setup(root, Vector3(0, 1.3, 4.6 + n * 0.9), Vector3(0, 0.85, 0), 34.0)
+	ArtStudio.setup(root, Vector3(0, 1.3, 3.2 + n * 0.8), Vector3(0, 0.85, 0), 36.0)
 	var dt := 1.0 / 60.0
 	for i in n:
 		var e: Array = list[i]

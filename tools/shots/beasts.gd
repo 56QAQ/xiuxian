@@ -39,7 +39,7 @@ func build(root: Node) -> void:
 			root.add_child(r)
 			_rigs.append(r)
 		return
-	ArtStudio.setup(root, Vector3(0.5, 2.6, 8.8), Vector3(0.3, 0.7, 0), 34.0)
+	ArtStudio.setup(root, Vector3(0.2, 2.8, 8.4), Vector3(0.1, 0.6, -0.3), 38.0)
 	var list := [
 		["wolf", DB.enemies.get("wolf_grey", {}).get("colors", []), 1.0],
 		["fox", DB.enemies.get("fox_flame", {}).get("colors", []), 0.9],
@@ -50,17 +50,35 @@ func build(root: Node) -> void:
 		["crane", [], 1.0],
 		["spider", [], 1.0],
 	]
-	var pos := [Vector3(-3.4, 0, 0.6), Vector3(-1.6, 0, 1.2), Vector3(0.2, 0, 0.6), Vector3(2.4, 0, -0.4), Vector3(-2.8, 0, -2.2), Vector3(-0.4, 0, -1.6), Vector3(1.4, 0, -2.4), Vector3(4.0, 0, 1.0)]
+	# 顺序：wolf fox boar golem bear snake crane spider
+	var pos := [Vector3(-3.3, 0, -0.2), Vector3(-2.2, 0, 1.6), Vector3(-0.6, 0, -0.6), Vector3(2.9, 0, -1.4), Vector3(-2.8, 0, -2.6), Vector3(0.1, 0, 1.7), Vector3(1.0, 0, -2.6), Vector3(3.0, 0, 1.3)]
 	for i in list.size():
 		var rig := BeastBuilder.build(str(list[i][0]), list[i][1], float(list[i][2]))
 		rig.position = pos[i]
-		rig.rotation_degrees.y = 150.0 if str(list[i][0]) != "golem" else 195.0
+		rig.rotation_degrees.y = 150.0 if str(list[i][0]) != "golem" else 200.0
+		if str(list[i][0]) == "snake":
+			rig.rotation_degrees.y = 110.0
 		root.add_child(rig)
 		_rigs.append(rig)
 
 
 func step(_root: Node, frame: int) -> void:
 	if _anim == "":
+		return
+	# --at=秒：定格在剪辑的指定时间（手动推进，结果与帧率无关）
+	var at := float(_arg("at", "-1"))
+	if at >= 0.0:
+		if frame == 1:
+			for r in _rigs:
+				var rig2 := r as CharacterRig
+				rig2.set_process(false)
+				for k in 10:
+					rig2._process(1.0 / 60.0)
+				rig2.play(_anim)
+				var t := 0.0
+				while t < at:
+					rig2._process(1.0 / 60.0)
+					t += 1.0 / 60.0
 		return
 	for r in _rigs:
 		var rig := r as CharacterRig

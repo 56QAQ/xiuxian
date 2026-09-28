@@ -113,9 +113,17 @@ static func paint_cap(cv: VoxCanvas, s: CharSpec) -> void:
 				cv.put(7, y, z, strand_col(s, 200 + z, y))
 		for x in range(-8, 8):
 			cv.put(x, y, 7, strand_col(s, 300 + x, y))
-	for y in range(hairline, 17):
-		for x in range(-8, 8):
-			cv.put(x, y, -8, dark if y < 16 else strand_col(s, x, y))
+	# 前额：有刘海遮挡处画暗色（刘海缝隙里透出的头发阴影），无刘海处按发际线画梳向后的头发
+	for x in range(-8, 8):
+		var tip_f: int = bangs[x + 9]
+		if has_mark and (x == -1 or x == 0):
+			tip_f = maxi(tip_f, 15)
+		for y in range(hairline, 17):
+			if tip_f <= 17:
+				if y >= tip_f:
+					cv.put(x, y, -8, dark if y < 16 else strand_col(s, x, y))
+			else:
+				cv.put(x, y, -8, strand_col(s, x, y))
 	# 2) 第一层：顶 y=18、两侧 x=-9/8、后 z=8
 	for z in range(-8, 9):
 		for x in range(-8, 8):

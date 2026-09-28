@@ -120,12 +120,20 @@ func box(a: Vector3i, b: Vector3i, c: Color, noise: float = 0.0) -> void:
 				for x in range(x0, x1 + 1):
 					data[base + x] = v
 	else:
+		# 只有盒子表面的体素需要噪声（内部不可见，直接填基色）
 		var t := tones4(c, noise)
+		var mid := t[2]
 		for z in range(z0, z1 + 1):
 			for y in range(y0, y1 + 1):
 				var base := sx * (y - lo.y + 1) + sxy * (z - lo.z + 1) - lo.x + 1
-				for x in range(x0, x1 + 1):
-					data[base + x] = t[h3(x, y, z) & 3]
+				if z == z0 or z == z1 or y == y0 or y == y1:
+					for x in range(x0, x1 + 1):
+						data[base + x] = t[h3(x, y, z) & 3]
+				else:
+					for x in range(x0 + 1, x1):
+						data[base + x] = mid
+					data[base + x0] = t[h3(x0, y, z) & 3]
+					data[base + x1] = t[h3(x1, y, z) & 3]
 
 
 ## 只重新上色已有体素

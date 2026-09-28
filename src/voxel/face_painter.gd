@@ -91,7 +91,7 @@ static func paint_face(cv: VoxCanvas, s: CharSpec) -> void:
 		"W": Color(0.97, 0.96, 0.95),
 		"D": Color(ec.r * 0.42, ec.g * 0.36, ec.b * 0.40),
 		"I": ec,
-		"B": ec.lerp(Color(1.0, 0.95, 0.6), 0.38) if ec.v > 0.35 else ec.lerp(Color(0.8, 0.8, 0.9), 0.35),
+		"B": _iris_light(ec),
 		"P": Color(ec.r * 0.28, ec.g * 0.2, ec.b * 0.22),
 		"H": Color(1, 1, 1),
 		"s": s.skin.lerp(s.skin_sh, 0.55),
@@ -142,6 +142,15 @@ static func paint_face(cv: VoxCanvas, s: CharSpec) -> void:
 			cv.put(x, 5, -8, blush)
 	# 额心花钿
 	paint_mark(cv, s, str(ap.get("mark", "none")))
+
+
+## 虹膜下部亮色：暖色偏金黄，冷色提亮，暗色（黑瞳）偏灰蓝
+static func _iris_light(ec: Color) -> Color:
+	if ec.v < 0.35:
+		return ec.lerp(Color(0.62, 0.64, 0.76), 0.4)
+	if ec.h < 0.17 or ec.h > 0.93:
+		return ec.lerp(Color(1.0, 0.95, 0.6), 0.38)
+	return ec.lightened(0.32)
 
 
 static func paint_mark(cv: VoxCanvas, s: CharSpec, mark: String) -> void:
