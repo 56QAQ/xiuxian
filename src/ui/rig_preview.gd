@@ -38,11 +38,14 @@ var _yaw_vel: float = 0.0
 var _cam_look: Vector3 = Vector3(0, 0.95, 0)
 var _cam_dist: float = 3.6
 var _backdrop: MeshInstance3D
+## 石台网格与月晕着色器在所有预览间共享（捏人、角色面板、储物袋、对话头像）
+static var _pedestal_cache: Dictionary = {}
+static var _backdrop_shader: Shader
 
 ## look：注视点（米，按身高 1.0 的角色）；half：需要完整入镜的半高/半宽（米）；fov：竖直视角；h：镜头相对注视点的高度
 ## 距离按视口宽高比自动求出（窄视口也不会裁掉头部）
 const FRAMES := {
-	"full": {"look": Vector3(0, 0.96, 0), "half": Vector2(1.2, 0.72), "fov": 30.0, "h": 0.2},
+	"full": {"look": Vector3(0, 1.0, 0), "half": Vector2(1.3, 0.75), "fov": 30.0, "h": 0.2},
 	"upper": {"look": Vector3(0, 1.28, 0), "half": Vector2(0.6, 0.46), "fov": 30.0, "h": 0.06},
 	"bust": {"look": Vector3(0, 1.5, 0), "half": Vector2(0.33, 0.3), "fov": 27.0, "h": 0.03},
 	"face": {"look": Vector3(0, 1.52, 0), "half": Vector2(0.22, 0.24), "fov": 26.0, "h": 0.02},
@@ -204,10 +207,11 @@ func _make_backdrop() -> MeshInstance3D:
 	var q := QuadMesh.new()
 	q.size = Vector2(3.4, 3.4)
 	_backdrop.mesh = q
-	var sh := Shader.new()
-	sh.code = _BACKDROP_SHADER
+	if _backdrop_shader == null:
+		_backdrop_shader = Shader.new()
+		_backdrop_shader.code = _BACKDROP_SHADER
 	var m := ShaderMaterial.new()
-	m.shader = sh
+	m.shader = _backdrop_shader
 	_backdrop.material_override = m
 	_backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_backdrop.position = Vector3(0, 1.05, -1.6)
@@ -357,6 +361,17 @@ func _gui_input(event: InputEvent) -> void:
 
 ## 体素石台：墨玉圆台（上下两层、侧面竖纹）+ 金边 + 台面云纹金环与中心太极点。radius 为旧单位（0.025m）半径
 static func build_pedestal(radius: int = 20, seed_value: int = 1) -> Node3D:
+	var pkey := "%d|%d" % [radius, seed_value]
+	if not _pedestal_cache.has(pkey):
+		_pedestal_cache[pkey] = _pedestal_mesh(radius, seed_value)
+	var mi := MeshInstance3D.new()
+	mi.mesh = _pedestal_cache[pkey]
+	mi.name = "Pedestal"
+	mi.position.y = 0.1 - 1.0 * CharacterBuilder.VOXEL
+	return mi
+
+
+static func _pedestal_mesh(radius: int, seed_value: int) -> ArrayMesh:
 	var R := radius * 2
 	var mk := func() -> Variant:
 		var cv := VoxCanvas.new(Vector3i(-R - 2, -8, -R - 2), Vector3i(R + 1, 1, R + 1))
@@ -407,8 +422,4 @@ static func build_pedestal(radius: int = 20, seed_value: int = 1) -> Node3D:
 						cv.putm(x, 0, z, gold, VoxCanvas.M_GOLD)
 		return cv
 	var cv0: VoxCanvas = mk.call()
-	var mi := MeshInstance3D.new()
-	mi.mesh = VoxMesh.build_one(cv0, CharacterBuilder.VOXEL)
-	mi.name = "Pedestal"
-	mi.position.y = 0.1 - 1.0 * CharacterBuilder.VOXEL
-	return mi
+	return VoxMesh.build_one(cv0, CharacterBuilder.VOXEL)

@@ -420,7 +420,9 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 					continue
 				var col := Color.hex(raw & 0xFFFFFFFF)
 				var pmin := origin + Vector3(x, y, z) * vs
-				var shaded: Array[Color] = []
+				var c0 := Color(col.r * k0, col.g * k0, col.b * k0, col.a)
+				var c1 := Color(col.r * k1, col.g * k1, col.b * k1, col.a)
+				var c2 := Color(col.r * k2, col.g * k2, col.b * k2, col.a)
 				for f in 6:
 					var bit := 1 << f
 					if um & bit:
@@ -499,8 +501,6 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 									jj2 += mo
 								wid += 1
 								ls2 += so
-					if shaded.is_empty():
-						shaded = [Color(col.r * k0, col.g * k0, col.b * k0, col.a), Color(col.r * k1, col.g * k1, col.b * k1, col.a), Color(col.r * k2, col.g * k2, col.b * k2, col.a), col]
 					var base := verts.size()
 					var pf: Vector3 = pmin + pofs[f]
 					var uf: Vector3 = uvec[f]
@@ -520,10 +520,10 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 					normals.append(nn)
 					normals.append(nn)
 					normals.append(nn)
-					colors.append(shaded[a0])
-					colors.append(shaded[a1])
-					colors.append(shaded[a2])
-					colors.append(shaded[a3])
+					colors.append(col if a0 == 3 else (c2 if a0 == 2 else (c1 if a0 == 1 else c0)))
+					colors.append(col if a1 == 3 else (c2 if a1 == 2 else (c1 if a1 == 1 else c0)))
+					colors.append(col if a2 == 3 else (c2 if a2 == 2 else (c1 if a2 == 1 else c0)))
+					colors.append(col if a3 == 3 else (c2 if a3 == 2 else (c1 if a3 == 1 else c0)))
 					if a0 + a2 >= a1 + a3:
 						indices.append(base)
 						indices.append(base + 1)

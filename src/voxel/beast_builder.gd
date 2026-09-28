@@ -108,10 +108,37 @@ static func _fur(c_main: Color, c_back: Color, c_belly: Color, yrel: float, x: i
 	return VoxCanvas.tone(c, k)
 
 
+## 毛色编码表（按当前材质）：索引 = (区 * 4 + 明暗级) * 2 + 毛丝暗纹；区 0 主 1 背 2 腹 3 主背过渡
+static func _fur_table(cv: VoxCanvas, cm: Color, cb: Color, cl: Color) -> PackedInt32Array:
+	var t := PackedInt32Array()
+	var zones: Array[Color] = [cm, cb, cl, cm.lerp(cb, 0.5)]
+	for zc in zones:
+		for kl in 4:
+			var k := 0.9 + 0.14 * float(kl) / 3.0
+			t.append(cv.e(VoxCanvas.tone(zc, k)))
+			t.append(cv.e(VoxCanvas.tone(zc, k * 0.86)))
+	return t
+
+
+## 与 _fur 相同的分区规则，返回 _fur_table 的索引
+static func _fur_idx(yrel: float, x: int, y: int, z: int, back_t: float, belly_t: float) -> int:
+	var h := VoxCanvas.h3(x >> 1, y >> 1, z >> 1)
+	var zone := 0
+	if yrel > back_t + float(h & 1) * 0.1:
+		zone = 1
+	elif yrel < belly_t - float((h >> 1) & 1) * 0.08:
+		zone = 2
+	elif yrel > back_t - 0.12 and (h & 6) == 0:
+		zone = 3
+	var streak := 1 if (VoxCanvas.h3(x, 7, z) & 7) == 0 else 0
+	return ((zone * 4 + ((h >> 2) & 3)) << 1) | streak
+
+
 ## 带毛色分区的椭球（只给外壳着色，内部直接填暗色）；tufts > 0 时上半表面随机长出毛簇
 static func _blob(cv: VoxCanvas, c: Vector3, r: Vector3, cm: Color, cb: Color, cl: Color, back_t: float = 0.45, belly_t: float = -0.4, tufts: int = 0) -> void:
 	cv.set_mat(VoxCanvas.M_FUR)
 	var v_in := cv.e(VoxCanvas.tone(cm, 0.6))
+	var ft := _fur_table(cv, cm, cb, cl)
 	var lo := Vector3i((c - r).floor())
 	var hi := Vector3i((c + r).ceil())
 	var inv := Vector3(1.0 / r.x, 1.0 / r.y, 1.0 / r.z)
@@ -137,7 +164,7 @@ static func _blob(cv: VoxCanvas, c: Vector3, r: Vector3, cm: Color, cb: Color, c
 				if d2 < thr:
 					d[row + x] = v_in
 					continue
-				d[row + x] = cv.e(_fur(cm, cb, cl, dy, x, y, z, back_t, belly_t))
+				d[row + x] = ft[_fur_idx(dy, x, y, z, back_t, belly_t)]
 				if tufts > 0 and d2 > 0.86 and dy > -0.15 and VoxCanvas.h3(x, y, z) % tufts == 0:
 					tuft_pts.append(Vector3i(x, y, z))
 	# 毛簇：沿外法线主轴伸出 1~2 格，尖端略亮
@@ -158,6 +185,52 @@ static func _blob(cv: VoxCanvas, c: Vector3, r: Vector3, cm: Color, cb: Color, c
 			if (VoxCanvas.h3(p.x, p.z, p.y) & 3) == 0:
 				var q2 := q + ax + (Vector3i(0, 0, 1) if ax.y != 0 else Vector3i.ZERO)
 				cv.put(q2.x, q2.y, q2.z, VoxCanvas.tone(col, 1.12))
+
+
+## 胶囊体（轴沿 Z，z_a > z_b，截面椭圆半径 r，两端半径 cap 的圆头），毛皮外壳着色 + 毛簇；一遍填充
+static func _capsule_z(cv: VoxCanvas, z_a: float, z_b: float, r: Vector2, cap: float, cm: Color, cb: Color, cl: Color, back_t: float, belly_t: float, tufts: int) -> void:
+	cv.set_mat(VoxCanvas.M_FUR)
+	var v_in := cv.e(VoxCanvas.tone(cm, 0.6))
+	var ft := _fur_table(cv, cm, cb, cl)
+	var d := cv.data
+	var sh := 1.0 - 2.6 / minf(r.x, r.y)
+	var thr := sh * sh if sh > 0.0 else -1.0
+	var zlo := maxi(int(floor(z_b - cap)), cv.lo.z)
+	var zhi := mini(int(ceil(z_a + cap)), cv.hi.z)
+	var tuft_pts: Array[Vector3i] = []
+	for z in range(zlo, zhi + 1):
+		var zc := z + 0.5
+		# 端头收圆：到端面的距离决定截面缩放
+		var k := 1.0
+		if zc > z_a:
+			k = sqrt(maxf(1.0 - pow((zc - z_a) / cap, 2.0), 0.0))
+		elif zc < z_b:
+			k = sqrt(maxf(1.0 - pow((z_b - zc) / cap, 2.0), 0.0))
+		if k <= 0.05:
+			continue
+		var rx := r.x * k
+		var ry := r.y * k
+		for y in range(maxi(int(floor(-ry)), cv.lo.y), mini(int(ceil(ry)), cv.hi.y) + 1):
+			var dy := (y + 0.5) / ry
+			if absf(dy) > 1.0:
+				continue
+			var row := cv.sx * (y - cv.lo.y + 1) + cv.sxy * (z - cv.lo.z + 1) + 1 - cv.lo.x
+			for x in range(maxi(int(floor(-rx)), cv.lo.x), mini(int(ceil(rx)), cv.hi.x) + 1):
+				var dx := (x + 0.5) / rx
+				var d2 := dx * dx + dy * dy
+				if d2 > 1.0:
+					continue
+				if d2 < thr:
+					d[row + x] = v_in
+					continue
+				d[row + x] = ft[_fur_idx((y + 0.5) / r.y, x, y, z, back_t, belly_t)]
+				if tufts > 0 and d2 > 0.86 and dy > -0.15 and VoxCanvas.h3(x, y, z) % tufts == 0:
+					tuft_pts.append(Vector3i(x, y, z))
+	for p in tuft_pts:
+		var up := Vector3i(0, 1, 0) if p.y > 0 else Vector3i(signi(p.x) if p.x != 0 else 1, 0, 0)
+		var q := p + up
+		if not cv.solid(q.x, q.y, q.z):
+			cv.put(q.x, q.y, q.z, VoxCanvas.tone(_fur(cm, cb, cl, float(p.y) / r.y, p.x, p.y, p.z, back_t, belly_t), 1.08))
 
 
 ## 圆柱段（沿 -Y）：从 y0 到 y1，半径 rx/rz 线性变化（毛皮外壳着色）
@@ -287,14 +360,16 @@ static func _quad(rig: BeastRig, model: String, c1: Color, c2: Color, c3: Color,
 	var spine := _bone(hips, "spine", Vector3(0, 2, -L * 0.55))
 	# 后躯
 	_mesh(hips, "q_rear|" + key, func() -> Variant:
-		var cv := VoxCanvas.new(Vector3i(-26, -24, -44), Vector3i(25, 30, 28))
+		var rx := int(ceil(rear_r.x)) + 3
+		var cv := VoxCanvas.new(Vector3i(-rx, int(3.0 - rear_r.y) - 3, int(-4.0 - rear_r.z) - 3), Vector3i(rx - 1, int(3.0 + rear_r.y) + 8, int(-4.0 + rear_r.z) + 3))
 		_blob(cv, Vector3(0, 3.0, -4.0), rear_r, c1, back, belly, 0.45, -0.4, tufts)
 		if mane:
 			_bristles(cv, int(rear_r.y) + 2, -32, 4, c2.darkened(0.35))
 		return cv)
 	# 前躯（胸更深）
 	_mesh(spine, "q_chest|" + key, func() -> Variant:
-		var cv := VoxCanvas.new(Vector3i(-30, -30, -28), Vector3i(29, 34, 36))
+		var cx := int(ceil(chest_r.x)) + (6 if ruff else 3)
+		var cv := VoxCanvas.new(Vector3i(-cx, int(-chest_r.y) - 3, int(4.0 - chest_r.z) - (8 if ruff else 3)), Vector3i(cx - 1, int(chest_r.y) + (14 if model == "bear" else 8), int(4.0 + chest_r.z) + 6))
 		_blob(cv, Vector3(0, 0.0, 4.0), chest_r, c1, back, belly, 0.45, -0.4, tufts)
 		if ruff:
 			# 狼：颈部厚毛领（毛簇更密）
@@ -311,10 +386,9 @@ static func _quad(rig: BeastRig, model: String, c1: Color, c2: Color, c3: Color,
 	var npitch: float = q.get("neck_pitch", 18.0)
 	var neck := _bone(spine, "neck", Vector3(0, chest_r.y * 0.35, -chest_r.z * 0.55), Vector3(npitch, 0, 0))
 	_mesh(neck, "q_neck|" + key, func() -> Variant:
-		var cv := VoxCanvas.new(Vector3i(-20, -20, -nl - 16), Vector3i(19, 21, 12))
-		for i in range(0, nl + 6, 2):
-			var zc := -i + 4.0
-			_blob(cv, Vector3(0, 0.0, zc), Vector3(nr, nr * 1.05, 4.4), c1, back, belly, 0.5, -0.45, tufts)
+		var R := int(ceil(nr)) + 3
+		var cv := VoxCanvas.new(Vector3i(-R, -R - 1, -nl - 8), Vector3i(R - 1, R + 2, 10))
+		_capsule_z(cv, 8.4, float(-nl - 5), Vector2(nr, nr * 1.05), 4.4, c1, back, belly, 0.5, -0.45, tufts)
 		return cv)
 	var hr: Vector3 = q["head_r"]
 	var sn: Vector3 = q["snout"]
@@ -599,28 +673,43 @@ static func _golem(rig: BeastRig, stone: Color, dark: Color, glow: Color, key: S
 	var rock := func(cv: VoxCanvas, a: Vector3i, b: Vector3i, block: int) -> void:
 		cv.set_mat(VoxCanvas.M_STONE)
 		var v_in := cv.e(VoxCanvas.tone(stone, 0.6))
+		# 色表：8 级石色、8 级块顶亮边、灰缝、2 种苔藓
+		var tt := PackedInt32Array()
+		for i in 8:
+			tt.append(cv.e(VoxCanvas.tone(stone, 0.8 + 0.28 * float(i) / 7.0)))
+		for i in 8:
+			tt.append(cv.e(VoxCanvas.tone(stone, (0.8 + 0.28 * float(i) / 7.0) * 1.1)))
+		var v_mortar := cv.e(VoxCanvas.tone(dark, 0.8))
+		var v_moss0 := VoxCanvas.encm(moss.lerp(stone, 0.25), VoxCanvas.M_FUR)
+		var v_moss1 := VoxCanvas.encm(moss.lerp(stone, 0.45), VoxCanvas.M_FUR)
+		var d := cv.data
+		var half := block / 2
+		var ymid := (a.y + b.y) / 2
 		for z in range(a.z, b.z + 1):
+			var ez := z == a.z or z == b.z
+			var bz := floori(z / float(block))
+			var mz := posmod(z, block) == 0
 			for y in range(a.y, b.y + 1):
+				var ey := y == a.y or y == b.y
+				var row := cv.ix(0, y, z)
 				for x in range(a.x, b.x + 1):
-					var surf := x == a.x or x == b.x or y == a.y or y == b.y or z == a.z or z == b.z
-					if not surf:
-						cv.data[cv.ix(x, y, z)] = v_in
+					if not (ez or ey or x == a.x or x == b.x):
+						d[row + x] = v_in
 						continue
 					var bx := floori(x / float(block))
-					var by := floori((y + (bx & 1) * (block / 2)) / float(block))
-					var bz := floori(z / float(block))
-					var bh := VoxCanvas.h3(bx, by, bz)
-					var c := VoxCanvas.tone(stone, 0.8 + 0.28 * float(bh & 7) / 7.0)
-					var ly := posmod(y + (bx & 1) * (block / 2), block)
-					if ly == 0 or posmod(x, block) == 0 or posmod(z, block) == 0:
-						c = VoxCanvas.tone(dark, 0.8)
+					var yy := y + (bx & 1) * half
+					var bh := VoxCanvas.h3(bx, floori(yy / float(block)), bz)
+					var ly := posmod(yy, block)
+					var v: int
+					if ly == 0 or mz or posmod(x, block) == 0:
+						v = v_mortar
 					elif ly == block - 1:
-						c = VoxCanvas.tone(c, 1.1)
-					if (bh >> 5) % 5 == 0 and y > (a.y + b.y) / 2 and (VoxCanvas.h3(x, y, z) & 3) != 0:
-						c = moss.lerp(c, 0.25 + 0.2 * float(VoxCanvas.h3(x, z, y) & 1))
-						cv.putm(x, y, z, c, VoxCanvas.M_FUR)
-						continue
-					cv.put(x, y, z, c)
+						v = tt[8 + (bh & 7)]
+					else:
+						v = tt[bh & 7]
+					if (bh >> 5) % 5 == 0 and y > ymid and (VoxCanvas.h3(x, y, z) & 3) != 0:
+						v = v_moss0 if (VoxCanvas.h3(x, z, y) & 1) == 0 else v_moss1
+					d[row + x] = v
 	var g := VoxCanvas.glow(glow, 0.95)
 	var g2 := VoxCanvas.glow(glow.lightened(0.5), 1.0)
 	_mesh(hips, "g_hips|" + key, func() -> Variant:

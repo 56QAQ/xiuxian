@@ -598,6 +598,7 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 	# 编码后的颜色表（按 列 × 明暗等级 × 是否绺缝 惰性计算），内层循环只做查表 + 直接写数据
 	var tab := PackedInt32Array()
 	tab.resize(W * W * 32)
+	var sheen_y := int(length * 0.18) + posmod(seed * 3, 4)
 	var d := cv.data
 	for yi in range(-3, length):
 		var y := -yi
@@ -642,6 +643,11 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 					k *= 0.82
 				var lv := clampi(int((k - 0.5) * 25.0), 0, 15)
 				var ti := ci * 32 + lv * 2 + (1 if groove > 0.0 else 0)
+				# 光泽带：段内上部 3 行、外层、非绺缝，按发丝断续
+				var sheen := yi >= sheen_y and yi < sheen_y + 3 and groove <= 0.0 and d2 > 0.62 and (col_sid[ci] & 3) != 0
+				if sheen:
+					d[row + x] = cv.e(VoxCanvas.tone(s.strand_c(col_sid[ci]), k).lerp(s.hair_hi.lightened(0.1), 0.45 if yi == sheen_y + 1 else 0.25))
+					continue
 				var v := tab[ti]
 				if v == 0:
 					var c := VoxCanvas.tone(s.strand_c(col_sid[ci]), 0.5 + (lv + 0.5) / 25.0)

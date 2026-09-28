@@ -162,7 +162,7 @@ static func from(appearance: Dictionary) -> CharSpec:
 	return s
 
 
-static var _LOCK_K: PackedFloat32Array = PackedFloat32Array([0.86, 0.93, 1.0, 0.9, 1.05, 0.96, 1.08, 0.89])
+static var _LOCK_K: PackedFloat32Array = PackedFloat32Array([0.82, 0.93, 1.02, 0.88, 1.08, 0.96, 1.12, 0.86])
 
 
 ## 发绺整体明暗（按发绺编号）
