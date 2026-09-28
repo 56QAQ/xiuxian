@@ -31,6 +31,8 @@ var _lod_mat: ShaderMaterial
 var _lod_root: Node3D
 var _lod_tiles: Dictionary = {}   # Vector2i -> MeshInstance3D
 var _lod_dirty: Dictionary = {}
+var _lod_tasks: Dictionary = {}
+var _lod_results: Dictionary = {}
 var _last_center := Vector2i(-999, -999)
 var _wanted: Array[Vector2i] = []
 var _hole_radius := 0.0
@@ -69,6 +71,9 @@ func _exit_tree() -> void:
 	for key in _tasks:
 		WorkerThreadPool.wait_for_task_completion(_tasks[key])
 	_tasks.clear()
+	for key in _lod_tasks:
+		WorkerThreadPool.wait_for_task_completion(_lod_tasks[key])
+	_lod_tasks.clear()
 	if terrain != null and terrain.changed.is_connected(_on_terrain_changed):
 		terrain.changed.disconnect(_on_terrain_changed)
 
@@ -327,11 +332,29 @@ func _on_terrain_changed(chunks: Array, samples: Array, pos: Vector3, radius: fl
 
 
 func _update_lod_dirty() -> void:
-	if _lod_dirty.is_empty():
-		return
-	for k: Vector2i in _lod_dirty:
-		_set_lod_tile(k, terrain.build_lod_arrays(k.x, k.y))
-	_lod_dirty.clear()
+	# 完成的 LOD 重建任务
+	var done: Array[Vector2i] = []
+	for k: Vector2i in _lod_tasks:
+		if WorkerThreadPool.is_task_completed(_lod_tasks[k]):
+			done.append(k)
+	for k in done:
+		WorkerThreadPool.wait_for_task_completion(_lod_tasks[k])
+		_lod_tasks.erase(k)
+		_mutex.lock()
+		var arrays: Array = _lod_results.get(k, [])
+		_lod_results.erase(k)
+		_mutex.unlock()
+		_set_lod_tile(k, arrays)
+	# 新的重建（在工作线程中进行，避免弹坑时主线程卡顿）
+	for k: Vector2i in _lod_dirty.keys():
+		if _lod_tasks.has(k):
+			continue
+		_lod_dirty.erase(k)
+		_lod_tasks[k] = WorkerThreadPool.add_task(func() -> void:
+			var arr := terrain.build_lod_arrays(k.x, k.y)
+			_mutex.lock()
+			_lod_results[k] = arr
+			_mutex.unlock(), true, "terrain_lod_tile")
 
 
 ## LOD 丢弃半径：焦点到最近一个“未加载区块”的距离（此圆内全部由近景区块覆盖）

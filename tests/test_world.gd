@@ -266,6 +266,21 @@ func test_streamer_collision() -> void:
 	if not hit.is_empty():
 		var hy: float = hit["position"].y
 		_ok(absf(hy - t.get_height(px, pz)) < 0.6, "碰撞高度与 get_height 一致（%.2f / %.2f）" % [hy, t.get_height(px, pz)])
+		# 弹坑：主线程耗时、碰撞立即更新、网格异步重建
+		var tc := Time.get_ticks_usec()
+		t.carve_crater(Vector3(px, t.get_ground_y(px, pz), pz), 5.0)
+		var carve_ms := (Time.get_ticks_usec() - tc) / 1000.0
+		_ok(carve_ms < 50.0, "弹坑主线程耗时 < 50 ms（%.1f ms）" % carve_ms)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		var hit2 := space.intersect_ray(q)
+		_ok(not hit2.is_empty() and float(hit2["position"].y) < hy - 1.0, "弹坑后碰撞立即降低")
+		var frames := 0
+		while st.pending_count() > 0 and frames < 120:
+			await get_tree().process_frame
+			frames += 1
+		_ok(st.pending_count() == 0, "受影响区块网格已重建（%d 帧）" % frames)
+		print("    弹坑主线程 %.1f ms，%d 帧内完成网格重建" % [carve_ms, frames])
 	st.queue_free()
 	await get_tree().process_frame
 

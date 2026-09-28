@@ -1094,15 +1094,19 @@ func build_chunk_arrays(cx: int, cz: int) -> Dictionary:
 	return {"arrays": arrays, "collision": col}
 
 
-## 远景 LOD 树冠：返回 0 无、1 林木、2 雪松、3 平原树丛、4 垂柳（与 PropScatter 的密度大致一致）
-func _lod_canopy(cx: int, cz: int) -> int:
+## 远景 LOD 树冠：返回 0 无、1 林木、2 雪松、3 平原树丛、4 垂柳（与 PropScatter 的密度大致一致）。
+## hm / fla 为高度与标记快照（线程安全）。
+func _lod_canopy(cx: int, cz: int, hm: PackedByteArray, fla: PackedByteArray) -> int:
 	var x := cx * LOD_CELL + LOD_CELL / 2
 	var z := cz * LOD_CELL + LOD_CELL / 2
 	var idx := z * SIZE + x
-	if flags[idx] & (F_NOPROP | F_LAVA | F_ROAD | F_PAVED | F_FIELD):
+	if fla[idx] & (F_NOPROP | F_LAVA | F_ROAD | F_PAVED | F_FIELD):
 		return 0
-	var h := int(hmap[idx])
-	if h < SEA_LEVEL or slope_at(x, z) >= 3:
+	var h := int(hm[idx])
+	if h < SEA_LEVEL:
+		return 0
+	var slope := maxi(maxi(absi(h - int(hm[idx - 1])), absi(h - int(hm[idx + 1]))), maxi(absi(h - int(hm[idx - SIZE])), absi(h - int(hm[idx + SIZE]))))
+	if slope >= 3:
 		return 0
 	var r := _region_at(x, z)
 	var hv := _hash2(cx * 7 + 3, cz * 13 + 5)
@@ -1121,6 +1125,9 @@ func _lod_canopy(cx: int, cz: int) -> int:
 
 ## 远景 LOD 分块（每块 LOD_TILE×LOD_TILE 个 LOD_CELL 米格子 = 256 米），林区叠加方块树冠
 func build_lod_arrays(tx: int, tz: int) -> Array:
+	var hm := hmap
+	var fla := flags
+	var lod := lod_heights
 	var n := LOD_TILE
 	var w := n + 2
 	var lh := PackedInt32Array()
@@ -1134,12 +1141,12 @@ func build_lod_arrays(tx: int, tz: int) -> Array:
 			if cx < 0 or cz < 0 or cx >= LOD_N or cz >= LOD_N:
 				lh[lz * w + lx] = 0
 			else:
-				var cn := _lod_canopy(cx, cz)
+				var cn := _lod_canopy(cx, cz, hm, fla)
 				canopy[lz * w + lx] = cn
 				var extra := 0
 				if cn != 0:
 					extra = 6 + int(_hash2(cx, cz) * 4.0) if cn != 2 else 7 + int(_hash2(cx, cz) * 5.0)
-				lh[lz * w + lx] = lod_heights[cz * LOD_N + cx] + extra
+				lh[lz * w + lx] = lod[cz * LOD_N + cx] + extra
 	var surf := PackedByteArray()
 	surf.resize(n * n)
 	var topc := PackedColorArray()
@@ -1150,9 +1157,9 @@ func build_lod_arrays(tx: int, tz: int) -> Array:
 			var z := (tz * n + lz) * LOD_CELL + LOD_CELL / 2
 			var patch := n_patch.get_noise_2d(x, z)
 			# 使用格中心所在 1 米柱的真实地表（与近景一致）
-			var fl := flags[z * SIZE + x]
 			var i1 := z * SIZE + x
-			var s := surface_at(x, z, hmap[i1], hmap[i1 - 1], hmap[i1 + 1], hmap[i1 - SIZE], hmap[i1 + SIZE], fl, patch)
+			var fl := fla[i1]
+			var s := surface_at(x, z, hm[i1], hm[i1 - 1], hm[i1 + 1], hm[i1 - SIZE], hm[i1 + SIZE], fl, patch)
 			var cn := canopy[(lz + 1) * w + lx + 1]
 			var tc := top_color(s, x, z, patch)
 			if cn != 0:
