@@ -1,6 +1,7 @@
 class_name SectPanel
 extends UIWindow
 ## 宗门 / 人脉面板（J）：宗门阶位、贡献、声望、已接任务；五宗概览；结识的修士与羁绊。
+## 国风样式：宗门大印 + 书法宗名、门规题字；小节标题用朱印笔触；五宗与人脉为委角卡片。
 ## 操作（接任务、学功法、兑换）在宗门 NPC 处进行，本面板只做信息汇总。
 ## 由 GameSession 注册到 UIManager：UIManager.register_panel("sect", ...)
 
@@ -66,19 +67,43 @@ func _my_sect() -> Control:
 	var v: VBoxContainer = r[1]
 	var p := GS.player
 	if p.sect == "":
-		_label(v, "你目前是一介散修。", 20)
-		_label(v, "前往五大宗门山门，拜见掌门即可拜入宗门（需满足灵根要求）。拜入后可在任务堂接取任务、积累贡献，在藏经阁学习本门功法与法诀。", 16, Color(0.8, 0.8, 0.78))
+		var hh := UITheme.hbox(16)
+		hh.add_child(InkSeal.make("散修", 72.0, Color(0.3, 0.28, 0.26)))
+		var vv := UITheme.vbox(4)
+		vv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vv.add_child(UITheme.label("你目前是一介散修。", 30, UITheme.TEXT, "DisplayLabel"))
+		var hint := _label(vv, "前往五大宗门山门，拜见掌门即可拜入宗门（需满足灵根要求）。拜入后可在任务堂接取任务、积累贡献，在藏经阁学习本门功法与法诀。", 16, Color(0.8, 0.8, 0.78))
+		hint.custom_minimum_size.x = 560
+		hh.add_child(vv)
+		v.add_child(hh)
 	else:
 		var s := DB.sect(p.sect)
 		var col := Color.html(str(s.get("color", "#ffffff")))
-		_label(v, "%s · %s" % [s.get("name", ""), SectSystem.player_rank_name()], 24, col.lightened(0.2))
-		_label(v, "「%s」" % s.get("motto", ""), 16, Color(0.8, 0.75, 0.6))
-		_label(v, "贡献点 %d    声望 %d    业力 %d" % [SectSystem.contribution(), int(p.reputation.get(p.sect, 0)), p.karma], 18)
+		var hh2 := UITheme.hbox(18)
+		var seal := InkSeal.make(str(s.get("name", "宗")).substr(0, 2), 86.0, Color(0.74, 0.13, 0.08).lerp(col.darkened(0.3), 0.18))
+		hh2.add_child(seal)
+		var vv2 := UITheme.vbox(2)
+		vv2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var nm := UITheme.label(str(s.get("name", "")), 38, col.lightened(0.35), "DisplayLabel")
+		nm.add_theme_color_override("font_outline_color", Color(0.04, 0.03, 0.02, 0.9))
+		nm.add_theme_constant_override("outline_size", 5)
+		vv2.add_child(nm)
+		vv2.add_child(UITheme.label(SectSystem.player_rank_name(), 20, UITheme.GOLD_BRIGHT))
+		vv2.add_child(UITheme.label("「%s」" % s.get("motto", ""), 20, Color(0.86, 0.78, 0.6), "DisplayLabel"))
+		hh2.add_child(vv2)
+		v.add_child(hh2)
+		var stats := UITheme.hbox(28)
+		for pair in [["贡献点", str(SectSystem.contribution())], ["声望", str(int(p.reputation.get(p.sect, 0)))], ["业力", str(p.karma)],
+				["生产技艺", "%s %d 级" % [PlayerData.PROFESSION_NAMES.get(s.get("profession", ""), ""), p.profession_level(str(s.get("profession", "")))]]]:
+			var cell := UITheme.vbox(0)
+			cell.add_child(UITheme.label(str(pair[0]), 14, UITheme.TEXT_DIM))
+			cell.add_child(UITheme.label(str(pair[1]), 22, UITheme.TEXT, "DisplayLabel"))
+			stats.add_child(cell)
+		v.add_child(UITheme.margin(stats, 6, 4))
 		var req := SectSystem.next_rank_requirement()
-		_label(v, req if req != "" else "你已是本门真传弟子。", 16, Color(0.85, 0.8, 0.55))
-		_label(v, "生产技艺：%s（%d 级）" % [PlayerData.PROFESSION_NAMES.get(s.get("profession", ""), ""), p.profession_level(str(s.get("profession", "")))], 16)
-	_label(v, "", 8)
-	_label(v, "—— 已接任务 ——", 18, Color(0.95, 0.8, 0.45))
+		_label(v, req if req != "" else "你已是本门真传弟子。", 16, Color(0.9, 0.8, 0.55))
+	v.add_child(UITheme.spacer(6.0))
+	v.add_child(UITheme.header("已接任务"))
 	var ms := SectSystem.accepted()
 	if ms.is_empty():
 		_label(v, "（无）", 15, Color(0.6, 0.6, 0.6))
@@ -87,7 +112,18 @@ func _my_sect() -> Control:
 		if m["type"] == "deliver":
 			prog = "持有 %d/%d" % [GS.player.bag.count_of(str(m.get("item", ""))), int(m["count"])]
 		var done := SectSystem.can_turn_in(m)
-		_label(v, "%s【%s】%s — %s  %s" % ["◆ " if done else "· ", DB.sect(str(m["sect"])).get("name", ""), m["name"], m["text"], prog], 15, Color(0.6, 1.0, 0.6) if done else Color(0.9, 0.9, 0.88))
+		var card := UITheme.panel("CardSelected" if done else "CardPanel")
+		var row := UITheme.hbox(12)
+		row.add_child(InkSeal.make("成" if done else "任", 30.0, Color(0.16, 0.5, 0.38) if done else Color(0.74, 0.14, 0.09)))
+		var mv := UITheme.vbox(0)
+		mv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		mv.add_child(UITheme.label("【%s】%s" % [DB.sect(str(m["sect"])).get("name", ""), m["name"]], 18, Color(0.7, 1.0, 0.72) if done else UITheme.TEXT))
+		var mt := _label(mv, str(m["text"]), 14, UITheme.TEXT_DIM)
+		mt.custom_minimum_size.x = 480
+		row.add_child(mv)
+		row.add_child(UITheme.label(prog, 18, UITheme.GOLD_BRIGHT))
+		card.add_child(row)
+		v.add_child(card)
 	return r[0]
 
 
@@ -99,15 +135,25 @@ func _all_sects() -> Control:
 		var col := Color.html(str(s.get("color", "#ffffff")))
 		var e := str(s.get("element", ""))
 		var reason := SectSystem.join_block_reason(sid)
-		_label(v, "%s  ·  %s  ·  %s" % [s.get("name", ""), Elem.name_of(e) + "系", PlayerData.PROFESSION_NAMES.get(s.get("profession", ""), "")], 20, col.lightened(0.25))
-		_label(v, str(s.get("desc", "")), 15, Color(0.82, 0.8, 0.76))
+		var card := UITheme.panel("CardSelected" if GS.player.sect == sid else "CardPanel")
+		var row := UITheme.hbox(14)
+		row.add_child(InkSeal.make(str(s.get("name", "宗")).substr(0, 2), 58.0, Color(0.74, 0.13, 0.08).lerp(col.darkened(0.3), 0.18)))
+		var sv := UITheme.vbox(2)
+		sv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var top := UITheme.hbox(12)
+		top.add_child(UITheme.label(str(s.get("name", "")), 26, col.lightened(0.3), "DisplayLabel"))
+		top.add_child(UITheme.label("%s  ·  %s" % [Elem.name_of(e) + "系", PlayerData.PROFESSION_NAMES.get(s.get("profession", ""), "")], 15, UITheme.TEXT_DIM))
+		sv.add_child(top)
+		var desc := _label(sv, str(s.get("desc", "")), 15, Color(0.82, 0.8, 0.76))
+		desc.custom_minimum_size.x = 560
 		var rep := int(GS.player.reputation.get(sid, 0))
-		var tail := "（可拜入）" if reason == "" else "（%s）" % reason
+		var tail := "可拜入" if reason == "" else reason
 		if GS.player.sect == sid:
-			tail = "（本门）"
-		_label(v, "声望 %d  %s" % [rep, tail], 15, Color(0.7, 0.9, 0.7) if reason == "" or GS.player.sect == sid else Color(0.9, 0.6, 0.5))
-		var sep := HSeparator.new()
-		v.add_child(sep)
+			tail = "本门"
+		_label(sv, "声望 %d  ·  %s" % [rep, tail], 15, Color(0.7, 0.9, 0.7) if reason == "" or GS.player.sect == sid else Color(0.9, 0.6, 0.5))
+		row.add_child(sv)
+		card.add_child(row)
+		v.add_child(card)
 	return r[0]
 
 
@@ -128,9 +174,24 @@ func _relations() -> Control:
 		var col := Color(0.6, 1.0, 0.6) if favor >= 40 else (Color(1.0, 0.5, 0.45) if favor <= -30 else Color(0.9, 0.9, 0.88))
 		var status := "" if rec.get("alive", true) else "【已陨落】"
 		var sect_name := str(DB.sect(str(rec.get("sect", ""))).get("name", "散修"))
-		_label(v, "%s%s  ·  %s %s  ·  %s  ·  %s  ·  好感 %d" % [status, pd.get("name", ""), sect_name, rec.get("title", ""),
-			DB.realm_name(int(pd.get("realm", 0)), int(pd.get("stage", 0))), NpcSystem.bond_name(str(rec["id"])), favor], 16, col)
+		var card := UITheme.panel("CardPanel")
+		var row := UITheme.hbox(12)
+		var alive: bool = rec.get("alive", true)
+		row.add_child(InkSeal.make(InkArt.realm_glyph(int(pd.get("realm", 0))), 36.0, Color(0.74, 0.14, 0.09) if alive else Color(0.3, 0.28, 0.26)))
+		var rv := UITheme.vbox(0)
+		rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var top := UITheme.hbox(10)
+		top.add_child(UITheme.label(status + str(pd.get("name", "")), 22, col, "DisplayLabel"))
+		top.add_child(UITheme.label("%s %s  ·  %s" % [sect_name, rec.get("title", ""), DB.realm_name(int(pd.get("realm", 0)), int(pd.get("stage", 0)))], 15, UITheme.TEXT_DIM))
+		rv.add_child(top)
 		var mem: Array = rec.get("memory", [])
 		if not mem.is_empty():
-			_label(v, "    " + str(mem[mem.size() - 1]), 13, Color(0.65, 0.65, 0.62))
+			_label(rv, str(mem[mem.size() - 1]), 13, Color(0.65, 0.65, 0.62))
+		row.add_child(rv)
+		var bond := UITheme.vbox(0)
+		bond.add_child(UITheme.label(NpcSystem.bond_name(str(rec["id"])), 18, col))
+		bond.add_child(UITheme.label("好感 %d" % favor, 14, UITheme.TEXT_DIM))
+		row.add_child(bond)
+		card.add_child(row)
+		v.add_child(card)
 	return r[0]

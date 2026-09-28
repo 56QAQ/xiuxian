@@ -323,7 +323,7 @@ func _build_ui() -> void:
 	# 菜单
 	_menu = VBoxContainer.new()
 	_menu.add_theme_constant_override("separation", 4)
-	_menu.position = Vector2(118, 420)
+	_menu.position = Vector2(104, 430)
 	_menu.custom_minimum_size = Vector2(420, 0)
 	root.add_child(_menu)
 	_add_entry("新的仙途", "", Scenes.goto_creator)
@@ -415,81 +415,67 @@ class MenuEntry extends Button:
 		queue_redraw()
 
 	func _draw() -> void:
+		var ci := get_canvas_item()
 		var h := size.y
-		var bottom := 0.97 if sub_text != "" else 0.86
+		var cy := h * (0.44 if sub_text != "" else 0.5)
+		# 悬停：一笔墨痕自左铺开（浓墨 + 朱砂芯）
 		if hover_t > 0.01:
-			var w := size.x * hover_t
-			var pts := PackedVector2Array()
-			var n := 16
-			for i in n + 1:
-				var x := w * i / n
-				pts.append(Vector2(x, h * 0.1 + sin(i * 1.7) * 2.0))
-			for i in range(n, -1, -1):
-				var x2 := w * i / n
-				pts.append(Vector2(x2, h * bottom + sin(i * 2.3) * 2.0))
-			var cols := PackedColorArray()
-			for p in pts:
-				var fa := 1.0 - p.x / maxf(size.x, 1.0)
-				cols.append(Color(0.02, 0.02, 0.03, 0.62 * fa * hover_t))
-			draw_polygon(pts, cols)
-			draw_line(Vector2(0, h * bottom), Vector2(w * 0.8, h * bottom), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.6 * hover_t), 1.0)
-		var f := UITheme.font_title()
-		var fs := 32
-		var x0 := 26.0 + 14.0 * hover_t
-		var base_y := h * 0.5 + fs * 0.36 - (7.0 if sub_text != "" else 0.0)
-		var col := Color(0.92, 0.88, 0.78).lerp(UITheme.GOLD_BRIGHT, hover_t)
+			var w := size.x * 0.92
+			InkArt.brush_part(ci, Vector2(-6.0, cy), Vector2(-6.0 + w * hover_t, cy), h * 0.95, Color(0.02, 0.018, 0.02, 0.72), 0.0, 0.25 + 0.75 * hover_t)
+			InkArt.brush_part(ci, Vector2(4.0, cy + 2.0), Vector2(4.0 + w * 0.7 * hover_t, cy + 2.0), h * 0.5, Color(0.55, 0.08, 0.05, 0.55), 0.05, 0.3 + 0.7 * hover_t)
+		var f := UITheme.font_display()
+		var fs := 38
+		var x0 := 40.0 + 14.0 * hover_t
+		var base_y := cy + fs * 0.34
+		var col := Color(0.93, 0.89, 0.8).lerp(UITheme.GOLD_BRIGHT, hover_t)
 		if disabled:
-			col = Color(0.55, 0.53, 0.5, 0.55)
-		var r := 5.0 + 1.5 * hover_t
-		var dp := Vector2(8.0 + 6.0 * hover_t, base_y - fs * 0.34)
-		var dc := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35 + 0.65 * hover_t) if not disabled else Color(0.4, 0.4, 0.4, 0.3)
-		draw_colored_polygon(PackedVector2Array([dp + Vector2(0, -r), dp + Vector2(r, 0), dp + Vector2(0, r), dp + Vector2(-r, 0)]), dc)
-		draw_string_outline(f, Vector2(x0, base_y), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, Color(0.02, 0.02, 0.04, 0.7))
-		draw_string(f, Vector2(x0, base_y), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+			col = Color(0.55, 0.53, 0.5, 0.5)
+		# 小印点
+		var body := Color(0.78, 0.14, 0.09, 0.55 + 0.45 * hover_t) if not disabled else Color(0.35, 0.33, 0.3, 0.4)
+		InkArt.seal(ci, Vector2(16.0 + 6.0 * hover_t, cy), 14.0 + 4.0 * hover_t, "", body, Color.WHITE, false, 0.785)
+		f.draw_string_outline(ci, Vector2(x0, base_y), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 7, Color(0.02, 0.02, 0.04, 0.75))
+		f.draw_string(ci, Vector2(x0, base_y), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 		if sub_text != "":
 			var lf := UITheme.font_regular()
 			draw_string_outline(lf, Vector2(x0 + 2, base_y + 22), sub_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.6))
 			draw_string(lf, Vector2(x0 + 2, base_y + 22), sub_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.TEXT_DIM if not disabled else UITheme.TEXT_FAINT)
 
 
-## 标题：大字“问道长生” + 朱砂印 + 副题
+## 标题：书法大字“问道长生”（墨晕托底、飞白墨痕）+ 朱印“仙途” + 祥云副题
 class TitleBlock extends Control:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		custom_minimum_size = Vector2(760, 260)
 		size = custom_minimum_size
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	func _draw() -> void:
-		var f := UITheme.font_title()
-		var fs := 124
+		var ci := get_canvas_item()
+		var f := UITheme.font_display()
+		var fs := 150
 		var t := "问道长生"
-		var pos := Vector2(0, fs)
-		# 墨晕
-		var glow := UITheme.icon("dot")
-		draw_texture_rect(glow, Rect2(Vector2(-80, -40), Vector2(720, 300)), false, Color(0, 0, 0, 0.45))
-		draw_string(f, pos + Vector2(4, 6), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.5))
-		draw_string_outline(f, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color(0.1, 0.06, 0.02, 0.9))
-		draw_string(f, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.GOLD_BRIGHT)
-		# 高光：上半部分叠一层浅色
+		var pos := Vector2(0, fs * 0.92)
 		var tw := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		# 朱砂印
-		var seal := Rect2(Vector2(tw + 22, fs - 88), Vector2(56, 88))
-		draw_rect(seal, Color(0.72, 0.14, 0.1, 0.92))
-		draw_rect(seal.grow(-4), Color(1.0, 0.85, 0.75, 0.55), false, 1.5)
-		var sf := 26
-		for i in 2:
-			var ch: String = ["仙", "途"][i]
-			var cs := f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sf)
-			draw_string(f, Vector2(seal.position.x + (seal.size.x - cs.x) * 0.5, seal.position.y + 36 + i * 34), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, sf, Color(1.0, 0.9, 0.82))
-		# 副题
-		var sep_y := fs + 36.0
-		draw_line(Vector2(6, sep_y), Vector2(tw * 0.92, sep_y), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.6), 1.0)
-		var d := Vector2(tw * 0.46, sep_y)
-		draw_colored_polygon(PackedVector2Array([d + Vector2(0, -5), d + Vector2(5, 0), d + Vector2(0, 5), d + Vector2(-5, 0)]), UITheme.GOLD)
-		var sub := "一 念 问 道   ·   万 古 长 生"
-		var lf := UITheme.font_regular()
-		draw_string_outline(lf, Vector2(10, sep_y + 38), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 5, Color(0, 0, 0, 0.6))
-		draw_string(lf, Vector2(10, sep_y + 38), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.86, 0.8, 0.66))
+		# 墨晕托底 + 一笔横墨
+		InkArt.rect_tex(ci, InkArt.tex("ink_wash"), Rect2(Vector2(-140, -70), Vector2(tw + 300, 330)), Color(0.0, 0.0, 0.01, 0.62))
+		InkArt.brush(ci, Vector2(-40, fs * 0.62), Vector2(tw + 60, fs * 0.62), 118.0, Color(0.03, 0.025, 0.03, 0.55))
+		# 大字：投影 + 描边 + 金
+		f.draw_string(ci, pos + Vector2(5, 7), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.55))
+		f.draw_string_outline(ci, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.1, 0.05, 0.02, 0.92))
+		f.draw_string(ci, pos, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.GOLD_BRIGHT)
+		# 朱印“仙途”
+		InkArt.seal(ci, Vector2(tw + 62, fs * 0.46), 84.0, "仙途", Color(0.78, 0.13, 0.08, 0.95), Color(1.0, 0.94, 0.84), false, -0.07)
+		# 副题：祥云 + 书法
+		var sub := "一念问道 · 万古长生"
+		var sfs := 34
+		var sy := fs + 58.0
+		var sw := f.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
+		var sx := tw * 0.5 - sw * 0.5
+		var gold := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.85)
+		InkArt.cloud_band(ci, Rect2(Vector2(sx - 118, sy - 26), Vector2(104, 26)), gold, false)
+		InkArt.cloud_band(ci, Rect2(Vector2(sx + sw + 14, sy - 26), Vector2(104, 26)), gold, true)
+		f.draw_string_outline(ci, Vector2(sx, sy), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, 6, Color(0, 0, 0, 0.65))
+		f.draw_string(ci, Vector2(sx, sy), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, Color(0.9, 0.84, 0.7))
 
 
 ## 前景薄雾：缓慢漂移的柔光团

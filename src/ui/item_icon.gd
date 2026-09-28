@@ -150,8 +150,45 @@ static func render_image(d: Dictionary, g: int) -> Image:
 static func render(d: Dictionary, g: int) -> ImageTexture:
 	var img := render_image(d, g)
 	img.resize(img.get_width() * UPSCALE, img.get_height() * UPSCALE, Image.INTERPOLATE_NEAREST)
+	img = painterly(img, hash(str(d.get("id", d.get("icon", "")))))
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
+
+
+## 工笔设色感的后期（放大后的像素图上）：左上受光的明暗渐变 + 横向笔丝颗粒 + 右下方淡墨投影。
+static func painterly(img: Image, seed_value: int) -> Image:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := img.get_data()
+	var shadow := PackedByteArray()
+	shadow.resize(data.size())
+	var i := 0
+	for y in h:
+		var fy := float(y) / float(h)
+		var row := (y >> 1) * 19349663
+		for x in w:
+			var a := data[i + 3]
+			if a > 0:
+				var ramp := 1.1 - 0.24 * (float(x) / float(w) * 0.35 + fy * 0.65)
+				var hsh := (((x >> 3) * 73856093) ^ row ^ seed_value) & 255
+				var k := ramp * (0.955 + float(hsh) / 255.0 * 0.09)
+				data[i] = mini(int(float(data[i]) * k), 255)
+				data[i + 1] = mini(int(float(data[i + 1]) * k), 255)
+				data[i + 2] = mini(int(float(data[i + 2]) * k), 255)
+				shadow[i] = 6
+				shadow[i + 1] = 4
+				shadow[i + 2] = 3
+				shadow[i + 3] = int(float(a) * 0.55)
+			i += 4
+	img.set_data(w, h, false, Image.FORMAT_RGBA8, data)
+	var sh := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, shadow)
+	sh.resize(maxi(w / 6, 1), maxi(h / 6, 1), Image.INTERPOLATE_BILINEAR)
+	sh.resize(w, h, Image.INTERPOLATE_BILINEAR)
+	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var off := Vector2i(maxi(w / 40, 2), maxi(w / 30, 2))
+	out.blend_rect(sh, Rect2i(Vector2i.ZERO, Vector2i(w, h) - off), off)
+	out.blend_rect(img, Rect2i(0, 0, w, h), Vector2i.ZERO)
+	return out
 
 
 static func _col(v: Variant, fallback: Color) -> Color:

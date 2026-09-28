@@ -125,12 +125,6 @@ class SealLabel extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var r := Rect2(Vector2(4, 4), size - Vector2(8, 8))
-		var col := UITheme.CINNABAR if active else Color(0.35, 0.33, 0.3)
-		draw_rect(r, Color(col.r, col.g, col.b, 0.18))
-		draw_rect(r, col, false, 2.0)
-		draw_rect(r.grow(-4), Color(col.r, col.g, col.b, 0.5), false, 1.0)
-		var f := UITheme.font_title()
-		var fs := 28
-		var ts := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(f, Vector2((size.x - ts.x) * 0.5, (size.y + fs * 0.72) * 0.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col.lightened(0.15))
+		var body := Color(0.76, 0.14, 0.09) if active else Color(0.26, 0.24, 0.22, 0.75)
+		var ink := Color(1.0, 0.95, 0.86) if active else Color(0.6, 0.56, 0.5, 0.8)
+		InkArt.seal(get_canvas_item(), size * 0.5, minf(size.x, size.y) - 6.0, text, body, ink, false, -0.05)

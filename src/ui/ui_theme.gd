@@ -543,24 +543,37 @@ static func _build() -> Theme:
 
 	# ---- 页签容器（备用）
 	var tab_sel := OrnateBox.new()
-	tab_sel.bg_top = Color(0.3, 0.24, 0.14, 0.7)
-	tab_sel.bg_bottom = Color(0.1, 0.08, 0.06, 0.7)
-	tab_sel.border_color = GOLD
-	tab_sel.set_margins(16, 6, 16, 6)
+	tab_sel.brush = 1.0
+	tab_sel.brush_color = Color(0.5, 0.08, 0.05, 0.8)
+	tab_sel.border_width = 0.0
+	tab_sel.set_margins(20, 6, 20, 8)
 	var tab_un := OrnateBox.new()
-	tab_un.bg_top = Color(0, 0, 0, 0.3)
-	tab_un.bg_bottom = Color(0, 0, 0, 0.3)
-	tab_un.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.2)
-	tab_un.set_margins(16, 6, 16, 6)
+	tab_un.bg_top = Color(0, 0, 0, 0)
+	tab_un.bg_bottom = Color(0, 0, 0, 0)
+	tab_un.border_width = 0.0
+	tab_un.set_margins(20, 6, 20, 8)
+	var tab_hov := OrnateBox.new()
+	tab_hov.brush = 1.0
+	tab_hov.brush_color = Color(0.85, 0.66, 0.36, 0.16)
+	tab_hov.border_width = 0.0
+	tab_hov.set_margins(20, 6, 20, 8)
 	for ty in ["TabContainer", "TabBar"]:
 		t.set_stylebox("tab_selected", ty, tab_sel)
 		t.set_stylebox("tab_unselected", ty, tab_un)
-		t.set_stylebox("tab_hovered", ty, tab_sel)
+		t.set_stylebox("tab_hovered", ty, tab_hov)
+		t.set_font("font", ty, font_display())
+		t.set_font_size("font_size", ty, 22)
 		t.set_stylebox("tab_disabled", ty, tab_un)
 		t.set_color("font_selected_color", ty, GOLD_BRIGHT)
 		t.set_color("font_unselected_color", ty, TEXT_DIM)
 		t.set_color("font_hovered_color", ty, GOLD_BRIGHT)
-	t.set_stylebox("panel", "TabContainer", _ink_box(0, 10))
+	var tc_panel := OrnateBox.new()
+	tc_panel.bg_top = Color(0, 0, 0, 0.22)
+	tc_panel.bg_bottom = Color(0, 0, 0, 0.12)
+	tc_panel.border_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.28)
+	tc_panel.chamfer = 5.0
+	tc_panel.set_all_margins(12)
+	t.set_stylebox("panel", "TabContainer", tc_panel)
 	return t
 
 
