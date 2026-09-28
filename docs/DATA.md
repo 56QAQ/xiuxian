@@ -124,8 +124,8 @@ name, w(权重), desc, lines[]?（desc 的随机变体）。w 为 0 的遭遇为
 ```
 gender: "female"|"male"      height: 0.9~1.1      build: 0~1      head_scale: 0.9~1.15   chest: 0~1
 skin, hair_color, hair_color2(挑染), eye_color, mark_color, ear_color: "#rrggbb"
-hair_style: twin_tails|ponytail|long|short|bun|flowing
-eye_style: almond|round|sharp      brow_style: 0~2      mark: none|lotus|flame|dot
+hair_style: twin_tails|ponytail|long|short|bun|flowing|double_bun|braid
+eye_style: almond|round|sharp|droopy      brow_style: 0~2      mark: none|lotus|flame|dot|crescent|tear
 ears: human|fox|cat|elf      tail: none|fox      horns: none|dragon
 outfit: robe|martial|armor   outfit_colors: [主色, 副色, 饰边]
 ```

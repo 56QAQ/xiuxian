@@ -17,6 +17,8 @@ extends Node3D
 
 signal anim_event(event_name: String)
 signal action_finished(clip_name: String)
+## 异步生成（CharacterBuilder.build_async / BeastBuilder.build_async）的网格全部就绪、骨架已显示
+signal meshes_ready
 
 const BONES: Array[String] = [
 	"hips", "spine", "head",
@@ -68,6 +70,9 @@ var _springs: Array[Dictionary] = []
 var _flash: float = 0.0
 var _flash_color: Color = Color.WHITE
 
+# ---- 异步网格（VoxMesh 任务句柄）
+var _mesh_jobs: Array = []
+
 
 func setup() -> void:
 	bones.clear()
@@ -113,6 +118,27 @@ func _is_spring_name(n: String) -> bool:
 
 func bone(n: String) -> Node3D:
 	return bones.get(n, null)
+
+
+## 异步构建：网格仍在工作线程中生成时隐藏自身，就绪后显示并发出 meshes_ready（由 builder 调用）
+func set_pending_meshes(jobs: Array) -> void:
+	_mesh_jobs = jobs
+	visible = false
+
+
+## 网格是否仍在后台生成
+func meshes_pending() -> bool:
+	return not _mesh_jobs.is_empty()
+
+
+## 阻塞等待后台网格完成（测试/需要立即显示时）
+func finish_meshes() -> void:
+	if _mesh_jobs.is_empty():
+		return
+	VoxMesh.finish_all(_mesh_jobs)
+	_mesh_jobs = []
+	visible = true
+	meshes_ready.emit()
 
 
 # ================================================================ 公共接口
@@ -215,6 +241,12 @@ func weapon_tip(hand: String = "r") -> Vector3:
 # ================================================================ 每帧
 
 func _process(delta: float) -> void:
+	# 后台网格任务（远景 LOD、异步构建）完成后在主线程填充（全局每帧一次）
+	VoxMesh.poll()
+	if not _mesh_jobs.is_empty() and VoxMesh.is_done(_mesh_jobs):
+		_mesh_jobs = []
+		visible = true
+		meshes_ready.emit()
 	if bones.is_empty():
 		return
 	_time += delta

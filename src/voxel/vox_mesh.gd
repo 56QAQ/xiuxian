@@ -1,39 +1,60 @@
 class_name VoxMesh
-## VoxCanvas → ArrayMesh 的快速网格化（隐藏面剔除 + 逐顶点 AO，结果与 VoxelMesher 一致）。
-## 画布自带 1 格空边，内层循环无需任何边界检查；使用共享体素材质（VoxelMesher.material()）。
-## 另带静态网格缓存（按部件参数键），用于捏人预览/NPC 人群重复部件。
+## VoxCanvas → ArrayMesh 的快速网格化（隐藏面剔除 + 逐顶点 AO + 二维贪心合并）。
+## 顶点色 rgb = sRGB 颜色 × AO，alpha = 体素属性字节 / 255（材质 << 4 | 发光等级），由 voxel_char.gdshader 解读。
+##
+## 部件系统（角色/兵器/妖兽共用）：
+##   VoxMesh.begin_batch() … VoxMesh.part(key, maker) … VoxMesh.end_batch()
+##   part() 立即返回占位网格 [LOD0, LOD1]（ArrayMesh 对象，可直接赋给 MeshInstance3D）；
+##   end_batch() 把缓存未命中的部件分发到 WorkerThreadPool（高优先级）并行生成（maker 在工作线程中调用，
+##   必须只读取预先算好的数据与 static var），再在主线程填充占位网格。
+##   async=true 时 end_batch() 不等待，返回任务句柄；VoxMesh.poll() / is_done() 在主线程完成填充。
+##   LOD1 = 画布 2× 降采样后网格化（体素边长 ×2）。同步构建只等 LOD0，LOD1 随后在后台生成（远处才用得到），
+##   由 poll()（CharacterRig 每帧调用）填入；finish_pending() 可阻塞等待全部完成。
+## 另有静态网格缓存（按部件参数键），相同部件（NPC 人群、同种妖兽）几乎零开销。
 
-const AO_CURVE := [0.52, 0.70, 0.86, 1.0]
-## 面：法线 n、切向 u、v（与 VoxelMesher.FACES 相同，保证绕序正确）
-const _N := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
-const _U := [Vector3i(0, 0, 1), Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 1, 0), Vector3i(1, 0, 0)]
-const _V := [Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, 1), Vector3i(1, 0, 0), Vector3i(1, 0, 0), Vector3i(0, 1, 0)]
+## 工作线程中不能读 const 数组（Godot 4.4），以下表都用 static var
+static var AO_CURVE: PackedFloat32Array = PackedFloat32Array([0.50, 0.68, 0.85, 1.0])
+static var _NV: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+static var _UV: Array[Vector3i] = [Vector3i(0, 0, 1), Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 1, 0), Vector3i(1, 0, 0)]
+static var _VV: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, 1), Vector3i(1, 0, 0), Vector3i(1, 0, 0), Vector3i(0, 1, 0)]
+## 主合并方向：±X/±Z 面沿 Y（发丝、布褶多为竖向），±Y 面沿 X；true = 沿 u
+static var _ALONG_U: Array[bool] = [false, true, true, false, true, false]
 
-const CACHE_MAX := 600
+const CACHE_MAX := 900
 static var _cache: Dictionary = {}
 static var cache_hits: int = 0
 static var cache_misses: int = 0
+static var threaded: bool = true
+## 调试：记录每个部件的耗时（毫秒）{key: [绘制, LOD0 网格, LOD1]}
+static var profile: bool = false
+static var profile_log: Dictionary = {}
 
+static var _material: ShaderMaterial
+static var _batch_depth: int = 0
+static var _batch_async: bool = false
+static var _batch_jobs: Array = []
+static var _batch_wait: Array = []      ## 本批次用到的、尚未完成的异步任务
+static var _batch_lod: Array = []       ## 本批次需要后台补做 LOD1 的部件
+static var _lod_missing: Dictionary = {}  ## 以无 LOD 方式生成过的部件键
+static var _groups: Array = []          ## 进行中的异步任务 {gid, jobs, done}
+static var _key_group: Dictionary = {}  ## 进行中的部件键 → 任务
+static var _last_poll: int = -1
+
+
+## 角色共享材质（voxel_char.gdshader）
+static func material() -> ShaderMaterial:
+	if _material == null:
+		_material = ShaderMaterial.new()
+		_material.shader = load("res://assets/shaders/voxel_char.gdshader")
+	return _material
+
+
+# ================================================================ 直接网格化（同步、无缓存）
 
 ## 把若干画布合并为一个网格（同一骨骼上的部件合并可减少绘制调用）
 static func build(canvases: Array, vs: float) -> ArrayMesh:
-	var verts := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var colors := PackedColorArray()
-	var indices := PackedInt32Array()
-	for cv in canvases:
-		_mesh_canvas(cv as VoxCanvas, vs, verts, normals, colors, indices)
 	var mesh := ArrayMesh.new()
-	if verts.is_empty():
-		return mesh
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_COLOR] = colors
-	arrays[Mesh.ARRAY_INDEX] = indices
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, VoxelMesher.material())
+	_set_surface(mesh, mesh_arrays(canvases, vs))
 	return mesh
 
 
@@ -41,21 +62,292 @@ static func build_one(cv: VoxCanvas, vs: float) -> ArrayMesh:
 	return build([cv], vs)
 
 
-## 缓存：key 相同直接返回已有网格；否则调用 maker（返回 ArrayMesh）
+## 旧接口：key 相同直接返回已有网格；否则调用 maker（返回 ArrayMesh）
 static func cached(key: String, maker: Callable) -> ArrayMesh:
 	if _cache.has(key):
 		cache_hits += 1
-		return _cache[key]
+		var v: Variant = _cache[key]
+		return v[0] if v is Array else v
 	cache_misses += 1
 	var m: ArrayMesh = maker.call()
-	if _cache.size() >= CACHE_MAX:
-		_cache.clear()
-	_cache[key] = m
+	_store(key, m)
 	return m
 
 
 static func clear_cache() -> void:
+	# 进行中的异步任务先完成（其占位网格仍被角色引用）
+	for g in _groups.duplicate():
+		_finish(g)
 	_cache.clear()
+	_lod_missing.clear()
+
+
+static func _store(key: String, v: Variant) -> void:
+	if _cache.size() >= CACHE_MAX:
+		_cache.clear()
+	_cache[key] = v
+
+
+static func _set_surface(mesh: ArrayMesh, arrays: Array) -> void:
+	if arrays.is_empty():
+		return
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.surface_set_material(0, material())
+
+
+# ================================================================ 部件批处理
+
+static func begin_batch(async: bool = false) -> void:
+	if _batch_depth == 0:
+		_batch_async = async
+		_batch_jobs = []
+		_batch_wait = []
+		_batch_lod = []
+	_batch_depth += 1
+
+
+## 请求部件：返回 [LOD0 网格, LOD1 网格]。maker 返回 VoxCanvas 或 VoxCanvas 数组。
+## lod=false：不需要远景网格（界面预览），LOD1 保持为空；以后有需要的构建再在后台补做。
+## 不在批处理中时立即同步生成。
+static func part(key: String, maker: Callable, vs: float, lod: bool = true) -> Array:
+	if _cache.has(key):
+		var v: Variant = _cache[key]
+		if v is Array:
+			cache_hits += 1
+			if _key_group.has(key):
+				var g: Dictionary = _key_group[key]
+				if _batch_depth > 0:
+					if not _batch_wait.has(g):
+						_batch_wait.append(g)
+				else:
+					_finish(g)
+			if lod and _lod_missing.has(key):
+				# 之前以无 LOD 方式生成过：后台补做远景网格
+				_lod_missing.erase(key)
+				var lj := {"key": key, "maker": maker, "vs": vs, "m1": v[1], "only_lod": true}
+				if _batch_depth > 0:
+					_batch_lod.append(lj)
+				else:
+					_dispatch_lod([lj])
+			return v
+	cache_misses += 1
+	var job := {"key": key, "maker": maker, "vs": vs, "m0": ArrayMesh.new(), "m1": ArrayMesh.new(), "lod": lod}
+	var pair: Array = [job["m0"], job["m1"]]
+	_store(key, pair)
+	if not lod:
+		_lod_missing[key] = true
+	if _batch_depth > 0:
+		_batch_jobs.append(job)
+	else:
+		job["lod_now"] = true
+		_run_job(job)
+		_fill(job)
+	return pair
+
+
+## 结束批处理。同步：生成全部缺失部件的 LOD0 后返回 null（LOD1 在后台生成，poll() 时填入）；
+## 异步：返回任务列表（交给 is_done() 轮询），无任务时返回 []
+static func end_batch() -> Variant:
+	_batch_depth -= 1
+	if _batch_depth > 0:
+		return null
+	_batch_depth = 0
+	var jobs := _batch_jobs
+	var wait := _batch_wait
+	var lods := _batch_lod
+	_batch_jobs = []
+	_batch_wait = []
+	_batch_lod = []
+	poll()
+	if _batch_async:
+		var recs: Array = wait.duplicate()
+		for j in jobs:
+			j["lod_now"] = true
+		if not jobs.is_empty():
+			var g := _dispatch(jobs)
+			recs.append(g)
+		if not lods.is_empty():
+			_dispatch_lod(lods)
+		return recs
+	# 同步：先完成依赖的异步任务，再并行生成本批次的 LOD0
+	for g in wait:
+		_finish(g)
+	if not jobs.is_empty():
+		if not threaded or jobs.size() == 1:
+			for j in jobs:
+				_run_job(j)
+		else:
+			var list: Array = jobs
+			var gid := WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_job(list[i]), list.size(), -1, true, "vox_parts")
+			WorkerThreadPool.wait_for_group_task_completion(gid)
+		for j in jobs:
+			_fill(j)
+			if j.has("cvs"):
+				lods.append(j)
+	if not lods.is_empty():
+		_dispatch_lod(lods)
+	return null
+
+
+static func _dispatch(jobs: Array) -> Dictionary:
+	var list: Array = jobs
+	var g := {"jobs": list, "done": false, "gid": -1}
+	if threaded:
+		g["gid"] = WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_job(list[i]), list.size(), -1, true, "vox_parts_async")
+	else:
+		for j in list:
+			_run_job(j)
+	for j in list:
+		_key_group[str(j["key"])] = g
+	_groups.append(g)
+	return g
+
+
+## 后台生成远景 LOD1（不登记到部件键：同步构建不必等它）
+static func _dispatch_lod(jobs: Array) -> void:
+	var list: Array = jobs
+	var g := {"jobs": list, "done": false, "gid": -1}
+	if threaded:
+		g["gid"] = WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_lod(list[i]), list.size(), -1, true, "vox_lod")
+	else:
+		for j in list:
+			_run_lod(j)
+	_groups.append(g)
+
+
+## 主线程：检查异步任务，完成的填充网格（每帧最多一次；CharacterRig 每帧调用）
+static func poll() -> void:
+	var f := Engine.get_process_frames()
+	if f == _last_poll:
+		return
+	_last_poll = f
+	if _groups.is_empty():
+		return
+	for g in _groups.duplicate():
+		if int(g["gid"]) < 0 or WorkerThreadPool.is_group_task_completed(int(g["gid"])):
+			_finish(g)
+
+
+## 任务列表（end_batch 异步返回值）是否全部完成
+static func is_done(recs: Array) -> bool:
+	poll()
+	for g in recs:
+		if not bool((g as Dictionary)["done"]):
+			return false
+	return true
+
+
+## 等待任务完成（阻塞）
+static func finish_all(recs: Array) -> void:
+	for g in recs:
+		_finish(g)
+
+
+## 等待所有后台任务（含远景 LOD）完成并填充（测试、截图、场景切换前）
+static func finish_pending() -> void:
+	for g in _groups.duplicate():
+		_finish(g)
+
+
+static func pending_count() -> int:
+	return _groups.size()
+
+
+static func _finish(g: Dictionary) -> void:
+	if g["done"]:
+		return
+	if int(g["gid"]) >= 0:
+		WorkerThreadPool.wait_for_group_task_completion(int(g["gid"]))
+	for j in g["jobs"]:
+		_fill(j)
+		if _key_group.get(str(j["key"])) == g:
+			_key_group.erase(str(j["key"]))
+	g["done"] = true
+	_groups.erase(g)
+
+
+## 工作线程：调用 maker 画布 → LOD0 网格数组；LOD1 视情况当场生成（lod_now）或保留画布稍后后台生成
+static func _run_job(job: Dictionary) -> void:
+	var t0 := Time.get_ticks_usec()
+	var r: Variant = (job["maker"] as Callable).call()
+	var cvs: Array = r if r is Array else [r]
+	var vs: float = job["vs"]
+	var t1 := Time.get_ticks_usec()
+	job["a0"] = mesh_arrays(cvs, vs)
+	var t2 := Time.get_ticks_usec()
+	if bool(job.get("lod", true)):
+		if bool(job.get("lod_now", false)):
+			job["a1"] = _lod_arrays(cvs, vs)
+		else:
+			job["cvs"] = cvs
+	job.erase("maker")
+	if profile:
+		var cells := 0
+		var solid := 0
+		for cv in cvs:
+			if cv != null:
+				cells += (cv as VoxCanvas).data.size()
+				solid += (cv as VoxCanvas).count_solid()
+		var a0: Array = job["a0"]
+		var quads: int = 0 if a0.is_empty() else (a0[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 4
+		job["prof"] = [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (Time.get_ticks_usec() - t2) / 1000.0, cells, solid, quads]
+
+
+## 工作线程：远景 LOD1（由保留的画布，或重新调用 maker）
+static func _run_lod(job: Dictionary) -> void:
+	var cvs: Array
+	if job.has("cvs"):
+		cvs = job["cvs"]
+	else:
+		var r: Variant = (job["maker"] as Callable).call()
+		cvs = r if r is Array else [r]
+	job["a1"] = _lod_arrays(cvs, float(job["vs"]))
+	job.erase("cvs")
+	job.erase("maker")
+
+
+static func _lod_arrays(cvs: Array, vs: float) -> Array:
+	var ds: Array = []
+	for cv in cvs:
+		if cv != null:
+			ds.append((cv as VoxCanvas).downsample(2))
+	return mesh_arrays(ds, vs * 2.0)
+
+
+## 主线程：把工作线程生成的数组填进占位网格（LOD0 / LOD1 各一次）
+static func _fill(job: Dictionary) -> void:
+	if job.has("prof") and not job.has("f0"):
+		profile_log[str(job["key"])] = job["prof"]
+	if job.has("a0") and not job.has("f0"):
+		job["f0"] = true
+		_set_surface(job["m0"], job["a0"])
+		job.erase("a0")
+	if job.has("a1") and not job.has("f1"):
+		job["f1"] = true
+		_set_surface(job["m1"], job["a1"])
+		job.erase("a1")
+
+
+# ================================================================ 网格化核心
+
+## 画布数组 → add_surface_from_arrays 所需数组（空网格返回 []）。线程安全。
+static func mesh_arrays(canvases: Array, vs: float) -> Array:
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for cv in canvases:
+		if cv != null:
+			_mesh_canvas(cv as VoxCanvas, vs, verts, normals, colors, indices)
+	if verts.is_empty():
+		return []
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	return arrays
 
 
 static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, indices: PackedInt32Array) -> void:
@@ -73,10 +365,11 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 	var pofs: Array[Vector3] = []
 	var uvec: Array[Vector3] = []
 	var vvec: Array[Vector3] = []
+	var along: Array[bool] = []
 	for f in 6:
-		var n: Vector3i = _N[f]
-		var u: Vector3i = _U[f]
-		var v: Vector3i = _V[f]
+		var n: Vector3i = _NV[f]
+		var u: Vector3i = _UV[f]
+		var v: Vector3i = _VV[f]
 		nof.append(n.x + n.y * sx + n.z * sxy)
 		uof.append(u.x + u.y * sx + u.z * sxy)
 		vof.append(v.x + v.y * sx + v.z * sxy)
@@ -84,17 +377,37 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 		pofs.append(Vector3(maxi(n.x, 0), maxi(n.y, 0), maxi(n.z, 0)) * vs)
 		uvec.append(Vector3(u) * vs)
 		vvec.append(Vector3(v) * vs)
+		along.append(_ALONG_U[f])
 	var k0: float = AO_CURVE[0]
 	var k1: float = AO_CURVE[1]
 	var k2: float = AO_CURVE[2]
-	# 合并方向：±X/±Z 面沿 Y 合并（发丝、布褶多为竖向同色），±Y 面沿 X 合并
-	var along_u := [false, true, true, false, true, false]
 	var used := PackedByteArray()
 	used.resize(d.size())
 	for z in range(1, sz - 1):
+		# 整层/整行为空时用原生 count 一次跳过（逐格循环在 GDScript 中很慢）
+		var zs := z * sxy
+		if d.slice(zs, zs + sxy).count(0) == sxy:
+			continue
 		for y in range(1, sy - 1):
-			var row := y * sx + z * sxy
-			for x in range(1, sx - 1):
+			var row := y * sx + zs
+			if d.slice(row, row + sx).count(0) == sx:
+				continue
+			# 行内首尾实体；若 [首..尾] 全实且上下前后四行在此区间也全实，中间体素都在内部，只需处理两端
+			var xa := 1
+			while d[row + xa] == 0:
+				xa += 1
+			var xb := sx - 2
+			while d[row + xb] == 0:
+				xb -= 1
+			var inner_skip := false
+			if xb - xa >= 4:
+				var a := row + xa + 1
+				var b := row + xb
+				if d.slice(a, b).count(0) == 0 and d.slice(a + sx, b + sx).count(0) == 0 and d.slice(a - sx, b - sx).count(0) == 0 and d.slice(a + sxy, b + sxy).count(0) == 0 and d.slice(a - sxy, b - sxy).count(0) == 0:
+					inner_skip = true
+			for x in range(xa, xb + 1):
+				if inner_skip and x > xa and x < xb:
+					continue
 				var i := row + x
 				var raw := d[i]
 				if raw == 0:
@@ -102,16 +415,21 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 				# 完全被包围的内部体素直接跳过
 				if d[i + 1] != 0 and d[i - 1] != 0 and d[i + sx] != 0 and d[i - sx] != 0 and d[i + sxy] != 0 and d[i - sxy] != 0:
 					continue
-				var col := Color.hex(raw & 0xFFFFFFFF)
-				# 四个 AO 等级的明暗色（每个体素只算一次）
-				var shaded: Array[Color] = [Color(col.r * k0, col.g * k0, col.b * k0, col.a), Color(col.r * k1, col.g * k1, col.b * k1, col.a), Color(col.r * k2, col.g * k2, col.b * k2, col.a), col]
-				var pmin := origin + Vector3(x, y, z) * vs
 				var um := used[i]
+				if um == 63:
+					continue
+				var col := Color.hex(raw & 0xFFFFFFFF)
+				var pmin := origin + Vector3(x, y, z) * vs
+				var c0 := Color(col.r * k0, col.g * k0, col.b * k0, col.a)
+				var c1 := Color(col.r * k1, col.g * k1, col.b * k1, col.a)
+				var c2 := Color(col.r * k2, col.g * k2, col.b * k2, col.a)
 				for f in 6:
-					var ni := i + nof[f]
-					if d[ni] != 0:
+					var bit := 1 << f
+					if um & bit:
 						continue
-					if um & (1 << f):
+					var nf := nof[f]
+					var ni := i + nf
+					if d[ni] != 0:
 						continue
 					var uo := uof[f]
 					var vo := vof[f]
@@ -123,45 +441,89 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 					var a1 := 0 if (su_p + sv_n) == 2 else 3 - (su_p + sv_n + (1 if d[ni + uo - vo] != 0 else 0))
 					var a2 := 0 if (su_p + sv_p) == 2 else 3 - (su_p + sv_p + (1 if d[ni + uo + vo] != 0 else 0))
 					var a3 := 0 if (su_n + sv_p) == 2 else 3 - (su_n + sv_p + (1 if d[ni - uo + vo] != 0 else 0))
-					# 沿合并轴延伸：同色、同样暴露、AO 完全一致且沿轴方向无渐变
-					var au: bool = along_u[f]
+					var au: bool = along[f]
+					var mo := uo if au else vo       # 主合并方向
+					var so := vo if au else uo       # 次合并方向
 					var run := 1
-					if (au and a0 == a1 and a3 == a2) or (not au and a0 == a3 and a1 == a2):
-						var mo := uo if au else vo
-						var packed := a0 | (a1 << 2) | (a2 << 4) | (a3 << 6)
-						var lim := (sx - 2 - x) if f == 2 or f == 3 else (sy - 2 - y)
+					var wid := 1
+					var flat := a0 == 3 and a1 == 3 and a2 == 3 and a3 == 3
+					if flat:
+						# 最常见：四角无遮挡。候选格只需检查 8 个邻格全空
 						var j := i + mo
-						while run <= lim - 0:
-							if run > lim:
+						while d[j] == raw and (used[j] & bit) == 0:
+							var nj := j + nf
+							if d[nj] != 0 or d[nj + uo] != 0 or d[nj - uo] != 0 or d[nj + vo] != 0 or d[nj - vo] != 0 or d[nj + uo + vo] != 0 or d[nj - uo - vo] != 0 or d[nj + uo - vo] != 0 or d[nj - uo + vo] != 0:
 								break
-							if d[j] != raw or d[j + nof[f]] != 0 or (used[j] & (1 << f)) != 0:
-								break
-							if _ao_packed(d, j + nof[f], uo, vo) != packed:
-								break
-							used[j] = used[j] | (1 << f)
+							used[j] = used[j] | bit
 							run += 1
 							j += mo
+						var ls := i + so
+						while true:
+							var ok := true
+							var jj := ls
+							for k in run:
+								var nj2 := jj + nf
+								if d[jj] != raw or (used[jj] & bit) != 0 or d[nj2] != 0 or d[nj2 + uo] != 0 or d[nj2 - uo] != 0 or d[nj2 + vo] != 0 or d[nj2 - vo] != 0 or d[nj2 + uo + vo] != 0 or d[nj2 - uo - vo] != 0 or d[nj2 + uo - vo] != 0 or d[nj2 - uo + vo] != 0:
+									ok = false
+									break
+								jj += mo
+							if not ok:
+								break
+							jj = ls
+							for k in run:
+								used[jj] = used[jj] | bit
+								jj += mo
+							wid += 1
+							ls += so
+					elif (au and a0 == a1 and a3 == a2) or (not au and a0 == a3 and a1 == a2):
+						var packed := a0 | (a1 << 2) | (a2 << 4) | (a3 << 6)
+						var j := i + mo
+						while d[j] == raw and d[j + nf] == 0 and (used[j] & bit) == 0 and _ao_packed(d, j + nf, uo, vo) == packed:
+							used[j] = used[j] | bit
+							run += 1
+							j += mo
+						# AO 全平（但有遮挡）时再沿次方向整行扩展
+						if a0 == a1 and a1 == a2 and a2 == a3:
+							var ls2 := i + so
+							while true:
+								var ok2 := true
+								var jj2 := ls2
+								for k in run:
+									if d[jj2] != raw or d[jj2 + nf] != 0 or (used[jj2] & bit) != 0 or _ao_packed(d, jj2 + nf, uo, vo) != packed:
+										ok2 = false
+										break
+									jj2 += mo
+								if not ok2:
+									break
+								jj2 = ls2
+								for k in run:
+									used[jj2] = used[jj2] | bit
+									jj2 += mo
+								wid += 1
+								ls2 += so
 					var base := verts.size()
 					var pf: Vector3 = pmin + pofs[f]
 					var uf: Vector3 = uvec[f]
 					var vf: Vector3 = vvec[f]
 					if au:
 						uf = uf * run
+						vf = vf * wid
 					else:
 						vf = vf * run
+						uf = uf * wid
 					verts.append(pf)
 					verts.append(pf + uf)
 					verts.append(pf + uf + vf)
 					verts.append(pf + vf)
-					var nf: Vector3 = nvec[f]
-					normals.append(nf)
-					normals.append(nf)
-					normals.append(nf)
-					normals.append(nf)
-					colors.append(shaded[a0])
-					colors.append(shaded[a1])
-					colors.append(shaded[a2])
-					colors.append(shaded[a3])
+					var nn: Vector3 = nvec[f]
+					normals.append(nn)
+					normals.append(nn)
+					normals.append(nn)
+					normals.append(nn)
+					colors.append(col if a0 == 3 else (c2 if a0 == 2 else (c1 if a0 == 1 else c0)))
+					colors.append(col if a1 == 3 else (c2 if a1 == 2 else (c1 if a1 == 1 else c0)))
+					colors.append(col if a2 == 3 else (c2 if a2 == 2 else (c1 if a2 == 1 else c0)))
+					colors.append(col if a3 == 3 else (c2 if a3 == 2 else (c1 if a3 == 1 else c0)))
 					if a0 + a2 >= a1 + a3:
 						indices.append(base)
 						indices.append(base + 1)
@@ -189,3 +551,31 @@ static func _ao_packed(d: PackedInt32Array, ni: int, uo: int, vo: int) -> int:
 	var a2 := 0 if (su_p + sv_p) == 2 else 3 - (su_p + sv_p + (1 if d[ni + uo + vo] != 0 else 0))
 	var a3 := 0 if (su_n + sv_p) == 2 else 3 - (su_n + sv_p + (1 if d[ni - uo + vo] != 0 else 0))
 	return a0 | (a1 << 2) | (a2 << 4) | (a3 << 6)
+
+
+## 网格实例工具：为骨骼挂上 LOD0/LOD1 两个 MeshInstance3D（visibility range 切换）。
+## lod_dist <= 0 时只挂 LOD0（界面预览）。返回 LOD0 实例。
+static var lod_distance: float = 22.0
+
+
+static func attach(bone: Node3D, pair: Array, mesh_name: String = "Mesh", mirror: bool = false, lod: bool = true) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.name = mesh_name
+	mi.mesh = pair[0]
+	if mirror:
+		mi.scale = Vector3(-1, 1, 1)
+	bone.add_child(mi)
+	if lod and pair.size() > 1 and pair[1] != null:
+		var d := lod_distance
+		mi.visibility_range_end = d
+		mi.visibility_range_end_margin = 1.5
+		var m1 := MeshInstance3D.new()
+		m1.name = mesh_name + "_lod1"
+		m1.mesh = pair[1]
+		m1.visibility_range_begin = d
+		m1.visibility_range_begin_margin = 1.5
+		m1.set_meta("lod", 1)
+		if mirror:
+			m1.scale = Vector3(-1, 1, 1)
+		bone.add_child(m1)
+	return mi
