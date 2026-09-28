@@ -28,28 +28,41 @@ static func pose(pose_name: String) -> Dictionary:
 	return {}
 
 
-## 各武器的待机持械姿势（上半身）
+## 各武器的待机持械姿势（上半身 + 轻微分腿）。数值由逆运动学搜索求得（见 CharacterBuilder 骨架布局）：
+## - 枪：斜持于身前，右手握于右胯前，枪尖指向左上前方，左手握在上段枪杆（双手持枪，如参考图）
+## - 剑：右手持剑垂于体侧略前，剑尖斜指前下；左手剑指收于胸前
+## - 刀：右手持刀于体侧，刀尖斜指前下外侧；左拳收于腰间
+## - 拳：双拳护于胸前（战斗）；其它（如 "none"）为放松站姿，适合非战斗 NPC
 static func stance_pose(kind: String) -> Dictionary:
 	match kind:
+		"fist":
+			return {
+				"arm_l": Vector3(29, -12, -9), "forearm_l": Vector3(92, -27, 0),
+				"arm_r": Vector3(-1, -13, -10), "forearm_r": Vector3(99, 27, 0), "hand_r": Vector3(-100, 55, 49),
+				"leg_l": Vector3(8, 0, -4), "leg_r": Vector3(-6, 0, 4), "shin_l": Vector3(-8, 0, 0),
+			}
 		"sword":
 			return {
-				"arm_l": Vector3(0, 0, -8), "forearm_l": Vector3(12, 0, 0),
-				"arm_r": Vector3(12, 0, 12), "forearm_r": Vector3(30, 0, 0), "hand_r": Vector3(-72, 0, 0),
+				"arm_l": Vector3(15, -36, -24), "forearm_l": Vector3(121, -15, 0), "hand_l": Vector3(0, 0, 0),
+				"arm_r": Vector3(-20, 8, -11), "forearm_r": Vector3(79, -16, 0), "hand_r": Vector3(-79, -38, 39),
+				"leg_l": Vector3(6, 0, -3), "leg_r": Vector3(-4, 0, 3), "shin_l": Vector3(-6, 0, 0),
 			}
 		"saber":
 			return {
-				"arm_l": Vector3(0, 0, -8), "forearm_l": Vector3(12, 0, 0),
-				"arm_r": Vector3(-5, 0, 14), "forearm_r": Vector3(20, 0, 0), "hand_r": Vector3(-100, 0, 0),
+				"arm_l": Vector3(-31, 43, -24), "forearm_l": Vector3(114, -46, 0), "hand_l": Vector3(0, 0, 0),
+				"arm_r": Vector3(-26, 2, -10), "forearm_r": Vector3(89, -13, 0), "hand_r": Vector3(-73, -76, 60),
+				"leg_l": Vector3(6, 0, -4), "leg_r": Vector3(-5, 0, 4), "shin_l": Vector3(-6, 0, 0),
 			}
 		"spear":
 			return {
-				"spine": Vector3(0, 12, 0),
-				"arm_l": Vector3(40, -20, -10), "forearm_l": Vector3(50, 0, 0),
-				"arm_r": Vector3(20, 10, 16), "forearm_r": Vector3(45, 0, 0), "hand_r": Vector3(-50, 0, 0),
+				"arm_l": Vector3(32, 1, 1), "forearm_l": Vector3(83, -23, 0), "hand_l": Vector3(-19, 67, -12),
+				"arm_r": Vector3(8, 20, 22), "forearm_r": Vector3(71, 45, 0), "hand_r": Vector3(-24, -20, -60),
+				"leg_l": Vector3(8, 0, -4), "leg_r": Vector3(-6, 0, 5), "shin_l": Vector3(-8, 0, 0),
 			}
 	return {
-		"arm_l": Vector3(0, 0, -7), "forearm_l": Vector3(18, 0, 0),
-		"arm_r": Vector3(0, 0, 7), "forearm_r": Vector3(18, 0, 0),
+		"arm_l": Vector3(4, 0, -6), "forearm_l": Vector3(16, 0, 0),
+		"arm_r": Vector3(4, 0, 6), "forearm_r": Vector3(16, 0, 0),
+		"leg_l": Vector3(2, 0, -2), "leg_r": Vector3(-1, 0, 2),
 	}
 
 
