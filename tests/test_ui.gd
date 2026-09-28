@@ -246,10 +246,10 @@ func test_crafting() -> void:
 	_ok(not Crafting.can_craft(p, GS.stats, DB.recipes["r_pill_zhuji"])["ok"], "等级不足")
 	# 灵石作为材料
 	p.spirit_stones = 100
-	GS.give_item("herb_fire_ganoderma", 1, false)
-	_ok(Crafting.can_craft(p, GS.stats, DB.recipes["r_talisman_fireball"])["ok"], "灵石材料计数")
-	Crafting.craft("r_talisman_fireball")
-	_eq(p.spirit_stones, 97, "扣除灵石")
+	GS.give_item("herb_lingcao", 1, false)
+	_ok(Crafting.can_craft(p, GS.stats, DB.recipes["r_pill_qi"])["ok"], "灵石材料计数")
+	Crafting.craft("r_pill_qi")
+	_eq(p.spirit_stones, 95, "扣除灵石")
 	_eq(Crafting.add_xp(p, "forging", Crafting.xp_needed(0) + 1.0), 1, "熟练度升级")
 
 

@@ -168,7 +168,11 @@ static func lifespan_years(p: PlayerData) -> int:
 
 ## 洞府聚灵阵倍率
 static func home_formation_mult() -> float:
-	var f: Dictionary = GS.world.get("home", {}).get("formation", {}) if GS.world.get("home", {}) is Dictionary else {}
+	var home = GS.world.get("home", {})
+	var fv = home.get("formation", {}) if home is Dictionary else {}
+	if not fv is Dictionary:
+		return 1.0
+	var f: Dictionary = fv
 	if f.is_empty() or int(f.get("until_day", -1)) < GS.day_index():
 		return 1.0
 	return float(f.get("mult", 1.0))

@@ -1,52 +1,43 @@
 class_name SectPanel
-extends PanelContainer
+extends UIWindow
 ## 宗门 / 人脉面板（J）：宗门阶位、贡献、声望、已接任务；五宗概览；结识的修士与羁绊。
 ## 操作（接任务、学功法、兑换）在宗门 NPC 处进行，本面板只做信息汇总。
-
-signal close_requested
+## 由 GameSession 注册到 UIManager：UIManager.register_panel("sect", ...)
 
 var _tabs: TabContainer
 
 
-func _ready() -> void:
-	custom_minimum_size = Vector2(760, 560)
-	var root := VBoxContainer.new()
-	add_child(root)
-	var head := HBoxContainer.new()
-	root.add_child(head)
-	var title := Label.new()
-	title.text = "宗门 · 人脉"
-	title.add_theme_font_size_override("font_size", 26)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
-	var close := Button.new()
-	close.text = "关闭"
-	close.pressed.connect(func() -> void: close_requested.emit())
-	head.add_child(close)
-	_tabs = TabContainer.new()
-	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(_tabs)
-	_build()
-	Events.sect_changed.connect(_rebuild)
-	Events.missions_changed.connect(_rebuild)
-	Events.relation_changed.connect(func(_id: String) -> void: _rebuild())
+func _init() -> void:
+	super._init()
+	window_title = "宗门 · 人脉"
 
 
-func _rebuild() -> void:
-	if not is_inside_tree():
-		return
-	var cur := _tabs.current_tab
-	for c in _tabs.get_children():
-		c.queue_free()
-	await get_tree().process_frame
-	_build()
-	_tabs.current_tab = clampi(cur, 0, _tabs.get_tab_count() - 1)
+static func create(_args: Dictionary) -> UIWindow:
+	return SectPanel.new()
 
 
 func _build() -> void:
+	custom_minimum_size = Vector2(780, 580)
+	_tabs = TabContainer.new()
+	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.custom_minimum_size = Vector2(760, 520)
+	body.add_child(_tabs)
+	Events.sect_changed.connect(queue_refresh)
+	Events.missions_changed.connect(queue_refresh)
+	Events.relation_changed.connect(func(_id: String) -> void: queue_refresh())
+
+
+func refresh() -> void:
+	if _tabs == null:
+		return
+	var cur := _tabs.current_tab
+	for c in _tabs.get_children():
+		_tabs.remove_child(c)
+		c.queue_free()
 	_tabs.add_child(_my_sect())
 	_tabs.add_child(_all_sects())
 	_tabs.add_child(_relations())
+	_tabs.current_tab = clampi(cur, 0, _tabs.get_tab_count() - 1)
 
 
 func _scroll(tab_name: String) -> Array:

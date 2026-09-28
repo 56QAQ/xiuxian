@@ -10,7 +10,7 @@ var player: HumanoidActor
 var camera: CameraRig
 var controller: PlayerController
 var hud: CombatHUD
-var ui: Node
+var ui: UIManager
 var numbers: DamageNumbers
 ## 场景基础音乐；遭遇敌人时切换为战斗音乐
 var base_music: String = ""
@@ -33,12 +33,20 @@ func start(world_root: Node3D, pos: Vector3) -> void:
 	hud.name = "HUD"
 	add_child(hud)
 	hud.bind(player, camera)
-	if ResourceLoader.exists("res://src/ui/ui_manager.gd"):
-		var ui_script: Script = load("res://src/ui/ui_manager.gd")
-		ui = ui_script.new()
-		ui.name = "UIManager"
-		add_child(ui)
+	var mgr := UIManager.new()
+	mgr.name = "UIManager"
+	mgr.capture_mouse_when_closed = DisplayServer.get_name() != "headless"
+	ui = mgr
+	add_child(mgr)
+	if not UIManager.has_panel("sect"):
+		UIManager.register_panel("sect", SectPanel.create)
 	capture_mouse()
+
+
+func _exit_tree() -> void:
+	# 静态注册表中不保留本会话的回调，避免退出时访问已释放的脚本
+	UIManager.unregister_panel("sect")
+	UIManager.register_args_provider("map", Callable())
 
 
 func set_music(track: String) -> void:

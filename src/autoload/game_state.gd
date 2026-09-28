@@ -54,7 +54,7 @@ func new_game(creation: Dictionary) -> void:
 		"sects": {},
 		"missions": [],
 		"flags": {},
-		"home": {"fields": [], "formation": ""},
+		"home": {"fields": [], "formation": {}},
 		"encounters": {},
 		"treasures": [],
 	}
