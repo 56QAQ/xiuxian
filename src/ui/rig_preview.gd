@@ -112,7 +112,8 @@ static func equip_visual_for(p: PlayerData) -> Dictionary:
 		if not vis.is_empty() and str(vis.get("kind", "")) != "fist":
 			out["weapon"] = vis
 	var ar := p.equipped("armor")
-	if ar != null:
+	# 与 HumanoidActor 一致：凡品法衣不覆盖玩家自选的服饰外观
+	if ar != null and ar.get_grade() >= 1:
 		var ov: Dictionary = ar.def().get("equip", {}).get("visual", {})
 		if not ov.is_empty():
 			out["outfit"] = ov

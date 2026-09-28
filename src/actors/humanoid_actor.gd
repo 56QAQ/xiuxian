@@ -146,7 +146,8 @@ func rebuild_visual() -> void:
 		ev["weapon"] = w.def().get("weapon", {}).get("visual", {"kind": weapon_kind})
 		weapon_element = w.element()
 	var armor := pd.equipped("armor")
-	if armor != null and armor.def().get("equip", {}).has("visual"):
+	# 凡品法衣不覆盖捏人时选择的服饰外观；灵品以上的法衣/战甲才改变外观
+	if armor != null and armor.get_grade() >= 1 and armor.def().get("equip", {}).has("visual"):
 		ev["outfit"] = armor.def()["equip"]["visual"]
 	rig = CharacterBuilder.build(appearance, ev)
 	rig.stance = weapon_kind
