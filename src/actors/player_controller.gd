@@ -25,6 +25,9 @@ func _ui_blocking() -> bool:
 
 func update_intents(a: HumanoidActor, delta: float) -> void:
 	actor = a
+	# 打坐在打开界面时也继续进行
+	if a.action == "meditate":
+		_meditate_tick(delta)
 	var blocked := _ui_blocking() or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED
 	if blocked:
 		a.in_move = Vector3.ZERO
@@ -68,8 +71,6 @@ func update_intents(a: HumanoidActor, delta: float) -> void:
 	_update_interact()
 	if Input.is_action_just_pressed("interact") and interact_target != null and is_instance_valid(interact_target):
 		interact_target.call("interact", a)
-	if a.action == "meditate":
-		_meditate_tick(delta)
 
 
 # ================================================================ 锁定

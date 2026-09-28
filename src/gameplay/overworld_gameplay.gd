@@ -51,6 +51,12 @@ func start(ow: Node3D, spawn_pos: Vector3) -> void:
 	session.set_music("music_overworld")
 
 
+## 立即结算打坐累积的修为（测试/存档前调用）
+func controller_flush() -> void:
+	if session != null and session.controller != null:
+		session.controller._flush_meditation()
+
+
 func _exit_tree() -> void:
 	if Events.actor_died.is_connected(_on_actor_died):
 		Events.actor_died.disconnect(_on_actor_died)
