@@ -32,6 +32,10 @@ func _ready() -> void:
 		if director.has_method("step"):
 			director.call("step", root, i)
 		await get_tree().process_frame
+	if DisplayServer.get_name() == "headless":
+		print("无头模式：跳过截图")
+		get_tree().quit(0)
+		return
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(out)
