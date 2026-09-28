@@ -87,7 +87,7 @@ func _my_sect() -> Control:
 		if m["type"] == "deliver":
 			prog = "持有 %d/%d" % [GS.player.bag.count_of(str(m.get("item", ""))), int(m["count"])]
 		var done := SectSystem.can_turn_in(m)
-		_label(v, "%s【%s】%s — %s  %s" % ["✔ " if done else "· ", DB.sect(str(m["sect"])).get("name", ""), m["name"], m["text"], prog], 15, Color(0.6, 1.0, 0.6) if done else Color(0.9, 0.9, 0.88))
+		_label(v, "%s【%s】%s — %s  %s" % ["◆ " if done else "· ", DB.sect(str(m["sect"])).get("name", ""), m["name"], m["text"], prog], 15, Color(0.6, 1.0, 0.6) if done else Color(0.9, 0.9, 0.88))
 	return r[0]
 
 
