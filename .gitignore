@@ -13,3 +13,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 /screenshots/
+
+# Claude Code local state (agent worktrees)
+.claude/
