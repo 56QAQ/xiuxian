@@ -63,23 +63,10 @@ static func _talisman(ci: RID, r: Rect2, s: float, i: int, id: String, a: Humano
 	var no_qi := a.combatant.qi < qi_cost
 	var cd := a.spell_cooldown(id)
 	var maxcd := maxf(float(def.get("cd", 1.0)), 0.01)
-	# 纸：黄符纸，边缘略暗
-	RenderingServer.canvas_item_add_rect(ci, Rect2(r.position + Vector2(2.0, 3.0) * s, r.size), Color(0, 0, 0, 0.35))
-	var top := Color(0.93, 0.82, 0.52)
-	var bot := Color(0.82, 0.66, 0.36)
-	if no_qi:
-		top = Color(0.55, 0.52, 0.48)
-		bot = Color(0.42, 0.4, 0.38)
-	RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]),
-		PackedColorArray([top, top, bot, bot]))
-	InkArt.tile(ci, r, InkArt.tex("paper_fiber"), Color(0.45, 0.28, 0.1, 0.22), 0.35, Vector2(i * 97.0, i * 53.0))
-	InkArt.tile(ci, r, InkArt.tex("paper_mottle"), Color(0.5, 0.3, 0.1, 0.16), 0.3, Vector2(i * 131.0, 17.0))
-	# 朱砂双框
 	var red := Color(0.72, 0.1, 0.06, 0.95)
 	if no_qi:
 		red = Color(0.95, 0.2, 0.15, 0.55 + 0.45 * sin(hud.t * 9.0))
-	_frame(ci, r.grow(-3.0 * s), red, 1.6 * s)
-	_frame(ci, r.grow(-5.5 * s), Color(red.r, red.g, red.b, red.a * 0.6), 0.8 * s)
+	draw_paper(ci, r, s, i, no_qi, red)
 	# 五行圆印
 	var sc := Vector2(r.get_center().x, r.position.y + 29.0 * s)
 	InkArt.seal(ci, sc, 34.0 * s, InkArt.elem_glyph(e), ecol.darkened(0.25), Color(1.0, 0.97, 0.9), true, 0.0, fd)
@@ -102,6 +89,22 @@ static func _talisman(ci: RID, r: Rect2, s: float, i: int, id: String, a: Humano
 			# 墨边（参差）
 			InkArt.brush(ci, Vector2(r.position.x - 2.0 * s, r.position.y + ih), Vector2(r.end.x + 2.0 * s, r.position.y + ih), 10.0 * s, Color(0.05, 0.04, 0.05, 0.72), "brush_thin")
 		InkArt.text(ci, fd, Vector2(r.get_center().x, r.get_center().y + 12.0 * s), ("%.1f" % cd) if cd < 10.0 else str(int(cd)), int(28 * s), Color(1.0, 0.97, 0.9), 1, OUTLINE, int(4 * s))
+
+
+## 一张黄符纸：投影 + 纵向渐变纸色 + 纤维与斑驳 + 朱砂双框（dim：灰纸）
+static func draw_paper(ci: RID, r: Rect2, s: float, seed_i: int, dim: bool = false, red: Color = Color(0.72, 0.1, 0.06, 0.95)) -> void:
+	RenderingServer.canvas_item_add_rect(ci, Rect2(r.position + Vector2(2.0, 3.0) * s, r.size), Color(0, 0, 0, 0.35))
+	var top := Color(0.93, 0.82, 0.52)
+	var bot := Color(0.82, 0.66, 0.36)
+	if dim:
+		top = Color(0.55, 0.52, 0.48)
+		bot = Color(0.42, 0.4, 0.38)
+	RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]),
+		PackedColorArray([top, top, bot, bot]))
+	InkArt.tile(ci, r, InkArt.tex("paper_fiber"), Color(0.45, 0.28, 0.1, 0.22), 0.35, Vector2(seed_i * 97.0, seed_i * 53.0))
+	InkArt.tile(ci, r, InkArt.tex("paper_mottle"), Color(0.5, 0.3, 0.1, 0.16), 0.3, Vector2(seed_i * 131.0, 17.0))
+	_frame(ci, r.grow(-3.0 * s), red, 1.6 * s)
+	_frame(ci, r.grow(-5.5 * s), Color(red.r, red.g, red.b, red.a * 0.6), 0.8 * s)
 
 
 static func _frame(ci: RID, r: Rect2, col: Color, w: float) -> void:

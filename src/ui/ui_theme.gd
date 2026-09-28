@@ -189,8 +189,10 @@ static func _build() -> Theme:
 
 	# ---- 提示框（宣纸）
 	var tip := parchment_box()
-	tip.set_margins(16, 12, 16, 14)
+	tip.set_margins(16, 18, 16, 20)
 	tip.shadow_size = 12.0
+	tip.rods = true
+	tip.inner_inset = 9.0
 	t.set_stylebox("panel", "TooltipPanel", tip)
 	t.set_color("font_color", "TooltipLabel", PARCHMENT_INK)
 	t.set_font_size("font_size", "TooltipLabel", 16)
@@ -493,14 +495,16 @@ static func _build() -> Theme:
 	exp_fill.brush_color = Color(0.98, 0.78, 0.4, 0.95)
 	exp_fill.brush_u1 = 0.9
 	exp_fill.brush_overflow = false
+	exp_fill.brush_tex = "brush_thin"
 	exp_fill.border_width = 0.0
 	exp_fill.set_all_margins(0)
 	t.set_stylebox("fill", "ExpBar", exp_fill)
 	var exp_bg := OrnateBox.new()
 	exp_bg.brush = 1.0
-	exp_bg.brush_color = Color(0.0, 0.0, 0.0, 0.6)
+	exp_bg.brush_color = Color(0.0, 0.0, 0.0, 0.45)
 	exp_bg.brush_u1 = 0.95
 	exp_bg.brush_overflow = false
+	exp_bg.brush_tex = "brush_thin"
 	exp_bg.border_width = 0.0
 	exp_bg.set_all_margins(0)
 	t.set_stylebox("background", "ExpBar", exp_bg)

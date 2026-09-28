@@ -41,8 +41,12 @@ extends StyleBox
 @export var brush_flip: bool = false
 ## 笔触截取到 u（0..1）：<1 时收笔的飞白更少，适合承载文字
 @export var brush_u1: float = 1.0
+## 笔触纹理（brush_stroke 粗笔 / brush_thin 细笔）
+@export var brush_tex: String = "brush_stroke"
 ## 笔触是否略微出界（起笔/收笔越过边框更自然）；进度条等需要严格贴边时关闭
 @export var brush_overflow: bool = true
+## 卷轴木轴：上下两端各一根深色木轴 + 金帽（宣纸提示框）
+@export var rods: bool = false
 ## 阴影
 @export var shadow_size: float = 0.0
 @export var shadow_color: Color = Color(0, 0, 0, 0.5)
@@ -126,6 +130,8 @@ func _draw(ci: RID, rect: Rect2) -> void:
 		var inset := inner_inset + 4.0
 		InkArt.hui_band_h(ci, rect.position.x + corner_len * 3.0, rect.end.x - corner_len * 3.0, rect.position.y + inset, unit, hui_color, 1.0)
 		InkArt.hui_band_h(ci, rect.position.x + corner_len * 3.0, rect.end.x - corner_len * 3.0, rect.end.y - inset - unit * 0.62, unit, hui_color, 1.0)
+	if rods:
+		_draw_rods(ci, rect)
 	match ornament:
 		1:
 			_corners_lattice(ci, rect)
@@ -137,9 +143,24 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			InkArt.cloud_corners(ci, rect, corner_len * 4.0, ornament_color, 2.0)
 
 
+## 卷轴上下木轴
+func _draw_rods(ci: RID, rect: Rect2) -> void:
+	var h := 7.0
+	var wood_hi := Color(0.42, 0.25, 0.12)
+	var wood_lo := Color(0.16, 0.08, 0.04)
+	var cap := Color(0.93, 0.75, 0.38)
+	for y: float in [rect.position.y, rect.end.y - h]:
+		var r := Rect2(Vector2(rect.position.x, y), Vector2(rect.size.x, h))
+		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]),
+			PackedColorArray([wood_hi, wood_hi, wood_lo, wood_lo]))
+		RenderingServer.canvas_item_add_rect(ci, Rect2(r.position + Vector2(0, 1.5), Vector2(r.size.x, 1.0)), Color(1, 0.85, 0.6, 0.25))
+		RenderingServer.canvas_item_add_rect(ci, Rect2(r.position, Vector2(6.0, h)), cap)
+		RenderingServer.canvas_item_add_rect(ci, Rect2(Vector2(r.end.x - 6.0, r.position.y), Vector2(6.0, h)), cap)
+
+
 ## 一笔墨痕作底：左右各出界少许，两端自然收笔
 func _draw_brush_bg(ci: RID, rect: Rect2) -> void:
-	var t := InkArt.tex("brush_stroke")
+	var t := InkArt.tex(brush_tex)
 	if t == null:
 		return
 	var over := minf(rect.size.y * 0.6, 26.0) if brush_overflow else 0.0
@@ -153,7 +174,7 @@ func _draw_brush_bg(ci: RID, rect: Rect2) -> void:
 			var tmp := a
 			a = b
 			b = tmp
-		InkArt.brush_part(ci, a, b, r.size.y, col, 0.0, brush_u1)
+		InkArt.brush_part(ci, a, b, r.size.y, col, 0.0, brush_u1, brush_tex)
 	else:
 		InkArt.rect_tex(ci, t, r, col, brush_flip)
 
