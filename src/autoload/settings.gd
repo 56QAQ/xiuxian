@@ -50,6 +50,7 @@ const BINDINGS := {
 func _ready() -> void:
 	setup_input()
 	load_settings()
+	get_tree().root.theme = UITheme.get_theme()
 
 
 func setup_input() -> void:
