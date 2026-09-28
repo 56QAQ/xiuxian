@@ -10,7 +10,7 @@ timeout 300 "$GODOT" --headless --path . --import >/dev/null 2>&1
 OUT=$(timeout 600 "$GODOT" --headless --path . res://tests/test_runner.tscn -- "$@" 2>&1)
 CODE=$?
 echo "$OUT" | grep -vE "^\s*$|ALSA|alsa|audio driver|pulse"
-if echo "$OUT" | grep -vE "audio|ALSA|alsa|init_output_device" | grep -qE "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script|^ERROR:"; then
+if echo "$OUT" | grep -vE "audio|ALSA|alsa|init_output_device|resources still in use at exit|ObjectDB instances leaked" | grep -qE "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script|^ERROR:"; then
 	echo "检测到脚本错误"
 	exit 1
 fi

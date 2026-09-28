@@ -48,6 +48,12 @@ static func make_cultivator_pd(template: Dictionary, rng: RandomNumberGenerator,
 	var wid := str(overrides.get("weapon", weapons[rng.randi() % weapons.size()] if not weapons.is_empty() else "sword_iron"))
 	if not DB.item(wid).is_empty():
 		pd.equipment["weapon"] = ItemInstance.create(wid)
+	var aid := str(overrides.get("armor", template.get("armor", "")))
+	if not DB.item(aid).is_empty():
+		pd.equipment["armor"] = ItemInstance.create(aid)
+	if template.has("loot") and DB.loot_tables.has(str(template["loot"])):
+		for it in LootRoller.roll(str(template["loot"]), rng):
+			pd.bag.add(it)
 	# 法诀
 	var spells: Array = overrides.get("spells", [])
 	if spells.is_empty():
@@ -66,8 +72,9 @@ static func make_cultivator_pd(template: Dictionary, rng: RandomNumberGenerator,
 		if slot < 4:
 			pd.spell_slots[slot] = sid
 			slot += 1
-	# 功法：主元素对应的主修功法
-	pd.main_technique = best_technique_for(pd.main_element(), pd.realm)
+	# 功法：模板指定，否则取主元素对应的主修功法
+	var tt := str(template.get("technique", ""))
+	pd.main_technique = tt if DB.techniques.has(tt) else best_technique_for(pd.main_element(), pd.realm)
 	if pd.main_technique != "":
 		pd.techniques[pd.main_technique] = {"lv": clampi(pd.realm, 0, 3), "xp": 0.0}
 	# 外貌

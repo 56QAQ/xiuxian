@@ -271,8 +271,17 @@ static func chat(id: String) -> String:
 	var key := "greet"
 	var b := str(rec.get("bond", ""))
 	var pool: Array
-	if b in ["friend", "confidant", "lover"]:
-		pool = DB.dialogue.get("lover" if b == "lover" and DB.dialogue.has("lover") else "friend", [])
+	var tiers: Dictionary = DB.dialogue.get("friend_tiers", {})
+	if b == "lover" and DB.dialogue.has("lover"):
+		pool = DB.dialogue["lover"]
+	elif b in ["master"] and DB.dialogue.has("master"):
+		pool = DB.dialogue["master"]
+	elif b in ["friend", "confidant"] and tiers.has(b):
+		pool = tiers[b]
+	elif b in ["friend", "confidant"]:
+		pool = DB.dialogue.get("friend", [])
+	elif rec.get("met", false) and int(rec.get("favor", 0)) >= 10 and tiers.has("acquaintance"):
+		pool = tiers["acquaintance"]
 	elif b == "enemy":
 		pool = DB.dialogue.get("rival", DB.dialogue.get("attacked", []))
 	else:

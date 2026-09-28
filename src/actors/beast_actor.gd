@@ -195,10 +195,16 @@ func start_attack(a: Dictionary) -> void:
 			_hit_at = 99.0
 			Audio.play_at("beast_growl", global_position)
 		"howl":
-			combatant.apply_status("fury", 1.0, combatant)
+			var buff: Dictionary = a.get("buff", {"status": "fury", "stacks": 1, "duration": 8.0, "radius": 20.0})
+			var sid := str(buff.get("status", "fury"))
+			var radius := float(buff.get("radius", 20.0))
 			for b in get_tree().get_nodes_in_group("beasts"):
-				if b != self and (b as Node3D).global_position.distance_to(global_position) < 20.0:
-					CombatUtil.combatant_of(b).apply_status("fury", 1.0, combatant)
+				if (b as Node3D).global_position.distance_to(global_position) < radius:
+					var bc := CombatUtil.combatant_of(b)
+					if bc != null and bc.alive:
+						bc.apply_status(sid, float(buff.get("stacks", 1)), combatant)
+						if bc.statuses.has(sid):
+							bc.statuses[sid]["time"] = float(buff.get("duration", 8.0))
 			Audio.play_at("beast_growl", global_position, 2.0)
 			FX.ring(global_position + Vector3.UP * 0.5, 6.0, Color(1, 0.5, 0.3), 0.6)
 		_:
@@ -328,12 +334,9 @@ func _on_died(killer: Combatant) -> void:
 			var nr: Array = d.get("n", [1, 1])
 			items.append(ItemInstance.create(str(d["item"]), rng.randi_range(int(nr[0]), int(nr[1]))))
 	if not items.is_empty():
-		var parent := get_parent()
-		var pos := global_position
-		get_tree().create_timer(1.0).timeout.connect(func() -> void:
-			if is_instance_valid(parent):
-				var c := LootContainer.create(parent, pos, "beast", "", 0.8, rng, items)
-				c.title = "%s遗骸" % combatant.display_name)
+		var c := LootContainer.create(get_parent(), global_position, "beast", "", 0.8, rng, items)
+		c.title = "%s遗骸" % combatant.display_name
+		c.reveal_after(1.0)
 	var tw := create_tween()
 	tw.tween_interval(6.0)
 	if rig is CharacterRig:

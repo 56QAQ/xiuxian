@@ -302,7 +302,7 @@ static func on_spar_won() -> void:
 
 
 static func can_turn_in(m: Dictionary) -> bool:
-	if m["type"] == "deliver":
+	if m["type"] in ["deliver", "realm_item"]:
 		return GS.player.bag.count_of(str(m.get("item", ""))) >= int(m["count"])
 	return m.get("done", false)
 
@@ -310,7 +310,7 @@ static func can_turn_in(m: Dictionary) -> bool:
 static func turn_in(m: Dictionary) -> bool:
 	if not can_turn_in(m):
 		return false
-	if m["type"] == "deliver":
+	if m["type"] in ["deliver", "realm_item"]:
 		GS.player.bag.take(str(m["item"]), int(m["count"]))
 	var r: Dictionary = m.get("reward", {})
 	var sect := str(m.get("sect", ""))

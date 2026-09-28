@@ -265,11 +265,15 @@ func _portal_dialog(_a: Node3D, rid: String, marker: Node3D) -> void:
 	var d: Dictionary = DB.secret_realms.get(rid, {})
 	var cost := int(d.get("entry_cost", 0))
 	var min_realm := int(d.get("min_realm", 0))
+	var token := str(d.get("token", ""))
 	var text := "%s\n\n推荐境界：%s以上 · 时限 %d 分钟 · 入场 %d 灵石\n死亡将失去储物袋中的全部物品（本命空间除外）。" % [
 		d.get("desc", ""), DB.realm_name(min_realm, 0), int(d.get("time_limit", 600)) / 60, cost]
+	var has_token := token == "" or GS.player.bag.count_of(token) > 0 or GS.player.stash.count_of(token) > 0
+	if token != "":
+		text += "\n需要信物：%s（%s）" % [DB.item(token).get("name", token), "已持有" if has_token else "未持有"]
 	var warn := GS.player.realm < min_realm
 	Events.open_panel.emit("dialogue", {"name": str(d.get("name", rid)), "title": "秘境", "text": text, "options": [
-		{"text": "进入秘境" + ("（境界不足，凶险万分）" if warn else ""), "callback": _enter_realm.bind(rid, cost, marker.global_position), "disabled": GS.player.spirit_stones < cost},
+		{"text": "进入秘境" + ("（境界不足，凶险万分）" if warn else ""), "callback": _enter_realm.bind(rid, cost, marker.global_position), "disabled": GS.player.spirit_stones < cost or not has_token, "hint": "" if has_token else "缺少信物"},
 		{"text": "离开", "callback": func() -> void: Events.close_panels.emit()},
 	]})
 
@@ -277,6 +281,11 @@ func _portal_dialog(_a: Node3D, rid: String, marker: Node3D) -> void:
 func _enter_realm(rid: String, cost: int, portal_pos: Vector3) -> void:
 	if cost > 0 and not GS.spend_stones(cost):
 		return
+	var token := str(DB.secret_realms.get(rid, {}).get("token", ""))
+	if token != "":
+		if not GS.player.bag.take(token, 1) and not GS.player.stash.take(token, 1):
+			return
+		Events.inventory_changed.emit()
 	Events.close_panels.emit()
 	var back := portal_pos + Vector3(3.0, 1.0, 3.0)
 	GS.overworld_position = back

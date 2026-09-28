@@ -64,10 +64,10 @@ static func _fade_gradient(c: Color) -> Gradient:
 
 
 static func _auto_free(n: Node, t: float) -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	tree.create_timer(t, false).timeout.connect(func() -> void:
-		if is_instance_valid(n):
-			n.queue_free())
+	# 绑定到节点自身的 tween：节点提前被释放时 tween 随之失效，不会访问已释放对象
+	var tw := n.create_tween()
+	tw.tween_interval(t)
+	tw.tween_callback(n.queue_free)
 
 
 ## 体素碎块迸溅

@@ -46,6 +46,8 @@ func _ready() -> void:
 		suite.queue_free()
 		await get_tree().process_frame
 	print("\n%d 个测试，%d 项断言，用时 %d ms" % [ran, _checks, Time.get_ticks_msec() - t0])
+	_clear_static_caches()
+	await get_tree().process_frame
 	if _failures.is_empty():
 		print("全部通过")
 		get_tree().quit(0)
@@ -54,6 +56,20 @@ func _ready() -> void:
 		for f in _failures:
 			print("  - " + f)
 		get_tree().quit(1)
+
+
+## 退出前释放各模块的静态缓存（材质、网格），避免退出时报告资源泄漏
+func _clear_static_caches() -> void:
+	FX._mats.clear()
+	FX._cube = null
+	RealmProps._cache.clear()
+	NpcSystem.clear_cache()
+	VoxelMesher._material = null
+	for path in ["res://src/voxel/character_builder.gd", "res://src/voxel/beast_builder.gd", "res://src/voxel/prop_builder.gd", "res://src/voxel/building_builder.gd"]:
+		if ResourceLoader.exists(path):
+			var sc: Script = load(path)
+			if sc.has_method("clear_cache"):
+				sc.call("clear_cache")
 
 
 func check(cond: bool, msg: String = "") -> bool:

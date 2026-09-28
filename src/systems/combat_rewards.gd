@@ -45,15 +45,11 @@ static func drop_humanoid_loot(a: HumanoidActor) -> void:
 		items.append(ItemInstance.create("spirit_stone", pd.spirit_stones))
 	if items.is_empty():
 		return
-	var parent := a.get_parent()
-	var pos := a.global_position
-	var nm := a.combatant.display_name
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	a.get_tree().create_timer(1.2).timeout.connect(func() -> void:
-		if is_instance_valid(parent):
-			var cont := LootContainer.create(parent, pos, "corpse", "", 1.5, rng, items)
-			cont.title = "%s的储物袋" % nm)
+	var cont := LootContainer.create(a.get_parent(), a.global_position, "corpse", "", 1.5, rng, items)
+	cont.title = "%s的储物袋" % a.combatant.display_name
+	cont.reveal_after(1.2)
 
 
 static func witnesses_of(victim: Node3D, victim_id: String) -> Array[String]:

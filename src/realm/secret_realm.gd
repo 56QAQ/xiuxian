@@ -59,7 +59,9 @@ func _ready() -> void:
 	session.start(self, spawn_pos)
 	session.player_died.connect(_on_player_died)
 	_spawn_enemies()
+	_spawn_boss()
 	_spawn_rivals()
+	_inject_mission_items()
 	Events.actor_died.connect(_on_actor_died)
 	Events.inventory_changed.connect(_convert_stones)
 	Events.notify.emit("踏入秘境「%s」" % def.get("name", ""), "realm")
@@ -322,6 +324,45 @@ func _spawn_enemies() -> void:
 				ActorFactory.spawn_beast(self, eid, p + Vector3.UP * 0.3)
 			else:
 				_spawn_cultivator(eid, p, true)
+
+
+## 秘境首领：守在离入口最远的祭坛附近
+func _spawn_boss() -> void:
+	var bid := str(def.get("boss", ""))
+	if bid == "" or DB.enemy(bid).is_empty():
+		return
+	var best := spawn_pos
+	for n in get_tree().get_nodes_in_group("loot_container"):
+		var lc := n as LootContainer
+		if lc.kind == "altar" and lc.global_position.distance_to(spawn_pos) > best.distance_to(spawn_pos):
+			best = lc.global_position
+	if best == spawn_pos:
+		best = _random_point(20.0)
+		for i in 10:
+			var c := _random_point(20.0)
+			if c.distance_to(spawn_pos) > best.distance_to(spawn_pos):
+				best = c
+	var b := ActorFactory.spawn_beast(self, bid, _ground(best + Vector3(4, 0, 4)) + Vector3.UP * 0.5)
+	b.ai.aggro = 18.0
+	b.ai.leash = 40.0
+	b.set_meta("boss", true)
+	b.combatant.display_name = "【首领】" + b.combatant.display_name
+
+
+## 已接的“秘境寻物”任务：把任务物品藏进某个容器
+func _inject_mission_items() -> void:
+	var containers := get_tree().get_nodes_in_group("loot_container")
+	if containers.is_empty():
+		return
+	for m in SectSystem.accepted():
+		if str(m.get("type", "")) != "realm_item" or m.get("done", false):
+			continue
+		var need := int(m.get("count", 1)) - GS.player.bag.count_of(str(m.get("item", "")))
+		if need <= 0:
+			continue
+		var lc: LootContainer = containers[rng.randi() % containers.size()]
+		lc.grid.add(ItemInstance.create(str(m["item"]), need))
+		lc.best_grade = maxi(lc.best_grade, 2)
 
 
 func _spawn_rivals() -> void:

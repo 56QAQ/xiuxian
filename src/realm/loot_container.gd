@@ -6,7 +6,7 @@ extends Node3D
 signal searched_done(container: LootContainer)
 
 const NAMES := {"chest": "宝箱", "herb_patch": "灵药圃", "ore_vein": "矿脉", "corpse": "修士遗骸", "altar": "古祭坛",
-	"cauldron": "丹炉", "bookshelf": "书架", "beast": "妖兽尸骸", "bag": "储物袋"}
+	"cauldron": "残破丹炉", "bookshelf": "古籍书架", "beast": "妖兽尸骸", "bag": "储物袋"}
 
 var kind: String = "chest"
 var title: String = ""
@@ -43,6 +43,17 @@ static func create(parent: Node, pos: Vector3, container_kind: String, table: St
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("loot_container")
+
+
+## 延迟出现（尸体倒地后再显示遗骸）
+func reveal_after(t: float) -> void:
+	visible = false
+	remove_from_group("interactable")
+	var tw := create_tween()
+	tw.tween_interval(t)
+	tw.tween_callback(func() -> void:
+		visible = true
+		add_to_group("interactable"))
 
 
 func interact_prompt() -> String:
@@ -120,6 +131,25 @@ func _build_visual() -> void:
 			g.fill_box(Vector3i(1, 0, 1), Vector3i(10, 1, 4), cc)
 			g.fill_box(Vector3i(8, 0, 1), Vector3i(11, 2, 4), Color(0.85, 0.82, 0.75))
 			g.fill_box(Vector3i(3, 1, 2), Vector3i(4, 2, 3), Color(0.8, 0.65, 0.3))
+		"cauldron":
+			g = VoxelGrid.new(10, 10, 10)
+			g.fill_cylinder_y(5, 5, 4.6, 2, 7, Color(0.55, 0.42, 0.25))
+			g.fill_cylinder_y(5, 5, 3.6, 5, 7, Color(0.3, 0.22, 0.14))
+			g.fill_box(Vector3i(1, 0, 1), Vector3i(2, 2, 2), Color(0.5, 0.38, 0.22))
+			g.fill_box(Vector3i(7, 0, 1), Vector3i(8, 2, 2), Color(0.5, 0.38, 0.22))
+			g.fill_box(Vector3i(4, 0, 8), Vector3i(5, 2, 9), Color(0.5, 0.38, 0.22))
+			g.fill_box(Vector3i(0, 7, 4), Vector3i(0, 9, 5), Color(0.62, 0.48, 0.28))
+			g.fill_box(Vector3i(9, 7, 4), Vector3i(9, 9, 5), Color(0.62, 0.48, 0.28))
+			g.fill_cylinder_y(5, 5, 2.0, 7, 7, VoxelGrid.glow(Color(1.0, 0.55, 0.2), 0.7))
+		"bookshelf":
+			g = VoxelGrid.new(12, 14, 4)
+			g.fill_box(Vector3i(0, 0, 0), Vector3i(11, 13, 3), Color(0.4, 0.26, 0.14))
+			for row in [2, 6, 10]:
+				g.clear_box(Vector3i(1, row, 0), Vector3i(10, row + 2, 2))
+				for x in range(1, 11):
+					if (x * 7 + row) % 5 != 0:
+						var bc: Color = [Color(0.7, 0.2, 0.15), Color(0.2, 0.35, 0.6), Color(0.8, 0.7, 0.4), Color(0.3, 0.5, 0.3)][(x + row) % 4]
+						g.fill_box(Vector3i(x, row, 1), Vector3i(x, row + 1 + (x % 2), 2), bc)
 		"altar":
 			g = VoxelGrid.new(12, 10, 12)
 			g.fill_box(Vector3i(0, 0, 0), Vector3i(11, 2, 11), Color(0.6, 0.58, 0.55))

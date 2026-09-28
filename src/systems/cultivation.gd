@@ -33,6 +33,8 @@ static func rate_per_hour(p: PlayerData, stats: Dictionary, location: String = "
 	var rate := float(r.get("cult_rate", 10.0))
 	rate *= float(stats.get("cult_speed", 1.0))
 	rate *= float(LOCATION_MULT.get(location, 1.0))
+	if location == "home":
+		rate *= home_formation_mult()
 	if p.main_technique == "":
 		rate *= 0.5  # 无主修功法只能粗浅吐纳
 	return maxf(rate, 0.0)
@@ -157,4 +159,61 @@ static func pass_days(p: PlayerData, days: float) -> void:
 
 
 static func lifespan_years(p: PlayerData) -> int:
-	return int(DB.realm(p.realm).get("lifespan", 100))
+	var years := float(DB.realm(p.realm).get("lifespan", 100))
+	for tid in p.talents:
+		if (DB.talent(tid).get("flags", []) as Array).has("longevity"):
+			years *= 1.2
+	return int(years)
+
+
+## 洞府聚灵阵倍率
+static func home_formation_mult() -> float:
+	var f: Dictionary = GS.world.get("home", {}).get("formation", {}) if GS.world.get("home", {}) is Dictionary else {}
+	if f.is_empty() or int(f.get("until_day", -1)) < GS.day_index():
+		return 1.0
+	return float(f.get("mult", 1.0))
+
+
+## 闭关：跳过 hours 小时，获得修为；可能顿悟或遭遇心魔。返回 {exp, text, events[]}
+static func seclude(p: PlayerData, stats: Dictionary, hours: float, location: String, rng: RandomNumberGenerator) -> Dictionary:
+	var rate := rate_per_hour(p, stats, location)
+	var gain := rate * hours
+	var events: Array[String] = []
+	var days := hours / 24.0
+	var heart_demon := false
+	for tid in p.talents:
+		if (DB.talent(tid).get("flags", []) as Array).has("heart_demon"):
+			heart_demon = true
+	# 顿悟：闭关越久越可能
+	if rng.randf() < clampf(days / 60.0, 0.02, 0.5) * (1.0 + float(stats.get("insight_gain", 1.0)) * 0.2):
+		var bonus := gain * rng.randf_range(0.3, 0.8)
+		gain += bonus
+		events.append("闭关中灵光一闪，你有所顿悟！额外修为 +%d" % int(bonus))
+	# 心魔：长时间闭关、丹毒深重或心魔体质
+	var demon_chance := clampf(days / 365.0 * 0.3 + p.pill_toxicity / 400.0, 0.0, 0.4)
+	if heart_demon:
+		demon_chance = demon_chance * 2.0 + 0.05
+	if days >= 7.0 and rng.randf() < demon_chance:
+		var loss := gain * rng.randf_range(0.3, 0.6)
+		gain -= loss
+		p.injury_days = maxf(p.injury_days, days * 0.2 + 5.0)
+		events.append("心魔作祟，走火入魔！修为折损 %d，受了内伤。" % int(loss))
+	var ups := add_exp(p, gain, "seclusion")
+	if p.main_technique != "":
+		GS.add_technique_xp(p.main_technique, hours)
+	GS.advance_time(hours)
+	var text := "闭关 %s，修为 +%d。" % [_duration_text(hours), int(gain)]
+	if ups > 0:
+		text += "境界提升至%s。" % DB.realm_name(p.realm, p.stage)
+	if at_bottleneck(p):
+		text += "\n修为已至瓶颈，需要突破。"
+	return {"exp": gain, "text": text, "events": events}
+
+
+static func _duration_text(hours: float) -> String:
+	var days := int(round(hours / 24.0))
+	if days >= 360:
+		return "%d 年" % int(days / 360)
+	if days >= 30:
+		return "%d 月" % int(days / 30)
+	return "%d 日" % maxi(days, 1)
