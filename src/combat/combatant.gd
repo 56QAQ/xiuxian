@@ -110,7 +110,29 @@ func heal(amount: float) -> void:
 	if not alive:
 		return
 	amount *= stat("heal_mult")
+	var before := hp
 	hp = minf(hp + amount, stat("max_hp"))
+	_heal_accum += hp - before
+
+
+## 治疗累积到一定量后广播一次（持续回春每帧都会调用 heal）
+var _heal_accum: float = 0.0
+var _heal_emit_t: float = 0.0
+
+
+func _flush_heal(delta: float) -> void:
+	_heal_emit_t -= delta
+	if _heal_accum <= 0.0:
+		return
+	if _heal_accum >= stat("max_hp") * 0.05 or _heal_emit_t <= 0.0:
+		var b := body()
+		Events.hit_landed.emit({
+			"pos": (b.global_position if b != null else Vector3.ZERO) + Vector3.UP * 1.6, "amount": _heal_accum,
+			"crit": false, "kind": "heal", "element": Elem.WOOD, "shield": false,
+			"target": b, "source": null, "killed": false, "provoked": false,
+		})
+		_heal_accum = 0.0
+		_heal_emit_t = 0.6
 
 
 func restore_qi(amount: float) -> void:
@@ -365,6 +387,7 @@ func _physics_process(delta: float) -> void:
 	if changed:
 		_recompute()
 		statuses_changed.emit()
+	_flush_heal(delta)
 	# 回复
 	qi_block = maxf(qi_block - delta, 0.0)
 	if qi_block <= 0.0:

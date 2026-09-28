@@ -11,7 +11,6 @@ const LIFE := 0.95
 var _layer: CanvasLayer
 var _view: _NumberView
 var _items: Array[Dictionary] = []
-var _watch_hp: Dictionary = {}   ## instance_id -> 上一帧生命
 
 
 func _ready() -> void:
@@ -80,24 +79,7 @@ func _process(delta: float) -> void:
 	for it in _items:
 		it["t"] = float(it["t"]) + delta
 	_items = _items.filter(func(it: Dictionary) -> bool: return float(it["t"]) < LIFE)
-	_poll_heals()
 	_view.queue_redraw()
-
-
-## 玩家生命一帧内回升超过 2% 视为一次治疗（丹药、法术）
-func _poll_heals() -> void:
-	var p := get_tree().get_first_node_in_group("player") as Node3D
-	if p == null:
-		return
-	var c := CombatUtil.combatant_of(p)
-	if c == null or not c.alive:
-		return
-	var key := p.get_instance_id()
-	var prev := float(_watch_hp.get(key, c.hp))
-	_watch_hp[key] = c.hp
-	var gain := c.hp - prev
-	if gain >= maxf(c.stat("max_hp") * 0.02, 1.0):
-		show_heal(p.global_position + Vector3.UP * 1.9, gain)
 
 
 ## 画布：投影并绘制所有跳字
