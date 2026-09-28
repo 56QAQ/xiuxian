@@ -503,6 +503,10 @@ static func _build_fist(root: Node3D, v: Dictionary, hand: String) -> void:
 				if k == 1:
 					col = VoxCanvas.tone(wrap, 1.05)
 				cv.put(x, y, z, col)
+	# 腕口内衬（空手展示时不显得中空；佩戴时被小臂遮住）
+	for z in range(-2, 3):
+		for x in range(-2, 3):
+			cv.put(x, 5, z, VoxCanvas.tone(wrap, 0.45))
 	# 指缝（掌心一侧，-X）
 	for y in [-3, -1, 1]:
 		for z in range(-2, 3):

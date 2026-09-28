@@ -12,6 +12,7 @@ const COMBAT := [
 	["stagger", 0.1, "saber_iron", {"gender": "male", "outfit": "armor", "hair_style": "short", "ears": "human", "hair_color": "#1a1a22"}],
 ]
 const MOVE := [
+	["walk", 1.3, "", {"hair_style": "long", "outfit": "robe", "ears": "human", "hair_color": "#1a1a22", "hair_color2": "#50506a", "outfit_colors": ["#e8ecf4", "#4a5a78", "#d8b050"]}],
 	["run", 1.6, "flag_spear_fire", {}],
 	["boost", 1.2, "sword_green", {"hair_style": "long", "outfit": "robe", "ears": "human", "hair_color": "#1a1a22", "hair_color2": "#50506a"}],
 	["fly", 1.4, "", {"hair_style": "flowing", "outfit": "robe", "ears": "elf", "hair_color": "#f0f0f4", "hair_color2": "#c8d4ff"}],
@@ -43,7 +44,7 @@ func build(root: Node) -> void:
 			eq["weapon"] = DB.item(str(e[2]))["weapon"]["visual"]
 		var rig := CharacterBuilder.build(e[3], eq)
 		rig.position = Vector3(-(n - 1) * 0.75 + i * 1.5, 0, 0)
-		rig.rotation_degrees.y = 180.0 + 35.0
+		rig.rotation_degrees.y = 180.0 + (70.0 if str(e[0]) == "walk" else 35.0)
 		root.add_child(rig)
 		rig.set_process(false)
 		var clip := str(e[0])
@@ -51,6 +52,8 @@ func build(root: Node) -> void:
 		for k in 20:
 			rig._process(dt)
 		match clip:
+			"walk":
+				rig.set_locomotion(Vector3(0, 0, -1.8), true, false, false)
 			"run":
 				rig.set_locomotion(Vector3(0, 0, -6.0), true, false, false)
 			"boost":

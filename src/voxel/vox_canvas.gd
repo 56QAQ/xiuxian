@@ -154,11 +154,6 @@ func clear(a: Vector3i, b: Vector3i) -> void:
 				data[idx(x, y, z)] = 0
 
 
-## 空心盒壳（厚 1），只在盒子外表面放体素（省去不可见内部）
-func shell(a: Vector3i, b: Vector3i, c: Color, noise: float = 0.0) -> void:
-	box(a, b, c, noise)
-
-
 ## 椭球（中心/半径为体素单位，可为小数）
 func ellipsoid(center: Vector3, radii: Vector3, c: Color, noise: float = 0.0) -> void:
 	var t := tones4(c, noise) if noise > 0.0 else PackedInt32Array([enc(c), enc(c), enc(c), enc(c)])
@@ -195,7 +190,7 @@ func mirror_x_from_neg() -> void:
 				data[idx(mx, y, z)] = data[idx(x, y, z)]
 
 
-## 表面体素描边：给指定区域中暴露在 dir 方向的体素换色（例如底边变暗）
+## 体素是否在 d 方向暴露（邻格为空）
 func is_exposed(x: int, y: int, z: int, d: Vector3i) -> bool:
 	return get_raw(x, y, z) != 0 and get_raw(x + d.x, y + d.y, z + d.z) == 0
 

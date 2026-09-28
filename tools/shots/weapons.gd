@@ -24,15 +24,17 @@ func build(root: Node) -> void:
 		var kind := str(v.get("kind", ""))
 		# 刃朝上：本地 -Z → 世界 +Y
 		w.rotation_degrees = Vector3(90, 90, 0)
+		if v.has("flag"):
+			# 旗面朝向镜头右侧展开
+			w.rotation_degrees = Vector3(90, -90, 0)
 		w.position = Vector3(x, 0.3 if kind != "spear" else 0.62, 0)
 		root.add_child(w)
-		x += 0.52 if kind != "spear" else (0.75 if not v.has("flag") else 0.9)
+		x += 0.52 if kind != "spear" else 0.7
 	# 拳套：缠布（左右）+ 金属（带发光）
 	var fists: Array = [DB.item("fist_wraps")["weapon"]["visual"], {"kind": "fist", "guard": "#c0c4cc", "grip": "#3a2a20", "glow": "earth", "detail": 2}]
 	for i in fists.size():
 		for hand in ["r", "l"]:
 			var g := WeaponBuilder.build(fists[i], hand)
-			g.position = Vector3(2.3 + (0.0 if hand == "r" else 0.32), 0.55 + i * 0.4, 0.3)
+			g.position = Vector3(-0.2 + i * 0.75 + (0.0 if hand == "r" else 0.3), 0.2, 1.0)
 			g.rotation_degrees = Vector3(0, 160 if hand == "r" else 200, 0)
-			g.scale = Vector3.ONE * 1.5
 			root.add_child(g)

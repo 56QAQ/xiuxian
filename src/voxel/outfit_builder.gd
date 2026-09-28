@@ -41,10 +41,6 @@ static func gem(cv: VoxCanvas, x: int, y: int, z: int, s: CharSpec, big: bool = 
 		cv.put(x, y, z, VoxelGrid.glow(s.gem.lightened(0.35), 0.3))
 
 
-static func leather(s: CharSpec) -> Color:
-	return s.c2
-
-
 ## 褶皱布料色：按列加深，模拟竖褶
 static func fold(c: Color, x: int, period: int = 3) -> Color:
 	var m := posmod(x, period)
@@ -737,11 +733,6 @@ static func _shin_martial(cv: VoxCanvas, s: CharSpec, xl: int, xh: int, zl: int,
 
 
 # ================================================================ 下摆 / 裙甲（弹簧）
-
-## 生成平面布片：宽 w（x 从 x0 起）、长 len、厚 1（z=0），painter(x, yi) -> Color 或透明
-static func _panel_canvas(w: int, length: int, x0: int, thick: int = 1) -> VoxCanvas:
-	return VoxCanvas.new(Vector3i(x0 - 1, -length - 1, -3), Vector3i(x0 + w, 2, thick + 1))
-
 
 static func build_cloth(hips: Node3D, s: CharSpec, key: String) -> void:
 	var zf := -s.torso_d / 2.0
