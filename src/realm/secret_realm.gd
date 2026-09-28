@@ -155,6 +155,9 @@ func _build_terrain() -> void:
 			elif cn < -0.3:
 				col = palette[2]
 			col = col.lightened(cn * 0.05)
+			# 方块级明暗抖动，避免大面积纯色
+			var jitter := (float((x * 73856093) ^ (z * 19349663)) / 2147483647.0)
+			col = col.lightened(fposmod(jitter * 13.0, 1.0) * 0.06 - 0.03)
 			if hv <= water:
 				col = Color(0.78, 0.74, 0.58)
 			if hv <= lava:
@@ -422,12 +425,38 @@ func _process(delta: float) -> void:
 			_warned[t] = true
 			Events.notify.emit("秘境即将崩塌！剩余 %d 秒" % t, "bad" if t <= 30 else "warn")
 			Audio.play("alarm")
+	_lava_check(delta)
 	var mins := int(maxf(time_left, 0.0)) / 60
 	var secs := int(maxf(time_left, 0.0)) % 60
 	var obj := "%s · 崩塌 %02d:%02d · 储物袋价值 %d" % [def.get("name", ""), mins, secs, GS.player.bag.total_value()]
 	Events.hud_objective.emit(obj)
 	if time_left <= 0.0:
 		_collapse()
+
+
+var _lava_t: float = 0.0
+
+
+## 熔岩：站在岩浆上会被灼烧
+func _lava_check(delta: float) -> void:
+	var lava := float(theme.get("lava", -10.0))
+	if lava < 0.0 or session == null or session.player == null or not is_instance_valid(session.player):
+		return
+	_lava_t -= delta
+	if _lava_t > 0.0:
+		return
+	_lava_t = 0.4
+	for b in CombatUtil.bodies():
+		var body := b as Node3D
+		var c := CombatUtil.combatant_of(body)
+		if c == null or not c.alive:
+			continue
+		var p := body.global_position
+		if terrain.height_at(p.x, p.z) <= lava and p.y < lava + 0.8:
+			c.apply_status("burn", 2.0, null)
+			c.take_damage({"kind": "env", "flat": c.stat("max_hp") * 0.04, "element": Elem.FIRE, "no_react": true})
+			if CombatUtil.is_player(body) and randf() < 0.3:
+				Events.notify.emit("脚下岩浆灼人！", "warn")
 
 
 func _collapse() -> void:
