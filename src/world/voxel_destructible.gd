@@ -273,7 +273,7 @@ static func _falling_changed(d: int) -> void:
 func _rebuild() -> void:
 	if grid == null or mesh_instance == null:
 		return
-	var mesh := VoxelMesher.build(grid, voxel_size, origin)
+	var mesh := BuildingMesh.use_static(VoxelMesher.build(grid, voxel_size, origin))
 	mesh_instance.mesh = mesh
 	if mesh.get_surface_count() > 0:
 		col_shape.shape = mesh.create_trimesh_shape()

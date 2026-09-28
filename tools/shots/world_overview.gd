@@ -1,5 +1,5 @@
 extends RefCounted
-## 大地图高空鸟瞰：从坊市南侧高空俯瞰全图（雪峰、古林、湖泽、赤岩、台地）
+## 大地图高空鸟瞰：午后从西南高空俯瞰全图（台地、湖泽、坊市、赤岩火山、古林与北方雪峰）
 
 
 func frames() -> int:
@@ -7,6 +7,6 @@ func frames() -> int:
 
 
 func build(root: Node) -> void:
-	var ow := WorldShot.make_overworld(root, 10.0)
-	WorldShot.place_camera(ow, Vector3(512, 190, 1060), Vector3(512, 30, 520), 62.0)
+	var ow := WorldShot.make_overworld(root, 15.0)
+	WorldShot.place_camera(ow, Vector3(140, 178, 1010), Vector3(560, 18, 430), 62.0)
 	WorldShot.prime(ow, 7)

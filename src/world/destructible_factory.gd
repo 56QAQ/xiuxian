@@ -18,10 +18,20 @@ static func clear_cache() -> void:
 	_cache.clear()
 
 
+## 预先生成野外岩石模板（避免流式加载时首次建模的卡顿）
+static func warm_up() -> void:
+	for pal in PALETTES:
+		for sz in [3, 4]:
+			for v in 3:
+				rock(v, float(sz), pal).free()
+	lantern().free()
+	crate(1.0).free()
+
+
 static func _make(key: String, vs: float, org: Vector3, builder: Callable) -> VoxelDestructible:
 	if not _cache.has(key):
 		var g: VoxelGrid = builder.call()
-		var mesh := VoxelMesher.build(g, vs, org)
+		var mesh := BuildingMesh.use_static(VoxelMesher.build(g, vs, org))
 		var shape: Shape3D = mesh.create_trimesh_shape() if mesh.get_surface_count() > 0 else null
 		_cache[key] = {"grid": g, "mesh": mesh, "shape": shape}
 	var e: Dictionary = _cache[key]
@@ -39,7 +49,7 @@ static func _hash3(x: int, y: int, z: int, s: int) -> float:
 
 ## 岩石：带噪声的椭球，顶面可覆盖苔/雪；size_m 为直径（米）；palette 见 PALETTES
 static func rock(seed_v: int = 0, size_m: float = 3.0, palette: String = "gray") -> VoxelDestructible:
-	var variant := posmod(seed_v, 5)
+	var variant := posmod(seed_v, 3)
 	var sz := clampi(int(round(size_m)), 1, 8)
 	var vs := 0.3 if sz >= 3 else 0.2
 	var key := "rock_%s_%d_%d" % [palette, sz, variant]

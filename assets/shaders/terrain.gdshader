@@ -1,6 +1,6 @@
 // 地形着色器：与 voxel.gdshader 约定一致（顶点色 = sRGB 反照率，alpha < 1 编码自发光强度 s：alpha = 1 - 0.5·s）。
 // 额外：按世界坐标逐方块/逐“像素”扰动颜色、方块描边（合并后的大面仍显示 1 米方块格），
-// 熔岩脉动发光；远景 LOD 在已加载近景区块的圆形范围内丢弃片元（hole_center / hole_radius）。
+// 熔岩脉动发光；远景 LOD 在已加载近景区块的圆形范围内丢弃片元（holes）。
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_lambert, specular_schlick_ggx;
 
@@ -11,8 +11,8 @@ uniform float edge_strength = 0.16;   // 方块描边强度
 uniform float detail_distance = 70.0; // 细节淡出距离
 uniform float emission_gain = 3.2;
 uniform float roughness_value : hint_range(0.0, 1.0) = 0.93;
-uniform vec2 hole_center = vec2(0.0);
-uniform float hole_radius = 0.0;
+// 远景 LOD 丢弃圆：xy = 圆心 xz，z = 半径（半径 0 表示不用）
+uniform vec4 holes[4];
 
 varying vec3 world_pos;
 varying vec3 world_nrm;
@@ -33,8 +33,10 @@ void vertex() {
 }
 
 void fragment() {
-	if (hole_radius > 0.0 && distance(world_pos.xz, hole_center) < hole_radius) {
-		discard;
+	for (int i = 0; i < 4; i++) {
+		if (holes[i].z > 0.0 && distance(world_pos.xz, holes[i].xy) < holes[i].z) {
+			discard;
+		}
 	}
 	vec3 n = world_nrm;
 	vec3 p = world_pos / block_size;

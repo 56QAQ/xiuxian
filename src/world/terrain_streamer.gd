@@ -12,8 +12,8 @@ const LAYER_WORLD := 1
 
 ## 视距（区块半径）
 var view_chunks := 7
-## 同时进行的工作线程任务数
-var max_tasks := 3
+## 同时进行的工作线程任务数（与道具散布合计不超过 CPU 核数 - 1，避免主线程被抢占）
+var max_tasks := maxi(OS.get_processor_count() - 2, 1)
 ## 每帧创建节点的时间预算（微秒）
 var frame_budget_usec := 5000
 var terrain: TerrainGen
@@ -34,6 +34,8 @@ var _lod_dirty: Dictionary = {}
 var _last_center := Vector2i(-999, -999)
 var _wanted: Array[Vector2i] = []
 var _hole_radius := 0.0
+## 额外的 LOD 丢弃圆（截图等多处同时加载时使用）：Vector4(x, z, 半径, 0)
+var extra_holes: Array[Vector4] = []
 ## 统计
 var stats := {"built": 0, "build_ms_total": 0.0, "apply_ms_max": 0.0}
 
@@ -122,6 +124,12 @@ func _set_lod_tile(key: Vector2i, arrays: Array) -> void:
 func _process(_delta: float) -> void:
 	if terrain == null:
 		return
+	var tf := Time.get_ticks_usec()
+	_step()
+	stats["frame_ms_max"] = maxf(float(stats.get("frame_ms_max", 0.0)), (Time.get_ticks_usec() - tf) / 1000.0)
+
+
+func _step() -> void:
 	if focus != null and is_instance_valid(focus) and focus.is_inside_tree():
 		focus_pos = focus.global_position
 	var center := Vector2i(floori(focus_pos.x / TerrainGen.CHUNK), floori(focus_pos.z / TerrainGen.CHUNK))
@@ -346,5 +354,12 @@ func _update_hole() -> void:
 	if best > 1e8:
 		best = (r + 1) * TerrainGen.CHUNK
 	_hole_radius = maxf(best - 2.0, 0.0)
-	_lod_mat.set_shader_parameter("hole_center", Vector2(focus_pos.x, focus_pos.z))
-	_lod_mat.set_shader_parameter("hole_radius", _hole_radius)
+	if not extra_holes.is_empty():
+		var arr: Array = [Vector4(focus_pos.x, focus_pos.z, _hole_radius, 0.0)]
+		for h in extra_holes:
+			arr.append(h)
+		while arr.size() < 4:
+			arr.append(Vector4.ZERO)
+		_lod_mat.set_shader_parameter("holes", arr.slice(0, 4))
+	else:
+		_lod_mat.set_shader_parameter("holes", [Vector4(focus_pos.x, focus_pos.z, _hole_radius, 0.0), Vector4.ZERO, Vector4.ZERO, Vector4.ZERO])

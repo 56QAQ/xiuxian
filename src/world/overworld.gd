@@ -43,12 +43,15 @@ func _ready() -> void:
 	props = PropScatter.new(terrain)
 	props.name = "Props"
 	add_child(props)
+	var tw := Time.get_ticks_usec()
+	DestructibleFactory.warm_up()
+	var warm_d := (Time.get_ticks_usec() - tw) / 1000.0
 	_spawn_player()
 	t1 = Time.get_ticks_usec()
 	streamer.prime(3)
 	var prime_ms := (Time.get_ticks_usec() - t1) / 1000.0
 	load_ms = (Time.get_ticks_usec() - t0) / 1000.0
-	print("[大地图] 加载 %.0f ms（地形生成 %.0f，建筑 %.0f，道具预热 %d，首批区块 %.0f）" % [load_ms, terrain.gen_ms, poi_ms, int(props.stats.get("warm_ms", 0)), prime_ms])
+	print("[大地图] 加载 %.0f ms（地形生成 %.0f，建筑 %.0f，道具预热 %d，可破坏物预热 %.0f，首批区块 %.0f）" % [load_ms, terrain.gen_ms, poi_ms, int(props.stats.get("warm_ms", 0)), warm_d, prime_ms])
 
 
 func _process(delta: float) -> void:

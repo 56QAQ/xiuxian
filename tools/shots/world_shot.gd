@@ -34,3 +34,35 @@ static func poi_point(ow: Node3D, poi_id: String, local: Vector2, dy: float = 0.
 	var p := t.find_poi(poi_id)
 	var w := TerrainGen.local_to_world2(p, local)
 	return Vector3(w.x, float(p.get("height", t.get_ground_y(w.x, w.y))) + dy, w.y)
+
+
+## 自动选取观察点：在目标周围环上搜索视线无地形遮挡、位于陆地且尽量顺光的位置。
+## 返回相机位置（离地 cam_h 米）。
+static func find_viewpoint(t: TerrainGen, target: Vector3, dists: Array = [70.0, 95.0, 120.0], cam_h: float = 8.0, hour: float = 10.5) -> Vector3:
+	var sun := DayNight.sun_direction(hour)
+	var sun2 := Vector2(sun.x, sun.z).normalized()
+	var best := target + Vector3(0, 40, 80)
+	var best_score := -INF
+	for d in dists:
+		for a in 24:
+			var ang := a * TAU / 24.0
+			var dir := Vector2(cos(ang), sin(ang))
+			var p := Vector2(target.x, target.z) + dir * float(d)
+			if p.x < 20 or p.y < 20 or p.x > TerrainGen.SIZE - 20 or p.y > TerrainGen.SIZE - 20:
+				continue
+			if t.is_water(p.x, p.y):
+				continue
+			var cam := Vector3(p.x, t.get_height(p.x, p.y) + cam_h, p.y)
+			var clear := true
+			for k in range(1, 40):
+				var q := cam.lerp(target, k / 40.0)
+				if t.get_height(q.x, q.z) > q.y - 1.5:
+					clear = false
+					break
+			if not clear:
+				continue
+			var score := dir.dot(sun2) * 30.0 - absf(cam.y - target.y) * 0.3 - float(d) * 0.05
+			if score > best_score:
+				best_score = score
+				best = cam
+	return best

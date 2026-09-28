@@ -19,6 +19,7 @@ var sky_tint := Color(0.6, 0.75, 0.9)
 var water: Node = null
 var shadow_distance := 220.0
 var _cloud_offset := 0.0
+var _cloud_mat: ShaderMaterial
 var _last_applied := -99.0
 
 
@@ -187,7 +188,7 @@ func apply_hour(h: float) -> void:
 	if clouds:
 		var cc := Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.72, 0.6), warm * day)
 		cc = cc.lerp(Color(0.16, 0.19, 0.3), 1.0 - maxf(day, 0.15))
-		clouds.set_instance_shader_parameter("tint", Color(cc.r, cc.g, cc.b, 1.0))
+		_cloud_mat.set_shader_parameter("tint", Color(cc.r, cc.g, cc.b))
 	if water and water.has_method("set_sky_color"):
 		water.call("set_sky_color", sky_tint, day)
 
@@ -233,7 +234,10 @@ func _build_clouds() -> MeshInstance3D:
 					bm.box(Vector3(x0, -hgt * 0.5, z), Vector3(x1, hgt * 0.5, z + cell), white if run_th == 2 else shade)
 				run_start = i
 				run_th = th
-	var mi := bm.build_instance()
+	_cloud_mat = ShaderMaterial.new()
+	_cloud_mat.shader = load("res://assets/shaders/cloud.gdshader")
+	var mi := MeshInstance3D.new()
+	mi.mesh = bm.build_mesh(_cloud_mat)
 	mi.name = "Clouds"
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position = Vector3(0, CLOUD_Y, 0)

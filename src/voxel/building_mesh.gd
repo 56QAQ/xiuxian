@@ -17,6 +17,7 @@ var col_boxes: Array[AABB] = []
 var col_ramps: Array = []
 ## 每个盒子的颜色抖动幅度
 var jitter := 0.035
+static var _static_mat: ShaderMaterial
 var _stack: Array[Transform3D] = []
 var _xf := Transform3D.IDENTITY
 var _rng := RandomNumberGenerator.new()
@@ -24,6 +25,22 @@ var _rng := RandomNumberGenerator.new()
 
 func _init(seed_v: int = 1) -> void:
 	_rng.seed = seed_v
+
+
+## 静态体素材质（voxel_static.gdshader：外观同 voxel.gdshader，但不占用实例参数槽位）。
+## 建筑、植被、云、未受损的可破坏物等大量静态实例使用它。
+static func static_material() -> ShaderMaterial:
+	if _static_mat == null:
+		_static_mat = ShaderMaterial.new()
+		_static_mat.shader = load("res://assets/shaders/voxel_static.gdshader")
+	return _static_mat
+
+
+## 把网格的所有表面换成静态体素材质
+static func use_static(mesh: ArrayMesh) -> ArrayMesh:
+	for i in mesh.get_surface_count():
+		mesh.surface_set_material(i, static_material())
+	return mesh
 
 
 ## 进入局部坐标：原点 origin（相对当前坐标），绕 Y 旋转 quarter×90°
@@ -164,7 +181,7 @@ func build_mesh(mat: Material = null) -> ArrayMesh:
 	if verts.is_empty():
 		return mesh
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, build_arrays())
-	mesh.surface_set_material(0, mat if mat != null else VoxelMesher.material())
+	mesh.surface_set_material(0, mat if mat != null else static_material())
 	return mesh
 
 

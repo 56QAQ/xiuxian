@@ -77,6 +77,7 @@ const S_ALPINE := 17
 const S_BLACKSAND := 18
 const S_SNOWROCK := 19
 const S_FIELD := 20
+const S_CANOPY := 21     ## 远景 LOD 树冠
 
 ## 地表调色（sRGB）：[顶面, 顶块侧面, 表土, 表土厚度, 岩层 A, 岩层 B]
 const SURF := [
@@ -101,6 +102,7 @@ const SURF := [
 	[Color(0.22, 0.20, 0.23), Color(0.24, 0.21, 0.24), Color(0.26, 0.22, 0.24), 3, Color(0.50, 0.22, 0.16), Color(0.40, 0.18, 0.14)],   # 黑沙
 	[Color(0.60, 0.62, 0.68), Color(0.56, 0.58, 0.64), Color(0.53, 0.56, 0.62), 1, Color(0.55, 0.58, 0.65), Color(0.47, 0.50, 0.58)],   # 雪岩
 	[Color(0.36, 0.26, 0.17), Color(0.40, 0.30, 0.20), Color(0.44, 0.33, 0.22), 2, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 药田
+	[Color(0.22, 0.44, 0.21), Color(0.20, 0.40, 0.19), Color(0.18, 0.36, 0.18), 7, Color(0.30, 0.22, 0.15), Color(0.30, 0.22, 0.15)],   # 树冠（LOD）
 ]
 
 ## 线程安全的运行时副本（Godot 4.4 中并发读取 const（只读）Array 会共用一个临时 Variant，导致内存错误）
@@ -1091,12 +1093,39 @@ func build_chunk_arrays(cx: int, cz: int) -> Dictionary:
 	return {"arrays": arrays, "collision": col}
 
 
-## 远景 LOD 分块（每块 LOD_TILE×LOD_TILE 个 LOD_CELL 米格子 = 256 米）
+## 远景 LOD 树冠：返回 0 无、1 林木、2 雪松、3 平原树丛、4 垂柳（与 PropScatter 的密度大致一致）
+func _lod_canopy(cx: int, cz: int) -> int:
+	var x := cx * LOD_CELL + LOD_CELL / 2
+	var z := cz * LOD_CELL + LOD_CELL / 2
+	var idx := z * SIZE + x
+	if flags[idx] & (F_NOPROP | F_LAVA | F_ROAD | F_PAVED | F_FIELD):
+		return 0
+	var h := int(hmap[idx])
+	if h < SEA_LEVEL or slope_at(x, z) >= 3:
+		return 0
+	var r := _region_at(x, z)
+	var hv := _hash2(cx * 7 + 3, cz * 13 + 5)
+	match r:
+		R_FOREST:
+			return 1 if hv < 0.55 else 0
+		R_SNOW:
+			return 2 if hv < 0.3 and h < 58 else 0
+		R_PLAINS:
+			var grove := n_patch.get_noise_2d(x * 0.5 + 900.0, z * 0.5)
+			return 3 if grove > 0.3 and hv < 0.45 else 0
+		R_LAKE:
+			return 4 if hv < 0.15 else 0
+	return 0
+
+
+## 远景 LOD 分块（每块 LOD_TILE×LOD_TILE 个 LOD_CELL 米格子 = 256 米），林区叠加方块树冠
 func build_lod_arrays(tx: int, tz: int) -> Array:
 	var n := LOD_TILE
 	var w := n + 2
 	var lh := PackedInt32Array()
 	lh.resize(w * w)
+	var canopy := PackedByteArray()
+	canopy.resize(w * w)
 	for lz in w:
 		var cz := tz * n + lz - 1
 		for lx in w:
@@ -1104,7 +1133,12 @@ func build_lod_arrays(tx: int, tz: int) -> Array:
 			if cx < 0 or cz < 0 or cx >= LOD_N or cz >= LOD_N:
 				lh[lz * w + lx] = 0
 			else:
-				lh[lz * w + lx] = lod_heights[cz * LOD_N + cx]
+				var cn := _lod_canopy(cx, cz)
+				canopy[lz * w + lx] = cn
+				var extra := 0
+				if cn != 0:
+					extra = 6 + int(_hash2(cx, cz) * 4.0) if cn != 2 else 7 + int(_hash2(cx, cz) * 5.0)
+				lh[lz * w + lx] = lod_heights[cz * LOD_N + cx] + extra
 	var surf := PackedByteArray()
 	surf.resize(n * n)
 	var topc := PackedColorArray()
@@ -1113,18 +1147,30 @@ func build_lod_arrays(tx: int, tz: int) -> Array:
 		for lx in n:
 			var x := (tx * n + lx) * LOD_CELL + LOD_CELL / 2
 			var z := (tz * n + lz) * LOD_CELL + LOD_CELL / 2
-			var c := (lz + 1) * w + lx + 1
-			var h := lh[c]
 			var patch := n_patch.get_noise_2d(x, z)
 			# 使用格中心所在 1 米柱的真实地表（与近景一致）
 			var fl := flags[z * SIZE + x]
 			var i1 := z * SIZE + x
 			var s := surface_at(x, z, hmap[i1], hmap[i1 - 1], hmap[i1 + 1], hmap[i1 - SIZE], hmap[i1 + SIZE], fl, patch)
+			var cn := canopy[(lz + 1) * w + lx + 1]
+			var tc := top_color(s, x, z, patch)
+			if cn != 0:
+				var hv := _hash2(x, z)
+				s = S_CANOPY
+				match cn:
+					1:
+						tc = Color(0.20, 0.42, 0.20).lerp(Color(0.28, 0.50, 0.22), hv)
+						if hv > 0.93:
+							tc = Color(0.80, 0.32, 0.16)
+					2:
+						tc = Color(0.14, 0.32, 0.24) if hv < 0.55 else Color(0.90, 0.93, 0.98)
+					3:
+						tc = Color(0.30, 0.55, 0.24) if hv < 0.8 else Color(0.95, 0.68, 0.78)
+					4:
+						tc = Color(0.46, 0.66, 0.30)
 			surf[lz * n + lx] = s
-			topc[lz * n + lx] = top_color(s, x, z, patch)
+			topc[lz * n + lx] = tc
 	return mesh_columns(n, n, lh, float(LOD_CELL), Vector3(tx * n * LOD_CELL, 0, tz * n * LOD_CELL), surf, topc, tx * n, tz * n)
-
-
 
 
 static func _ao3(s1: bool, s2: bool, c: bool) -> int:

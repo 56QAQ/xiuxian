@@ -706,8 +706,8 @@ static func build_portal(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	plane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(plane)
 	plane.position = Vector3(0, 0.75 + 3.6, 0)
-	plane.set_instance_shader_parameter("portal_color", c1)
-	plane.set_instance_shader_parameter("portal_color2", c2)
+	pm.set_shader_parameter("portal_color", c1)
+	pm.set_shader_parameter("portal_color2", c2)
 	# 浮石
 	for i in 5:
 		var rock := MeshInstance3D.new()

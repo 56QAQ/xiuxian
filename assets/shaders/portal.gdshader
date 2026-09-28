@@ -1,9 +1,9 @@
-// 秘境传送门：旋涡状自发光平面（加色混合），颜色由 instance uniform 控制。
+// 秘境传送门：旋涡状自发光平面（加色混合），颜色为材质参数（每个传送门一个材质）。
 shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never, shadows_disabled;
 
-instance uniform vec4 portal_color : source_color = vec4(0.35, 0.9, 1.0, 1.0);
-instance uniform vec4 portal_color2 : source_color = vec4(0.7, 0.35, 1.0, 1.0);
+uniform vec4 portal_color : source_color = vec4(0.35, 0.9, 1.0, 1.0);
+uniform vec4 portal_color2 : source_color = vec4(0.7, 0.35, 1.0, 1.0);
 uniform float intensity = 2.4;
 
 float hash2(vec2 p) {

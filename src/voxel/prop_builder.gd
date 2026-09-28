@@ -59,7 +59,7 @@ static func mesh(kind: String, variant: int = 0, lod: int = 0) -> ArrayMesh:
 		g = downsample(g)
 		vs *= 2.0
 	var org := Vector3(-g.sx * vs * 0.5, 0.0, -g.sz * vs * 0.5)
-	var m := VoxelMesher.build(g, vs, org, lod == 0)
+	var m := BuildingMesh.use_static(VoxelMesher.build(g, vs, org, lod == 0))
 	_meshes[key] = m
 	return m
 
@@ -570,7 +570,7 @@ static func make_herb(item_id: String) -> Node3D:
 		var r := _herb_grid(item_id)
 		var g: VoxelGrid = r[0]
 		var vs: float = r[1]
-		_meshes[key] = VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, 0, -g.sz * vs * 0.5))
+		_meshes[key] = BuildingMesh.use_static(VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, 0, -g.sz * vs * 0.5)))
 	var n := Node3D.new()
 	n.name = "Herb"
 	var mi := MeshInstance3D.new()
@@ -610,7 +610,7 @@ static func make_ore(item_id: String, variant: int = 0) -> StaticBody3D:
 				var x := 3 + i * 2
 				for y in range(4, 7):
 					g.set_color(x, y, 4 + (i % 2), VoxelGrid.glow(Color(1.0, 0.95, 0.6), 0.9))
-		_meshes[key] = VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, -vs, -g.sz * vs * 0.5))
+		_meshes[key] = BuildingMesh.use_static(VoxelMesher.build(g, vs, Vector3(-g.sx * vs * 0.5, -vs, -g.sz * vs * 0.5)))
 	var body := StaticBody3D.new()
 	body.name = "Ore"
 	body.collision_layer = 1

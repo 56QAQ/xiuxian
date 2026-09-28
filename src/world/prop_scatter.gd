@@ -23,7 +23,7 @@ var focus: Node3D
 var focus_pos := Vector3(512, 30, 512)
 ## 加载半径（地块）
 var view_tiles := 3.7
-var max_tasks := 2
+var max_tasks := 1
 var frame_budget_usec := 4000
 var destructibles_enabled := true
 
@@ -64,6 +64,12 @@ func tile_count() -> int:
 func _process(_delta: float) -> void:
 	if terrain == null:
 		return
+	var tf := Time.get_ticks_usec()
+	_step()
+	stats["frame_ms_max"] = maxf(float(stats.get("frame_ms_max", 0.0)), (Time.get_ticks_usec() - tf) / 1000.0)
+
+
+func _step() -> void:
 	if focus != null and is_instance_valid(focus) and focus.is_inside_tree():
 		focus_pos = focus.global_position
 	var center := Vector2i(floori(focus_pos.x / TILE), floori(focus_pos.z / TILE))
@@ -95,7 +101,9 @@ func _process(_delta: float) -> void:
 		_mutex.unlock()
 		if data.is_empty() or _tile_dist(k) > view_tiles + 1.0:
 			continue
+		var ta := Time.get_ticks_usec()
 		_apply(k, data)
+		stats["apply_ms_max"] = maxf(float(stats.get("apply_ms_max", 0.0)), (Time.get_ticks_usec() - ta) / 1000.0)
 		if Time.get_ticks_usec() - t0 > frame_budget_usec:
 			break
 
