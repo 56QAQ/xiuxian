@@ -27,6 +27,10 @@ var active: bool = false
 
 func _ready() -> void:
 	rng.randomize()
+	# 小境界/大境界变化时刷新属性（修炼、服丹、战斗感悟都可能触发）
+	Events.realm_changed.connect(func(_r: int, _s: int) -> void:
+		recompute()
+		SectSystem.check_promotion())
 
 
 # ================================================================ 新游戏
@@ -127,17 +131,22 @@ func advance_time(h: float) -> void:
 	if h <= 0.0:
 		return
 	var before := day_index()
+	var injured_before := player.injury_days > 0.0
+	var toxic_before := player.pill_toxicity > 50.0
 	world["hours"] = hours() + h
 	var after := day_index()
 	Cultivation.pass_days(player, h / HOURS_PER_DAY)
 	Events.time_advanced.emit(h)
+	var changed := injured_before != (player.injury_days > 0.0) or toxic_before != (player.pill_toxicity > 50.0)
 	if after > before:
 		for d in range(before + 1, after + 1):
 			Events.day_passed.emit(d)
 		WorldSetup.simulate_days(world, player, after - before)
-	if player.age_years() >= Cultivation.lifespan_years(player):
-		Events.notify.emit("寿元将尽……", "bad")
-	recompute()
+		changed = true
+		if player.age_years() >= Cultivation.lifespan_years(player) - 1:
+			Events.notify.emit("寿元将尽……", "bad")
+	if changed:
+		recompute()
 
 
 # ================================================================ 物品
