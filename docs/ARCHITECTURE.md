@@ -17,8 +17,9 @@ src/
   voxel/               体素：VoxelGrid、VoxelMesher、CharacterRig、AnimLib、CharacterBuilder、WeaponBuilder ...
   world/               大地图：地形、区块流式加载、生物群系、建筑、昼夜
   combat/              战斗：Combatant、伤害、状态、弹道、法诀运行时、特效、镜头
-  actors/              角色：HumanoidActor（玩家与修士共用）、PlayerController、AI
-  realm/               秘境：生成、容器、撤离
+  actors/              角色：HumanoidActor（玩家与修士共用）、BeastActor、PlayerController、CultivatorAI、BeastAI、ActorFactory、GameSession
+  gameplay/            大地图玩法层：OverworldGameplay（NPC 生成、交互点、地点）、EncounterDirector、TreasureSite、SectPanel
+  realm/               秘境：生成（HeightfieldTerrain）、LootContainer、SearchTask、ExtractionPoint
   ui/                  界面
 tests/                 无头测试（tools/run_tests.sh）
 tools/                 字体子集化、截图（tools/shot.sh）、音效生成
@@ -33,7 +34,7 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
 | `DB` | db.gd | 读取 `data/*.json`；`DB.item(id)`、`DB.spell(id)`、`DB.realm(i)`、`DB.realm_name(i, stage)` |
 | `GS` | game_state.gd | `GS.player: PlayerData`、`GS.stats`（最终属性）、`GS.world`（世界存档字典）、时间、给予物品、装备、学习功法 |
 | `SaveManager` | save_manager.gd | JSON 存档 `user://saves/slot_N.json` |
-| `Audio` | audio.gd | `Audio.play(name)`、`Audio.play_at(name, pos)`；文件 `assets/audio/sfx/<name>.wav` |
+| `Audio` | audio.gd | 音效 `Audio.play(name)`、`Audio.play_at(name, pos)`（`assets/audio/sfx/<name>.wav`）；音乐 `play_music(name, fade)`、`stop_music(fade)`（`assets/audio/music/<name>.ogg`，交叉淡变、循环） |
 | `Scenes` | scenes.gd | 淡入淡出切换：`goto_main_menu / goto_creator / goto_overworld / goto_realm(req)` |
 
 ## 数据层（src/systems）

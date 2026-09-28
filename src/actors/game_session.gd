@@ -12,6 +12,11 @@ var controller: PlayerController
 var hud: CombatHUD
 var ui: Node
 var numbers: DamageNumbers
+## 场景基础音乐；遭遇敌人时切换为战斗音乐
+var base_music: String = ""
+var _battle_t: float = 0.0
+var _in_battle: bool = false
+var _music_check: float = 0.0
 
 
 func start(world_root: Node3D, pos: Vector3) -> void:
@@ -34,6 +39,34 @@ func start(world_root: Node3D, pos: Vector3) -> void:
 		ui.name = "UIManager"
 		add_child(ui)
 	capture_mouse()
+
+
+func set_music(track: String) -> void:
+	base_music = track
+	if not _in_battle:
+		Audio.play_music(track, 1.5)
+
+
+func _process(delta: float) -> void:
+	_music_check -= delta
+	if _music_check > 0.0 or player == null or not is_instance_valid(player):
+		return
+	_music_check = 0.5
+	var threat := false
+	if player.combatant.alive:
+		var h := CombatUtil.nearest_hostile(player, 32.0)
+		threat = h != null or player.combatant.since_damage < 4.0
+	if threat:
+		_battle_t = 8.0
+		if not _in_battle:
+			_in_battle = true
+			Audio.play_music("music_battle", 0.8)
+	elif _in_battle:
+		_battle_t -= 0.5
+		if _battle_t <= 0.0:
+			_in_battle = false
+			if base_music != "":
+				Audio.play_music(base_music, 2.5)
 
 
 func capture_mouse() -> void:

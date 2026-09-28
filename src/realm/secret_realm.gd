@@ -66,8 +66,7 @@ func _ready() -> void:
 	Events.inventory_changed.connect(_convert_stones)
 	Events.notify.emit("踏入秘境「%s」" % def.get("name", ""), "realm")
 	Events.notify.emit("寻找宝物，在秘境崩塌前前往撤离阵（绿色光柱）", "info")
-	if Audio.has_method("play_music"):
-		Audio.call("play_music", "music_realm")
+	session.set_music("music_realm")
 
 
 func _exit_tree() -> void:

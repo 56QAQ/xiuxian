@@ -48,8 +48,7 @@ func start(ow: Node3D, spawn_pos: Vector3) -> void:
 	GS.in_realm = false
 	_read_pois()
 	_scan_markers()
-	if Audio.has_method("play_music"):
-		Audio.call("play_music", "music_overworld")
+	session.set_music("music_overworld")
 
 
 func _exit_tree() -> void:
