@@ -436,3 +436,68 @@ func test_content_scale() -> void:
 		if str(DB.techniques[tid].get("slot", "")) == "aux":
 			aux += 1
 	_ok(aux >= 8, "辅修功法不足 8")
+
+
+const SFX_NAMES := ["ui_click", "ui_hover", "ui_open", "ui_close", "equip", "pickup", "coin", "error", "notify", "quest_complete",
+	"swing_light", "swing_heavy", "hit_flesh", "hit_metal", "hit_shield", "shield_break", "crit",
+	"bolt_fire", "bolt_hit", "bolt_charge", "cast", "summon", "heal", "buff",
+	"boost_start", "quick_boost", "jump", "land", "footstep", "fly_whoosh",
+	"explosion", "fire_cast", "ice_cast", "wind_blade", "vine", "earth_quake", "water_splash", "thunder",
+	"death", "beast_growl", "beast_bite", "beast_hurt", "levelup", "breakthrough", "rock_break", "wood_break",
+	"search_tick", "search_done", "extract", "portal", "alarm"]
+const MUSIC_NAMES := ["music_menu", "music_overworld", "music_battle", "music_realm"]
+
+
+func test_audio_assets() -> void:
+	var missing: Array[String] = []
+	for n in SFX_NAMES:
+		if not ResourceLoader.exists("res://assets/audio/sfx/%s.wav" % n):
+			missing.append(n)
+	for n in MUSIC_NAMES:
+		var path := "res://assets/audio/music/%s.ogg" % n
+		if not ResourceLoader.exists(path):
+			missing.append(n)
+			continue
+		var s: AudioStream = load(path)
+		_ok(s is AudioStreamOggVorbis, "%s 应为 Ogg Vorbis" % n)
+		var dur := s.get_length()
+		_ok(dur >= 60.0 and dur <= 90.0, "%s 时长 %.1f 秒，应在 60~90 秒" % [n, dur])
+	_ok(missing.is_empty(), "缺少音频: " + ", ".join(missing))
+
+
+func test_audio_music_api() -> void:
+	Audio.play_music("music_menu", 0.0)
+	runner.check_eq(Audio.current_music(), "music_menu", "播放主菜单音乐")
+	var st := load("res://assets/audio/music/music_menu.ogg") as AudioStreamOggVorbis
+	_ok(st != null and st.loop, "音乐循环已在代码中开启")
+	Audio.play_music("music_menu", 1.0)
+	runner.check_eq(Audio.current_music(), "music_menu", "重复播放同一曲目不打断")
+	Audio.play_music("music_battle", 0.3)
+	runner.check_eq(Audio.current_music(), "music_battle", "交叉淡变到战斗音乐")
+	Audio.play_music("music_does_not_exist", 0.3)
+	runner.check_eq(Audio.current_music(), "music_battle", "缺失曲目被忽略")
+	Audio.stop_music(0.0)
+	runner.check_eq(Audio.current_music(), "", "停止音乐")
+	_ok(not Audio.is_music_playing(), "音乐已停止")
+	Audio.play("ui_click")
+	Audio.play("no_such_sfx")
+
+
+func _music_players_playing() -> int:
+	var n := 0
+	for p in Audio._music_players:
+		if p.playing:
+			n += 1
+	return n
+
+
+func test_audio_crossfade_over_time() -> void:
+	Audio.play_music("music_menu", 0.0)
+	Audio.play_music("music_overworld", 0.2)
+	runner.check_eq(_music_players_playing(), 2, "交叉淡变期间两轨同时播放")
+	await get_tree().create_timer(0.4).timeout
+	runner.check_eq(_music_players_playing(), 1, "淡变结束后旧曲目停止")
+	_ok(Audio.is_music_playing(), "新曲目仍在播放")
+	Audio.stop_music(0.15)
+	await get_tree().create_timer(0.35).timeout
+	runner.check_eq(_music_players_playing(), 0, "淡出后全部停止")
