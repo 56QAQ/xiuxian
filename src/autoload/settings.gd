@@ -33,6 +33,7 @@ const BINDINGS := {
 	"spell_4": [["key", KEY_4]],
 	"spell_5": [["key", KEY_5]],
 	"use_item": [["key", KEY_Q]],
+	"burst": [["key", KEY_G]],
 	"interact": [["key", KEY_F]],
 	"meditate": [["key", KEY_T]],
 	"ui_inventory": [["key", KEY_B], ["key", KEY_I]],

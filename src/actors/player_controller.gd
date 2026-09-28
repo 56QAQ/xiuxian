@@ -50,6 +50,7 @@ func update_intents(a: HumanoidActor, delta: float) -> void:
 	for i in 5:
 		if Input.is_action_just_pressed("spell_%d" % (i + 1)):
 			a.in_spell = i
+	a.in_burst = Input.is_action_just_pressed("burst")
 	if cam != null:
 		a.in_aim = cam.aim_point([a.get_rid()])
 		# 瞄准/施法时身体朝向镜头方向

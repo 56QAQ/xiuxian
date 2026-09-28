@@ -49,6 +49,8 @@ var in_melee: bool = false
 var in_bolt: bool = false
 var in_bolt_held: bool = false
 var in_spell: int = -1
+var in_burst: bool = false
+var burst_cd: float = 0.0
 var lock_target: Node3D = null
 
 # ---------------------------------------------------------------- 状态
@@ -234,6 +236,7 @@ func _physics_process(delta: float) -> void:
 	in_melee = false
 	in_bolt = false
 	in_spell = -1
+	in_burst = false
 
 
 func _timers(delta: float) -> void:
@@ -242,6 +245,7 @@ func _timers(delta: float) -> void:
 	evading = maxf(evading - delta, 0.0)
 	bolt_cd = maxf(bolt_cd - delta, 0.0)
 	combo_reset = maxf(combo_reset - delta, 0.0)
+	burst_cd = maxf(burst_cd - delta, 0.0)
 	for k in spell_cd.keys():
 		spell_cd[k] = float(spell_cd[k]) - delta
 		if spell_cd[k] <= 0.0:
@@ -290,6 +294,8 @@ func _actions(delta: float) -> void:
 		try_melee()
 	if in_spell >= 0:
 		try_cast(in_spell)
+	if in_burst:
+		try_burst()
 	_bolt_logic(delta)
 
 
@@ -632,6 +638,37 @@ func _dash_update(delta: float) -> void:
 	if float(dash["left"]) <= 0.0 or is_on_wall():
 		velocity = (dash["dir"] as Vector3) * 4.0
 		_end_action()
+
+
+## 金丹爆发：灵力充盈时引爆金丹之力（大范围冲击 + 狂火）
+func try_burst() -> bool:
+	if not BuildCalc.has_perk(pd, "core_burst") or burst_cd > 0.0 or action in ["stagger", "dead", "dash"]:
+		return false
+	if combatant.qi < combatant.stat("max_qi") * 0.9:
+		if is_player:
+			Events.notify.emit("灵力未满，无法引爆金丹", "warn")
+		return false
+	combatant.qi = 0.0
+	burst_cd = 60.0
+	var e := pd.main_element()
+	var col := Elem.color_of(e)
+	rig.play("cast_ground")
+	var info := {"kind": "spell", "mult": 3.5, "element": e, "poise": 150.0, "knock": 14.0, "launch": 6.0, "heavy": true}
+	CombatUtil.aoe(self, global_position + Vector3.UP, 11.0, info)
+	CombatUtil.damage_destructibles(global_position, 6.0, 120.0)
+	CombatUtil.crater(global_position + forward() * 3.0, 4.0)
+	FX.shock_sphere(global_position + Vector3.UP, 11.0, col, 0.5)
+	FX.ring(global_position + Vector3.UP * 0.2, 13.0, col, 0.6, 0.3)
+	FX.burst(global_position + Vector3.UP, col, 60, 16.0, 0.2, 1.0)
+	FX.flash_light(global_position + Vector3.UP * 2.0, col, 10.0, 25.0, 0.5)
+	combatant.apply_status("fury", 1.0, combatant)
+	Audio.play_at("explosion", global_position, 4.0)
+	Audio.play_at("thunder", global_position)
+	if is_player:
+		CombatUtil.shake(1.0)
+		HitStop.trigger(0.12, 0.05)
+		Events.notify.emit("金丹爆发！", "realm")
+	return true
 
 
 func begin_channel(t: float) -> void:

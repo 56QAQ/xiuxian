@@ -38,7 +38,7 @@
     "breakthrough": {"base": 0.15, "pill": "pill_yuanying"},
     "perks": ["spell_slot_5", "core_burst"],
     "perk_stats": {"spell_mult": 0.1},
-    "perk_text": {"spell_slot_5": "【金丹】第五法诀槽开启。", "core_burst": "【金丹爆发】灵力满时可同时按下 E+F 引爆金丹之力。"},
+    "perk_text": {"spell_slot_5": "【金丹】第五法诀槽开启。", "core_burst": "【金丹爆发】灵力充盈时按 G 引爆金丹之力（冷却 60 秒）。"},
     "desc": "液化灵气凝结成丹，一丹入腹，寿元五百。"
   },
   {

@@ -42,6 +42,7 @@ var since_damage: float = 99.0
 var qi_block: float = 0.0        ## >0 时灵力不回复（推进/飞行中）
 var _poise_regen_delay: float = 0.0
 var invuln: float = 0.0
+var escape_day: int = -999   ## 元婴出窍保命（每日一次）
 var last_attacker: WeakRef = null
 var last_hit_dir: Vector3 = Vector3.ZERO
 
@@ -195,6 +196,13 @@ func take_damage(info: Dictionary) -> Dictionary:
 			if winner != null:
 				winner.nonlethal_vs = null
 			yielded.emit(winner)
+		elif pd != null and BuildCalc.has_perk(pd, "nascent_escape") and escape_day != GS.day_index():
+			escape_day = GS.day_index()
+			hp = stat("max_hp") * 0.3
+			invuln = 2.0
+			clear_debuffs()
+			Events.notify.emit("%s 元婴出窍，护住心脉！" % display_name, "realm")
+			FX.shock_sphere(body().global_position + Vector3.UP, 3.0, Color(1.0, 0.85, 0.4), 0.6)
 		else:
 			hp = 0.0
 			res["killed"] = true
