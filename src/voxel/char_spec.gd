@@ -162,9 +162,12 @@ static func from(appearance: Dictionary) -> CharSpec:
 	return s
 
 
+static var _LOCK_K: PackedFloat32Array = PackedFloat32Array([0.86, 0.93, 1.0, 0.9, 1.05, 0.96, 1.08, 0.89])
+
+
 ## 发绺整体明暗（按发绺编号）
 static func lock_tone(lock_id: int) -> float:
-	return [0.86, 0.93, 1.0, 0.9, 1.05, 0.96, 1.08, 0.89][VoxCanvas.h1(lock_id * 5 + 2) & 7]
+	return _LOCK_K[VoxCanvas.h1(lock_id * 5 + 2) & 7]
 
 
 ## 发丝颜色（sid 为发丝编号）

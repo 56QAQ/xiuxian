@@ -8,7 +8,8 @@ class_name VoxMesh
 ##   end_batch() 把缓存未命中的部件分发到 WorkerThreadPool（高优先级）并行生成（maker 在工作线程中调用，
 ##   必须只读取预先算好的数据与 static var），再在主线程填充占位网格。
 ##   async=true 时 end_batch() 不等待，返回任务句柄；VoxMesh.poll() / is_done() 在主线程完成填充。
-##   LOD1 = 画布 2× 降采样后网格化（体素边长 ×2）。
+##   LOD1 = 画布 2× 降采样后网格化（体素边长 ×2）。同步构建只等 LOD0，LOD1 随后在后台生成（远处才用得到），
+##   由 poll()（CharacterRig 每帧调用）填入；finish_pending() 可阻塞等待全部完成。
 ## 另有静态网格缓存（按部件参数键），相同部件（NPC 人群、同种妖兽）几乎零开销。
 
 ## 工作线程中不能读 const 数组（Godot 4.4），以下表都用 static var
@@ -33,6 +34,8 @@ static var _batch_depth: int = 0
 static var _batch_async: bool = false
 static var _batch_jobs: Array = []
 static var _batch_wait: Array = []      ## 本批次用到的、尚未完成的异步任务
+static var _batch_lod: Array = []       ## 本批次需要后台补做 LOD1 的部件
+static var _lod_missing: Dictionary = {}  ## 以无 LOD 方式生成过的部件键
 static var _groups: Array = []          ## 进行中的异步任务 {gid, jobs, done}
 static var _key_group: Dictionary = {}  ## 进行中的部件键 → 任务
 static var _last_poll: int = -1
@@ -76,6 +79,7 @@ static func clear_cache() -> void:
 	for g in _groups.duplicate():
 		_finish(g)
 	_cache.clear()
+	_lod_missing.clear()
 
 
 static func _store(key: String, v: Variant) -> void:
@@ -98,12 +102,14 @@ static func begin_batch(async: bool = false) -> void:
 		_batch_async = async
 		_batch_jobs = []
 		_batch_wait = []
+		_batch_lod = []
 	_batch_depth += 1
 
 
 ## 请求部件：返回 [LOD0 网格, LOD1 网格]。maker 返回 VoxCanvas 或 VoxCanvas 数组。
+## lod=false：不需要远景网格（界面预览），LOD1 保持为空；以后有需要的构建再在后台补做。
 ## 不在批处理中时立即同步生成。
-static func part(key: String, maker: Callable, vs: float) -> Array:
+static func part(key: String, maker: Callable, vs: float, lod: bool = true) -> Array:
 	if _cache.has(key):
 		var v: Variant = _cache[key]
 		if v is Array:
@@ -115,20 +121,32 @@ static func part(key: String, maker: Callable, vs: float) -> Array:
 						_batch_wait.append(g)
 				else:
 					_finish(g)
+			if lod and _lod_missing.has(key):
+				# 之前以无 LOD 方式生成过：后台补做远景网格
+				_lod_missing.erase(key)
+				var lj := {"key": key, "maker": maker, "vs": vs, "m1": v[1], "only_lod": true}
+				if _batch_depth > 0:
+					_batch_lod.append(lj)
+				else:
+					_dispatch_lod([lj])
 			return v
 	cache_misses += 1
-	var job := {"key": key, "maker": maker, "vs": vs, "m0": ArrayMesh.new(), "m1": ArrayMesh.new()}
+	var job := {"key": key, "maker": maker, "vs": vs, "m0": ArrayMesh.new(), "m1": ArrayMesh.new(), "lod": lod}
 	var pair: Array = [job["m0"], job["m1"]]
 	_store(key, pair)
+	if not lod:
+		_lod_missing[key] = true
 	if _batch_depth > 0:
 		_batch_jobs.append(job)
 	else:
+		job["lod_now"] = true
 		_run_job(job)
 		_fill(job)
 	return pair
 
 
-## 结束批处理。同步：生成全部缺失部件后返回 null；异步：返回任务列表（交给 is_done() 轮询），无任务时返回 []
+## 结束批处理。同步：生成全部缺失部件的 LOD0 后返回 null（LOD1 在后台生成，poll() 时填入）；
+## 异步：返回任务列表（交给 is_done() 轮询），无任务时返回 []
 static func end_batch() -> Variant:
 	_batch_depth -= 1
 	if _batch_depth > 0:
@@ -136,28 +154,38 @@ static func end_batch() -> Variant:
 	_batch_depth = 0
 	var jobs := _batch_jobs
 	var wait := _batch_wait
+	var lods := _batch_lod
 	_batch_jobs = []
 	_batch_wait = []
+	_batch_lod = []
+	poll()
 	if _batch_async:
 		var recs: Array = wait.duplicate()
+		for j in jobs:
+			j["lod_now"] = true
 		if not jobs.is_empty():
 			var g := _dispatch(jobs)
 			recs.append(g)
+		if not lods.is_empty():
+			_dispatch_lod(lods)
 		return recs
-	# 同步：先完成依赖的异步任务，再并行生成本批次
+	# 同步：先完成依赖的异步任务，再并行生成本批次的 LOD0
 	for g in wait:
 		_finish(g)
-	if jobs.is_empty():
-		return null
-	if not threaded or jobs.size() == 1:
+	if not jobs.is_empty():
+		if not threaded or jobs.size() == 1:
+			for j in jobs:
+				_run_job(j)
+		else:
+			var list: Array = jobs
+			var gid := WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_job(list[i]), list.size(), -1, true, "vox_parts")
+			WorkerThreadPool.wait_for_group_task_completion(gid)
 		for j in jobs:
-			_run_job(j)
-	else:
-		var list: Array = jobs
-		var gid := WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_job(list[i]), list.size(), -1, true, "vox_parts")
-		WorkerThreadPool.wait_for_group_task_completion(gid)
-	for j in jobs:
-		_fill(j)
+			_fill(j)
+			if j.has("cvs"):
+				lods.append(j)
+	if not lods.is_empty():
+		_dispatch_lod(lods)
 	return null
 
 
@@ -175,12 +203,26 @@ static func _dispatch(jobs: Array) -> Dictionary:
 	return g
 
 
-## 主线程：检查异步任务，完成的填充网格（每帧最多一次）
+## 后台生成远景 LOD1（不登记到部件键：同步构建不必等它）
+static func _dispatch_lod(jobs: Array) -> void:
+	var list: Array = jobs
+	var g := {"jobs": list, "done": false, "gid": -1}
+	if threaded:
+		g["gid"] = WorkerThreadPool.add_group_task(func(i: int) -> void: VoxMesh._run_lod(list[i]), list.size(), -1, true, "vox_lod")
+	else:
+		for j in list:
+			_run_lod(j)
+	_groups.append(g)
+
+
+## 主线程：检查异步任务，完成的填充网格（每帧最多一次；CharacterRig 每帧调用）
 static func poll() -> void:
 	var f := Engine.get_process_frames()
 	if f == _last_poll:
 		return
 	_last_poll = f
+	if _groups.is_empty():
+		return
 	for g in _groups.duplicate():
 		if int(g["gid"]) < 0 or WorkerThreadPool.is_group_task_completed(int(g["gid"])):
 			_finish(g)
@@ -201,6 +243,16 @@ static func finish_all(recs: Array) -> void:
 		_finish(g)
 
 
+## 等待所有后台任务（含远景 LOD）完成并填充（测试、截图、场景切换前）
+static func finish_pending() -> void:
+	for g in _groups.duplicate():
+		_finish(g)
+
+
+static func pending_count() -> int:
+	return _groups.size()
+
+
 static func _finish(g: Dictionary) -> void:
 	if g["done"]:
 		return
@@ -214,7 +266,7 @@ static func _finish(g: Dictionary) -> void:
 	_groups.erase(g)
 
 
-## 工作线程：调用 maker 画布 → 两级 LOD 网格数组
+## 工作线程：调用 maker 画布 → LOD0 网格数组；LOD1 视情况当场生成（lod_now）或保留画布稍后后台生成
 static func _run_job(job: Dictionary) -> void:
 	var t0 := Time.get_ticks_usec()
 	var r: Variant = (job["maker"] as Callable).call()
@@ -223,26 +275,57 @@ static func _run_job(job: Dictionary) -> void:
 	var t1 := Time.get_ticks_usec()
 	job["a0"] = mesh_arrays(cvs, vs)
 	var t2 := Time.get_ticks_usec()
+	if bool(job.get("lod", true)):
+		if bool(job.get("lod_now", false)):
+			job["a1"] = _lod_arrays(cvs, vs)
+		else:
+			job["cvs"] = cvs
+	job.erase("maker")
+	if profile:
+		var cells := 0
+		var solid := 0
+		for cv in cvs:
+			if cv != null:
+				cells += (cv as VoxCanvas).data.size()
+				solid += (cv as VoxCanvas).count_solid()
+		var a0: Array = job["a0"]
+		var quads: int = 0 if a0.is_empty() else (a0[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 4
+		job["prof"] = [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (Time.get_ticks_usec() - t2) / 1000.0, cells, solid, quads]
+
+
+## 工作线程：远景 LOD1（由保留的画布，或重新调用 maker）
+static func _run_lod(job: Dictionary) -> void:
+	var cvs: Array
+	if job.has("cvs"):
+		cvs = job["cvs"]
+	else:
+		var r: Variant = (job["maker"] as Callable).call()
+		cvs = r if r is Array else [r]
+	job["a1"] = _lod_arrays(cvs, float(job["vs"]))
+	job.erase("cvs")
+	job.erase("maker")
+
+
+static func _lod_arrays(cvs: Array, vs: float) -> Array:
 	var ds: Array = []
 	for cv in cvs:
 		if cv != null:
 			ds.append((cv as VoxCanvas).downsample(2))
-	job["a1"] = mesh_arrays(ds, vs * 2.0)
-	job.erase("maker")
-	if profile:
-		job["prof"] = [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (Time.get_ticks_usec() - t2) / 1000.0]
+	return mesh_arrays(ds, vs * 2.0)
 
 
+## 主线程：把工作线程生成的数组填进占位网格（LOD0 / LOD1 各一次）
 static func _fill(job: Dictionary) -> void:
-	if job.has("filled"):
-		return
-	job["filled"] = true
-	if job.has("prof"):
+	if job.has("prof") and not job.has("f0"):
 		profile_log[str(job["key"])] = job["prof"]
-	_set_surface(job["m0"], job.get("a0", []))
-	_set_surface(job["m1"], job.get("a1", []))
-	job.erase("a0")
-	job.erase("a1")
+	if job.has("a0") and not job.has("f0"):
+		job["f0"] = true
+		_set_surface(job["m0"], job["a0"])
+		job.erase("a0")
+	if job.has("a1") and not job.has("f1"):
+		job["f1"] = true
+		_set_surface(job["m1"], job["a1"])
+		job.erase("a1")
 
 
 # ================================================================ 网格化核心
@@ -301,9 +384,30 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 	var used := PackedByteArray()
 	used.resize(d.size())
 	for z in range(1, sz - 1):
+		# 整层/整行为空时用原生 count 一次跳过（逐格循环在 GDScript 中很慢）
+		var zs := z * sxy
+		if d.slice(zs, zs + sxy).count(0) == sxy:
+			continue
 		for y in range(1, sy - 1):
-			var row := y * sx + z * sxy
-			for x in range(1, sx - 1):
+			var row := y * sx + zs
+			if d.slice(row, row + sx).count(0) == sx:
+				continue
+			# 行内首尾实体；若 [首..尾] 全实且上下前后四行在此区间也全实，中间体素都在内部，只需处理两端
+			var xa := 1
+			while d[row + xa] == 0:
+				xa += 1
+			var xb := sx - 2
+			while d[row + xb] == 0:
+				xb -= 1
+			var inner_skip := false
+			if xb - xa >= 4:
+				var a := row + xa + 1
+				var b := row + xb
+				if d.slice(a, b).count(0) == 0 and d.slice(a + sx, b + sx).count(0) == 0 and d.slice(a - sx, b - sx).count(0) == 0 and d.slice(a + sxy, b + sxy).count(0) == 0 and d.slice(a - sxy, b - sxy).count(0) == 0:
+					inner_skip = true
+			for x in range(xa, xb + 1):
+				if inner_skip and x > xa and x < xb:
+					continue
 				var i := row + x
 				var raw := d[i]
 				if raw == 0:

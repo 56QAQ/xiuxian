@@ -127,13 +127,17 @@ static func wrap_layer(cv: VoxCanvas, y0: int, y1: int, pick: Callable, faces: i
 		var pts: Array[Vector4i] = []
 		for z in range(za, zb + 1):
 			var row := yo + sxy * (z - lz + 1)
-			var xmn := 99999
-			var xmx := -99999
-			for x in range(xa, xb + 1):
+			# 整条为空时原生跳过；否则从两端找到首尾实体，只在其间逐格更新
+			if d.slice(row + xa, row + xb + 1).count(0) == nx:
+				continue
+			var xmn := xa
+			while d[row + xmn] == 0:
+				xmn += 1
+			var xmx := xb
+			while d[row + xmx] == 0:
+				xmx -= 1
+			for x in range(xmn, xmx + 1):
 				if d[row + x] != 0:
-					if xmn == 99999:
-						xmn = x
-					xmx = x
 					var i := x - xa
 					if zmin[i] == 99999:
 						zmin[i] = z
@@ -152,8 +156,11 @@ static func wrap_layer(cv: VoxCanvas, y0: int, y1: int, pick: Callable, faces: i
 				if faces & F_BACK:
 					pts.append(Vector4i(xa + i, y, zmax[i] + 1, F_BACK))
 		for p in pts:
-			if cv.get_raw(p.x, p.y, p.z) == 0:
-				cv.put(p.x, p.y, p.z, pick.call(p.x, p.y, p.z, p.w))
+			if p.x < cv.lo.x or p.x > cv.hi.x or p.z < cv.lo.z or p.z > cv.hi.z:
+				continue
+			var i := yo + sxy * (p.z - lz + 1) + p.x
+			if d[i] == 0:
+				d[i] = cv.e(pick.call(p.x, p.y, p.z, p.w))
 
 
 ## 把某行中材质为 from_mat 的体素改色（饰边）；from_mat = -1 表示所有非皮肤体素
@@ -279,7 +286,9 @@ static func torso(s: CharSpec) -> VoxCanvas:
 ## 身体：收腰、圆角、肩线收圆、胸、锁骨、肚脐、腹肌（男）
 static func _body_torso(cv: VoxCanvas, s: CharSpec, zl: int, zh: int, cw: int, ww: int) -> void:
 	cv.set_mat(VoxCanvas.M_SKIN)
-	var side_c := s.skin.lerp(s.skin_sh, 0.3)
+	var v_side := cv.e(s.skin.lerp(s.skin_sh, 0.3))
+	var v_skin := cv.e(s.skin)
+	var d := cv.data
 	for y in range(0, 36):
 		var hw := cw
 		if y < 12:
@@ -295,12 +304,10 @@ static func _body_torso(cv: VoxCanvas, s: CharSpec, zl: int, zh: int, cw: int, w
 			z0 += 1
 			z1 -= 1
 		for z in range(z0, z1 + 1):
-			for x in range(-hw, hw):
-				var ex := x == -hw or x == hw - 1
-				var ez := z == z0 or z == z1
-				if ex and ez:
-					continue
-				cv.put(x, y, z, side_c if ex else s.skin)
+			var row := cv.ix(0, y, z)
+			var ez := z == z0 or z == z1
+			for x in range(-hw + (1 if ez else 0), hw - (1 if ez else 0)):
+				d[row + x] = v_side if (x == -hw or x == hw - 1) else v_skin
 	# 胸（女）
 	if s.female and s.chest > 0.05:
 		var dz := 1.6 + s.chest * 2.2
@@ -640,15 +647,17 @@ static func pelvis(s: CharSpec) -> VoxCanvas:
 	if s.outfit == "armor" and s.female:
 		under = s.c1
 	cv.set_mat(VoxCanvas.M_CLOTH)
+	var ft := cv.fold_table(under, 3)
+	var d := cv.data
 	for y in range(-8, 8):
 		var w := hw
 		if y > 3:
 			w = hw - (y - 3) / 2
 		for z in range(zl, zh + 1):
-			for x in range(-w, w):
-				if (x == -w or x == w - 1) and (z == zl or z == zh):
-					continue
-				cv.put(x, y, z, fold(under, x + z, 3))
+			var row := cv.ix(0, y, z)
+			var ez := z == zl or z == zh
+			for x in range(-w + (1 if ez else 0), w - (1 if ez else 0)):
+				d[row + x] = ft[posmod(x + z, 6)]
 	if s.female:
 		cv.set_mat(VoxCanvas.M_SKIN)
 		for y in range(5, 8):
@@ -965,11 +974,9 @@ static func thigh(s: CharSpec, side: int) -> VoxCanvas:
 	match s.outfit:
 		"robe":
 			cv.set_mat(VoxCanvas.M_CLOTH)
-			for y in range(-30, 4):
-				for z in range(zl - 1, zh + 2):
-					for x in range(xl - 1, xh + 2):
-						if cv.solid(x, y, z) or x == xl - 1 or x == xh + 1 or z == zl - 1 or z == zh + 1:
-							cv.put(x, y, z, fold(s.c2, x + z, 3))
+			var ftr := cv.fold_table(s.c2, 3)
+			cv.dye_fold(Vector3i(xl, -30, zl), Vector3i(xh, 3, zh), ftr)
+			wrap_layer(cv, -30, 3, func(x: int, y: int, z: int, f: int) -> Color: return fold(s.c2, x + z, 3))
 		"martial":
 			cv.set_mat(VoxCanvas.M_CLOTH)
 			wrap_layer(cv, -30, 3, func(x: int, y: int, z: int, f: int) -> Color: return fold(s.c2.lerp(s.c1, 0.25), x + z, 3))
@@ -1024,19 +1031,23 @@ static func _boot_armor(cv: VoxCanvas, s: CharSpec, side: int, xl: int, xh: int,
 	var ix1 := xh + (2 if side > 0 else 0)
 	cv.set_mat(VoxCanvas.M_LEATHER)
 	# 靴筒：膝下到踝；每 6 行一道叠层暗线，叠层下缘略外凸
+	var tt := cv.tone_table(lc, [0.9, 0.95, 1.0, 1.05])
+	var v_dark := cv.e(dark)
+	var v_lip := cv.e(VoxCanvas.tone(lc, 1.12))
+	var d := cv.data
 	for y in range(-24, 0):
 		var ph := posmod(y, 6)
 		var ext := 1 if ph == 1 else 0
 		for z in range(zl - 1 - ext, zh + 2 + ext):
-			for x in range(ix0 - ext, ix1 + 1 + ext):
-				if (x == ix0 - ext or x == ix1 + ext) and (z == zl - 1 - ext or z == zh + 1 + ext):
-					continue
-				var c := VoxCanvas.tone(lc, 0.9 + 0.16 * VoxCanvas.hf(x >> 1, y >> 1, z >> 1))
+			var row := cv.ix(0, y, z)
+			var ez := z == zl - 1 - ext or z == zh + 1 + ext
+			for x in range(ix0 - ext + (1 if ez else 0), ix1 + 1 + ext - (1 if ez else 0)):
 				if ph == 0:
-					c = dark
+					d[row + x] = v_dark
 				elif ph == 1:
-					c = VoxCanvas.tone(lc, 1.12)
-				cv.put(x, y, z, c)
+					d[row + x] = v_lip
+				else:
+					d[row + x] = tt[VoxCanvas.h3(x >> 1, y >> 1, z >> 1) & 3]
 	# 外侧皮带扣（两道）
 	var ex := ix1 + 2 if side > 0 else ix0 - 2
 	for yb in [-8, -17]:
@@ -1101,12 +1112,14 @@ static func _boot_armor(cv: VoxCanvas, s: CharSpec, side: int, xl: int, xh: int,
 
 static func _shin_robe(cv: VoxCanvas, s: CharSpec, xl: int, xh: int, zl: int, zh: int) -> void:
 	cv.set_mat(VoxCanvas.M_CLOTH)
+	var ft := cv.fold_table(s.c2, 3)
+	var d := cv.data
 	for y in range(-24, 3):
 		for z in range(zl, zh + 1):
-			for x in range(xl, xh + 1):
-				if (x == xl or x == xh) and (z == zl or z == zh):
-					continue
-				cv.put(x, y, z, fold(s.c2, x + z, 3))
+			var row := cv.ix(0, y, z)
+			var ez := z == zl or z == zh
+			for x in range(xl + (1 if ez else 0), xh + (0 if ez else 1)):
+				d[row + x] = ft[posmod(x + z, 6)]
 	# 布鞋：鞋面（暗）+ 白底 + 云头鞋尖（饰边色）
 	var shoe := s.c2.darkened(0.55)
 	for y in range(-30, -23):

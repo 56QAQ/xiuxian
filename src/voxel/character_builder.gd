@@ -64,6 +64,13 @@ const MARKS: Array[String] = ["none", "lotus", "flame", "dot", "crescent", "tear
 static var _lod: bool = true
 
 
+## 释放全部部件网格缓存与共享材质（先等待后台任务）；测试退出前由 test_runner 自动调用
+static func clear_cache() -> void:
+	VoxMesh.finish_pending()
+	VoxMesh.clear_cache()
+	VoxMesh._material = null
+
+
 static func appearance_with_defaults(a: Dictionary) -> Dictionary:
 	var out := DEFAULT_APPEARANCE.duplicate(true)
 	for k in a:
@@ -141,10 +148,10 @@ static func _assemble(appearance: Dictionary, equip_visual: Dictionary, opts: Di
 	# 闭眼贴片（贴在脸前，极薄；只有近景需要）
 	var blink := MeshInstance3D.new()
 	blink.name = "Blink"
-	blink.mesh = part("blink|" + kh, func() -> Variant:
+	blink.mesh = VoxMesh.part("blink|" + kh, func() -> Variant:
 		var bc := VoxCanvas.new(Vector3i(-16, 8, 0), Vector3i(15, 26, 0))
 		FacePainter.paint_blink(bc, s)
-		return bc)[0]
+		return bc, VOXEL, false)[0]
 	blink.position = Vector3(0, 0, -16.0 * VOXEL - 0.0012)
 	blink.scale = Vector3(1, 1, 0.04)
 	blink.visible = false
@@ -227,7 +234,7 @@ static func _bone(parent: Node3D, bone_name: String, pos_vox: Vector3) -> Node3D
 
 ## 请求角色部件网格对（[LOD0, LOD1]），maker 返回 VoxCanvas（或数组）
 static func part(key: String, maker: Callable) -> Array:
-	return VoxMesh.part(key, maker, VOXEL)
+	return VoxMesh.part(key, maker, VOXEL, _lod)
 
 
 ## 挂部件网格（LOD0 + 可选 LOD1）

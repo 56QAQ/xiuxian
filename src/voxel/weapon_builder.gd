@@ -93,7 +93,7 @@ static func attach_to_rig(rig: CharacterRig, visual: Dictionary, _in_build: bool
 
 
 static func _add(parent: Node3D, key: String, maker: Callable, mesh_name: String = "Mesh", mirror: bool = false) -> MeshInstance3D:
-	return VoxMesh.attach(parent, VoxMesh.part(key, maker, VOXEL), mesh_name, mirror, CharacterBuilder._lod)
+	return VoxMesh.attach(parent, VoxMesh.part(key, maker, VOXEL, CharacterBuilder._lod), mesh_name, mirror, CharacterBuilder._lod)
 
 
 static func _cols(visual: Dictionary, blade_def: String, guard_def: String, grip_def: String) -> Array[Color]:
@@ -629,6 +629,10 @@ static func _banner(root: Node3D, v: Dictionary, key: String, z0: int, gold: Col
 						var ci := clampi(int(t * 5.6), 0, 5)
 						var col2: Color = fc[ci]
 						cv.put(px0, int(floor(p.y)), int(floor(p.z)), VoxCanvas.glow(col2, 0.35 + 0.65 * t))
+			# 火星（静态点缀，飘在火舌之外）
+			for i in 14:
+				var h2 := VoxCanvas.h1(i * 11 + 1)
+				cv.put(0, -H - 8 - h2 % 16, 2 + (h2 >> 4) % (W + 4), VoxCanvas.glow(Color("ffc040"), 1.0))
 		else:
 			# 无元素：金色流苏下缘
 			cv.set_mat(VoxCanvas.M_SILK)
@@ -637,16 +641,6 @@ static func _banner(root: Node3D, v: Dictionary, key: String, z0: int, gold: Col
 				for k in fl:
 					cv.put(0, -H - k, z, gold if k < fl - 1 else ghi)
 		return cv)
-	# 火星（静态点缀）
-	if flame:
-		var mk := func() -> Variant:
-			var sp := VoxCanvas.new(Vector3i(-3, -H - 34, -6), Vector3i(3, 0, W + 16))
-			sp.set_mat(VoxCanvas.M_FLAME)
-			for i in 14:
-				var h2 := VoxCanvas.h1(i * 11 + 1)
-				sp.put(0, -H - 8 - h2 % 22, 2 + (h2 >> 4) % (W + 4), VoxCanvas.glow(Color("ffc040"), 1.0))
-			return sp
-		_add(sw, key + "|sparks", mk, "Sparks")
 
 
 # ================================================================ 拳套

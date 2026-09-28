@@ -107,6 +107,45 @@ func tones4(c: Color, amt: float) -> PackedInt32Array:
 	return PackedInt32Array([e(tone(c, 1.0 - amt)), e(tone(c, 1.0 - amt * 0.4)), e(c), e(tone(c, 1.0 + amt * 0.6))])
 
 
+## 褶皱色表（与 OutfitBuilder.fold 相同的明暗序列，按当前材质编码）：索引 posmod(k, period * 2)
+func fold_table(c: Color, period: int) -> PackedInt32Array:
+	var t := PackedInt32Array()
+	for m in period * 2:
+		var k := 1.0
+		if m == 0:
+			k = 0.84
+		elif m == 1 or m == period * 2 - 1:
+			k = 0.93
+		elif m == period:
+			k = 1.05
+		t.append(e(tone(c, k)))
+	return t
+
+
+## 明暗色表：按给定系数编码（当前材质）
+func tone_table(c: Color, ks: Array) -> PackedInt32Array:
+	var t := PackedInt32Array()
+	for k in ks:
+		t.append(e(tone(c, float(k))))
+	return t
+
+
+## 把 [a,b] 内的实体体素按竖褶重新上色（直接写数据；colors 为 fold_table 结果，按 x+z 取色）
+func dye_fold(a: Vector3i, b: Vector3i, table: PackedInt32Array, skip_mat: int = -1) -> void:
+	var n := table.size()
+	var d := data
+	for z in range(maxi(mini(a.z, b.z), lo.z), mini(maxi(a.z, b.z), hi.z) + 1):
+		for y in range(maxi(mini(a.y, b.y), lo.y), mini(maxi(a.y, b.y), hi.y) + 1):
+			var row := sx * (y - lo.y + 1) + sxy * (z - lo.z + 1) - lo.x + 1
+			for x in range(maxi(mini(a.x, b.x), lo.x), mini(maxi(a.x, b.x), hi.x) + 1):
+				var v := d[row + x]
+				if v == 0:
+					continue
+				if skip_mat >= 0 and ((v >> 4) & 15) == skip_mat:
+					continue
+				d[row + x] = table[posmod(x + z, n)]
+
+
 ## 整数哈希（稳定、可复现）
 static func h3(x: int, y: int, z: int) -> int:
 	var h := x * 374761393 + y * 668265263 + z * 1274126177
@@ -158,6 +197,11 @@ func put(x: int, y: int, z: int, c: Color) -> void:
 ## 指定材质写入（不改变当前材质）
 func putm(x: int, y: int, z: int, c: Color, m: int) -> void:
 	set_raw(x, y, z, encm(c, m))
+
+
+## 画布坐标 → 数据索引（不做边界检查；调用方保证在 lo..hi 内）
+func ix(x: int, y: int, z: int) -> int:
+	return (x - lo.x + 1) + sx * (y - lo.y + 1) + sxy * (z - lo.z + 1)
 
 
 ## 只给已有体素上色
@@ -256,6 +300,9 @@ func ellipsoid(center: Vector3, radii: Vector3, c: Color, noise: float = 0.0) ->
 	var l := Vector3i((center - radii).floor())
 	var h := Vector3i((center + radii).ceil())
 	var inv := Vector3(1.0 / maxf(radii.x, 0.01), 1.0 / maxf(radii.y, 0.01), 1.0 / maxf(radii.z, 0.01))
+	var d := data
+	var uni := noise <= 0.0
+	var v0 := t[0]
 	for z in range(maxi(l.z, lo.z), mini(h.z, hi.z) + 1):
 		var dz := (z + 0.5 - center.z) * inv.z
 		for y in range(maxi(l.y, lo.y), mini(h.y, hi.y) + 1):
@@ -263,10 +310,11 @@ func ellipsoid(center: Vector3, radii: Vector3, c: Color, noise: float = 0.0) ->
 			var r2 := dz * dz + dy * dy
 			if r2 > 1.0:
 				continue
+			var row := sx * (y - lo.y + 1) + sxy * (z - lo.z + 1) - lo.x + 1
 			for x in range(maxi(l.x, lo.x), mini(h.x, hi.x) + 1):
 				var dx := (x + 0.5 - center.x) * inv.x
 				if dx * dx + r2 <= 1.0:
-					data[idx(x, y, z)] = t[h3(x >> 1, y >> 1, z >> 1) & 3]
+					d[row + x] = v0 if uni else t[h3(x >> 1, y >> 1, z >> 1) & 3]
 
 
 ## 两点之间的粗线（球刷）
@@ -380,8 +428,13 @@ func downsample(min_fill: int = 2) -> VoxCanvas:
 	for z in range(lo.z, hi.z + 1):
 		var oz := osxy * ((z >> 1) - nlo.z + 1)
 		var bz := sxy * (z - lo.z + 1)
+		if d.slice(bz, bz + sxy).count(0) == sxy:
+			continue
 		for y in range(lo.y, hi.y + 1):
-			var row := bz + sx * (y - lo.y + 1) - lo.x + 1
+			var rs := bz + sx * (y - lo.y + 1)
+			if d.slice(rs, rs + sx).count(0) == sx:
+				continue
+			var row := rs - lo.x + 1
 			var orow := oz + osx * ((y >> 1) - nlo.y + 1) - nlo.x + 1
 			for x in range(lo.x, hi.x + 1):
 				var v := d[row + x]
@@ -397,7 +450,11 @@ func downsample(min_fill: int = 2) -> VoxCanvas:
 	for i in n:
 		var c := cnt[i]
 		if c >= min_fill:
-			var v2 := ((sr[i] / c) << 24) | ((sg[i] / c) << 16) | ((sb[i] / c) << 8) | at[i]
+			# 远景颜色量化到每通道 16 级（更多相邻面同色可合并，三角形更少）
+			var qr := ((sr[i] / c) & 0xF0) | 0x08
+			var qg := ((sg[i] / c) & 0xF0) | 0x08
+			var qb := ((sb[i] / c) & 0xF0) | 0x08
+			var v2 := (qr << 24) | (qg << 16) | (qb << 8) | at[i]
 			od[i] = v2 if v2 != 0 else 1
 	o.data = od
 	return o

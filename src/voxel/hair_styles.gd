@@ -70,6 +70,11 @@ static func style_of(s: CharSpec) -> Dictionary:
 
 ## 头帽上某处发丝的颜色：sid 发丝编号，y 高度（竖向渐变与天使环），outer 是否外层
 static func hair_col(s: CharSpec, sid: int, y: int, ring_y: float) -> Color:
+	return hair_col_from(s, hair_base(s, sid), sid, y, ring_y)
+
+
+## 发丝基色（发丝明暗 × 发绺明暗 × 绺缝），与高度无关，可按 sid 缓存
+static func hair_base(s: CharSpec, sid: int) -> Color:
 	var m := posmod(sid, 6)
 	var c := VoxCanvas.tone(s.strand_c(sid), CharSpec.lock_tone(floori(sid / 6.0)))
 	# 每 6 根一道发绺暗缝
@@ -77,11 +82,15 @@ static func hair_col(s: CharSpec, sid: int, y: int, ring_y: float) -> Color:
 		c = c.lerp(s.hair_line, 0.5)
 	elif m == 1 or m == 5:
 		c = VoxCanvas.tone(c, 0.92)
+	return c
+
+
+static func hair_col_from(s: CharSpec, base: Color, sid: int, y: int, ring_y: float) -> Color:
 	# 竖向渐变：上亮下暗
-	c = VoxCanvas.tone(c, clampf(0.8 + (y - 4) * 0.009, 0.8, 1.08))
+	var c := VoxCanvas.tone(base, clampf(0.8 + (y - 4) * 0.009, 0.8, 1.08))
 	# 天使环（额前一圈高光，发绺暗缝处断开）
 	var dy := y - ring_y
-	if dy >= -1.0 and dy < 1.5 and m != 0 and (VoxCanvas.h1(sid * 3 + 1) & 3) != 0:
+	if dy >= -1.0 and dy < 1.5 and posmod(sid, 6) != 0 and (VoxCanvas.h1(sid * 3 + 1) & 3) != 0:
 		c = c.lerp(s.hair_hi.lightened(0.12), 0.55 if dy >= 0.0 and dy < 1.0 else 0.28)
 	return c
 
@@ -103,14 +112,20 @@ static func paint_cap(cv: VoxCanvas, s: CharSpec) -> void:
 	var fringe := bangs.size() > 4
 	var y_lo := mini(side_y, back_y)
 	var y_hi := int(ceil(cy + r.y))
-	# 1) 发量：超椭球壳（头颅之外的部分），逐行求 x 范围
-	for z in range(int(floor(cz - r.z)), int(ceil(cz + r.z)) + 1):
+	# 两遍法：先用占位值填满发量（直接写数据索引，极快），最后只给暴露在外的体素算发丝颜色
+	var d := cv.data
+	var PH := VoxCanvas.encm(Color8(1, 2, 3), VoxCanvas.M_HAIR)
+	var fill := PackedInt32Array()
+	var lx := cv.lo.x
+	var bxo := 1 - lx
+	# 1) 发量：超椭球（上半穹顶、下半直筒），逐行求 x 范围
+	for z in range(maxi(int(floor(cz - r.z)), cv.lo.z), mini(int(ceil(cz + r.z)), cv.hi.z) + 1):
 		var az := absf((z + 0.5 - cz) / r.z)
 		var pz := pow(az, n)
 		if pz > 1.0:
 			continue
-		for y in range(y_lo, y_hi + 1):
-			# 上半为穹顶，下半头发自然垂直下落（直筒），不向内收
+		var zo := cv.sxy * (z - cv.lo.z + 1)
+		for y in range(maxi(y_lo, cv.lo.y), mini(y_hi, cv.hi.y) + 1):
 			var py := pow(absf((y + 0.5 - cy) / r.y), n) if y + 0.5 > cy else 0.0
 			var rem := 1.0 - pz - py
 			if rem < 0.0:
@@ -127,38 +142,73 @@ static func paint_cap(cv: VoxCanvas, s: CharSpec) -> void:
 			if y < lim:
 				continue
 			var xm := r.x * pow(rem, 1.0 / n)
-			var x0 := int(floor(-0.5 - xm))
-			var x1 := int(ceil(-0.5 + xm)) - 1
-			var ring_y := 29.5 + clampf((z + 16) * 0.12, 0.0, 3.5)
-			# 头颅内部的行：只画头颅之外的两段 + 头颅两侧表面（发绺缝隙里不露头皮）
+			var x0 := maxi(int(floor(-0.5 - xm)), lx)
+			var x1 := mini(int(ceil(-0.5 + xm)) - 1, cv.hi.x)
+			var row := bxo + cv.sx * (y - cv.lo.y + 1) + zo
 			if y >= 4 and y < 35 and z > -16 and z < 15:
+				# 头颅内部的行：只填头颅之外的两段 + 头颅两侧表面
 				for x in range(x0, mini(x1, -16) + 1):
-					cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, ring_y))
+					d[row + x] = PH
+					fill.append(row + x)
 				for x in range(maxi(x0, 15), x1 + 1):
-					cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, ring_y))
+					d[row + x] = PH
+					fill.append(row + x)
 				continue
+			var in_sk := y < 36 and z >= -16 and z <= 15
 			for x in range(x0, x1 + 1):
-				if y < 36 and z >= -16 and z <= 15 and x > -16 and x < 15 and not cv.solid(x, y, z):
+				if in_sk and x > -16 and x < 15 and d[row + x] == 0:
 					continue
-				cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, ring_y))
-	# 头颅表面仍是皮肤的地方（发量圆角没盖住的棱角）也染成头发
+				d[row + x] = PH
+				fill.append(row + x)
+	# 头颅上缘棱角（发量圆角没盖住的皮肤）也填成头发
+	var sk := VoxCanvas.M_SKIN
 	for z in range(-15, 16):
-		for y in range(4, 36):
+		for y in range(28, 36):
 			var lim2 := side_y if z <= 2 else back_y
 			if y < lim2:
 				continue
 			for x in [-16, -15, 14, 15]:
-				if cv.get_mat(x, y, z) == VoxCanvas.M_SKIN and (cv.get_raw(x - 1, y, z) == 0 or cv.get_raw(x + 1, y, z) == 0 or cv.get_raw(x, y + 1, z) == 0 or cv.get_raw(x, y, z + 1) == 0):
-					cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, 99.0))
+				var i := cv.ix(x, y, z)
+				if d[i] != 0 and ((d[i] >> 4) & 15) == sk:
+					d[i] = PH
+					fill.append(i)
 	for x in range(-16, 16):
 		for z in range(-15, 16):
 			for y in [35, 34]:
-				if cv.get_mat(x, y, z) == VoxCanvas.M_SKIN and (cv.get_raw(x, y + 1, z) == 0 or cv.get_raw(x, y, z + 1) == 0):
-					cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, 99.0))
+				var i2 := cv.ix(x, y, z)
+				if d[i2] != 0 and ((d[i2] >> 4) & 15) == sk:
+					d[i2] = PH
+					fill.append(i2)
 		for y in range(maxi(back_y, 4), 36):
 			for z in [15, 14]:
-				if cv.get_mat(x, y, z) == VoxCanvas.M_SKIN and cv.get_raw(x, y, z + 1) == 0:
-					cv.put(x, y, z, hair_col(s, _sid(x, y, z), y, 99.0))
+				var i3 := cv.ix(x, y, z)
+				if d[i3] != 0 and ((d[i3] >> 4) & 15) == sk:
+					d[i3] = PH
+					fill.append(i3)
+	# 第二遍：暴露体素着色，内部填暗色
+	var v_in := cv.e(s.hair_dk)
+	var sx := cv.sx
+	var sxy := cv.sxy
+	var bases := {}
+	for i in fill:
+		if d[i] != PH:
+			continue
+		if d[i + 1] != 0 and d[i - 1] != 0 and d[i + sx] != 0 and d[i - sx] != 0 and d[i + sxy] != 0 and d[i - sxy] != 0:
+			d[i] = v_in
+			continue
+		var zi := i / sxy
+		var rm := i - zi * sxy
+		var yi := rm / sx
+		var x := rm - yi * sx + lx - 1
+		var y := yi + cv.lo.y - 1
+		var z := zi + cv.lo.z - 1
+		var ring_y := 29.5 + clampf((z + 16) * 0.12, 0.0, 3.5)
+		var sid := _sid(x, y, z)
+		var base: Variant = bases.get(sid)
+		if base == null:
+			base = hair_base(s, sid)
+			bases[sid] = base
+		d[i] = cv.e(hair_col_from(s, base, sid, y, ring_y))
 	# 前额暗发（刘海缝隙中透出的深色头发），花钿处留空
 	for x in range(-16, 16):
 		for y in range(hairline - 3, 36):
@@ -545,6 +595,10 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 			col_lock[ci] = li
 			col_frac[ci] = u - floor(u)
 			col_sid[ci] = int(floor((ang + PI) / TAU * 46.0)) + seed * 37
+	# 编码后的颜色表（按 列 × 明暗等级 × 是否绺缝 惰性计算），内层循环只做查表 + 直接写数据
+	var tab := PackedInt32Array()
+	tab.resize(W * W * 32)
+	var d := cv.data
 	for yi in range(-3, length):
 		var y := -yi
 		var t := clampf(float(yi) / float(maxi(length - 1, 1)), 0.0, 1.0)
@@ -556,7 +610,9 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 			var ph := float(posmod(yi + seed, tier)) / float(tier - 1)
 			r *= 0.88 + 0.14 * ph
 			shade *= 0.9 + 0.1 * ph
+		var rowy := cv.sx * (y - cv.lo.y + 1) + 1 - cv.lo.x
 		for z in range(-R, R):
+			var row := rowy + cv.sxy * (z - cv.lo.z + 1)
 			for x in range(-R, R):
 				var ci := (z + R) * W + (x + R)
 				var li := col_lock[ci]
@@ -579,15 +635,21 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 					continue
 				if d2 < 0.42:
 					# 内部（不可见）：直接写暗色
-					cv.data[cv.idx(x, y, z)] = v_in
+					d[row + x] = v_in
 					continue
-				var c := s.strand_c(col_sid[ci])
-				c = VoxCanvas.tone(c, lock_k[li] * shade)
-				if groove > 0.0:
-					c = c.lerp(s.hair_line, 0.4)
-				elif d2 < 0.62:
-					c = VoxCanvas.tone(c, 0.82)
-				cv.put(x, y, z, c)
+				var k := lock_k[li] * shade
+				if groove <= 0.0 and d2 < 0.62:
+					k *= 0.82
+				var lv := clampi(int((k - 0.5) * 25.0), 0, 15)
+				var ti := ci * 32 + lv * 2 + (1 if groove > 0.0 else 0)
+				var v := tab[ti]
+				if v == 0:
+					var c := VoxCanvas.tone(s.strand_c(col_sid[ci]), 0.5 + (lv + 0.5) / 25.0)
+					if groove > 0.0:
+						c = c.lerp(s.hair_line, 0.4)
+					v = cv.e(c)
+					tab[ti] = v
+				d[row + x] = v
 	return cv
 
 

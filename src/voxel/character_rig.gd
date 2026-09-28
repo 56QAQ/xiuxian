@@ -241,6 +241,8 @@ func weapon_tip(hand: String = "r") -> Vector3:
 # ================================================================ 每帧
 
 func _process(delta: float) -> void:
+	# 后台网格任务（远景 LOD、异步构建）完成后在主线程填充（全局每帧一次）
+	VoxMesh.poll()
 	if not _mesh_jobs.is_empty() and VoxMesh.is_done(_mesh_jobs):
 		_mesh_jobs = []
 		visible = true
