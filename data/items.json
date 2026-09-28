@@ -1,0 +1,63 @@
+[
+  {"id": "spirit_stone", "name": "下品灵石", "type": "currency", "grade": 0, "size": [1, 1], "stack": 9999, "value": 1, "icon": "stone", "icon_color": "#9fe0ff", "desc": "修仙界的通用货币，蕴含微薄灵气。", "refine": {"exp": 2}},
+  {"id": "spirit_stone_mid", "name": "中品灵石", "type": "material", "grade": 2, "size": [1, 1], "stack": 99, "value": 100, "icon": "stone", "icon_color": "#5aa8ff", "desc": "灵气充沛的灵石，一枚抵得上百枚下品灵石。可炼化。", "refine": {"exp": 220}, "tags": ["stone"]},
+
+  {"id": "bag_basic", "name": "粗制储物袋", "type": "bag", "grade": 0, "size": [2, 2], "stack": 1, "value": 30, "icon": "bag", "bag": {"w": 6, "h": 5}, "desc": "最普通的储物袋，内有 6×5 格空间。"},
+  {"id": "bag_fine", "name": "灵绢储物袋", "type": "bag", "grade": 1, "size": [2, 2], "stack": 1, "value": 300, "icon": "bag", "bag": {"w": 8, "h": 6}, "desc": "以灵蚕丝织就，内有 8×6 格空间。"},
+  {"id": "bag_rare", "name": "乾坤袋", "type": "bag", "grade": 3, "size": [2, 2], "stack": 1, "value": 3000, "icon": "bag", "bag": {"w": 10, "h": 8}, "desc": "内蕴一方小天地，10×8 格空间。"},
+
+  {"id": "sword_iron", "name": "精铁剑", "type": "weapon", "grade": 0, "size": [1, 4], "stack": 1, "value": 20, "icon": "sword", "element": "metal",
+   "weapon": {"kind": "sword", "attack": 8, "stats": {}, "visual": {"kind": "sword", "length": 36, "blade": "#c8ccd4", "guard": "#8a7a5a", "grip": "#3a2a1a"}}, "desc": "凡铁锻造的长剑。"},
+  {"id": "sword_green", "name": "青锋剑", "type": "weapon", "grade": 1, "size": [1, 4], "stack": 1, "value": 180, "icon": "sword", "element": "metal",
+   "weapon": {"kind": "sword", "attack": 18, "stats": {"crit_rate": 0.03}, "visual": {"kind": "sword", "length": 38, "blade": "#b8f0d8", "guard": "#2f7a5a", "grip": "#1a2a22", "glow": "wood"}}, "desc": "剑身泛着青光的灵剑。"},
+  {"id": "saber_iron", "name": "厚背刀", "type": "weapon", "grade": 0, "size": [1, 4], "stack": 1, "value": 20, "icon": "saber", "element": "earth",
+   "weapon": {"kind": "saber", "attack": 10, "stats": {"poise_pct": 0.05}, "visual": {"kind": "saber", "length": 34, "blade": "#b8bcc4", "guard": "#5a4a3a", "grip": "#2a1a10"}}, "desc": "刀背厚重，大开大合。"},
+  {"id": "spear_iron", "name": "红缨枪", "type": "weapon", "grade": 0, "size": [1, 5], "stack": 1, "value": 25, "icon": "spear", "element": "fire",
+   "weapon": {"kind": "spear", "attack": 9, "stats": {}, "visual": {"kind": "spear", "length": 80, "blade": "#d0d4dc", "guard": "#c02020", "grip": "#5a2a1a"}}, "desc": "军中常见的长枪，枪缨如火。"},
+  {"id": "flag_spear_fire", "name": "烈焰旗枪", "type": "weapon", "grade": 2, "size": [1, 5], "stack": 1, "value": 900, "icon": "spear", "element": "fire",
+   "weapon": {"kind": "spear", "attack": 34, "stats": {"dmg_fire": 0.15, "burn_power": 0.2}, "visual": {"kind": "spear", "length": 84, "blade": "#f0f4ff", "guard": "#e0b040", "grip": "#b01c1c", "flag": "#c81e1e", "glow": "fire"}}, "desc": "旗面绣有古篆，挥舞时烈焰翻卷。"},
+  {"id": "fist_wraps", "name": "缠手布", "type": "weapon", "grade": 0, "size": [1, 1], "stack": 1, "value": 5, "icon": "fist",
+   "weapon": {"kind": "fist", "attack": 5, "stats": {}, "visual": {"kind": "fist"}}, "desc": "缠在手上的粗布，聊胜于无。"},
+
+  {"id": "robe_cloth", "name": "粗布道袍", "type": "armor", "grade": 0, "size": [2, 3], "stack": 1, "value": 10, "icon": "robe",
+   "equip": {"stats": {"defense": 3, "max_shield": 10}, "visual": {"outfit": "robe", "outfit_colors": ["#8a8a7a", "#4a4a40", "#c0b080"]}}, "desc": "最普通的道袍。"},
+  {"id": "robe_silk", "name": "云纹法衣", "type": "armor", "grade": 1, "size": [2, 3], "stack": 1, "value": 220, "icon": "robe",
+   "equip": {"stats": {"defense": 8, "max_shield": 40, "qi_regen_pct": 0.05}, "visual": {"outfit": "robe", "outfit_colors": ["#e8e8f0", "#3a4a78", "#d8b050"]}}, "desc": "绣有云纹的法衣，可聚拢灵气。"},
+  {"id": "armor_crimson", "name": "赤金战甲", "type": "armor", "grade": 2, "size": [2, 3], "stack": 1, "value": 1100, "icon": "armor", "element": "fire",
+   "equip": {"stats": {"defense": 25, "max_shield": 80, "max_hp_pct": 0.08}, "visual": {"outfit": "armor", "outfit_colors": ["#b3201c", "#3b2618", "#e2b23c"]}}, "desc": "金红相间的战甲，传说为某位女将军遗物。"},
+
+  {"id": "jade_pendant", "name": "护身玉佩", "type": "accessory", "grade": 1, "size": [1, 1], "stack": 1, "value": 150, "icon": "pendant", "element": "earth",
+   "equip": {"stats": {"max_shield_pct": 0.15, "shield_regen_pct": 0.1}}, "desc": "温润的玉佩，危急时泛起灵光护主。"},
+  {"id": "ring_crit", "name": "锐金戒", "type": "accessory", "grade": 2, "size": [1, 1], "stack": 1, "value": 600, "icon": "ring", "element": "metal",
+   "equip": {"stats": {"crit_rate": 0.05, "crit_dmg": 0.15}}, "desc": "以庚金之精打造的戒指。"},
+
+  {"id": "pill_heal_small", "name": "回春丹", "type": "pill", "grade": 0, "size": [1, 1], "stack": 20, "value": 15, "icon": "pill", "icon_color": "#6ad070",
+   "use": {"effect": "heal", "amount": 0.35, "text": "恢复 35% 生命。可在战斗中服用（Q）。", "combat": true}, "desc": "最常见的疗伤丹药。"},
+  {"id": "pill_qi_small", "name": "回灵丹", "type": "pill", "grade": 0, "size": [1, 1], "stack": 20, "value": 15, "icon": "pill", "icon_color": "#60a8ff",
+   "use": {"effect": "qi", "amount": 0.6, "text": "恢复 60% 灵力。", "combat": true}, "desc": "补充灵力的丹药。"},
+  {"id": "pill_exp_small", "name": "聚气丹", "type": "pill", "grade": 1, "size": [1, 1], "stack": 20, "value": 40, "icon": "pill", "icon_color": "#f0d060",
+   "use": {"effect": "exp", "amount": 120, "toxicity": 8, "text": "增加 120 修为，累积丹毒。"}, "desc": "炼气期修士常用的修炼丹药。"},
+  {"id": "pill_zhuji", "name": "筑基丹", "type": "pill", "grade": 2, "size": [1, 1], "stack": 5, "value": 800, "icon": "pill", "icon_color": "#ff9a40",
+   "use": {"effect": "breakthrough", "realm": 0, "bonus": 0.3, "text": "冲击筑基时服用，成功率 +30%。"}, "desc": "千金难求，炼气修士梦寐以求的宝丹。"},
+  {"id": "pill_jiejin", "name": "结金丹", "type": "pill", "grade": 3, "size": [1, 1], "stack": 5, "value": 6000, "icon": "pill", "icon_color": "#ffd040",
+   "use": {"effect": "breakthrough", "realm": 1, "bonus": 0.25, "text": "冲击金丹时服用，成功率 +25%。"}, "desc": "助筑基修士凝结金丹。"},
+  {"id": "pill_injury", "name": "疗伤丹", "type": "pill", "grade": 1, "size": [1, 1], "stack": 10, "value": 60, "icon": "pill", "icon_color": "#e05050",
+   "use": {"effect": "heal_injury", "amount": 20, "text": "内伤恢复 20 日。"}, "desc": "修复经脉内伤。"},
+  {"id": "pill_detox", "name": "清灵丹", "type": "pill", "grade": 1, "size": [1, 1], "stack": 10, "value": 80, "icon": "pill", "icon_color": "#c0f0ff",
+   "use": {"effect": "detox", "amount": 30, "text": "化解 30 点丹毒。"}, "desc": "化解体内积累的丹毒。"},
+
+  {"id": "herb_lingcao", "name": "凝露灵草", "type": "material", "grade": 0, "size": [1, 2], "stack": 10, "value": 6, "icon": "herb", "element": "wood", "tags": ["herb"], "refine": {"exp": 15, "element": "wood"}, "desc": "叶尖凝着灵露的小草，炼丹常用。"},
+  {"id": "herb_fire_ganoderma", "name": "赤焰灵芝", "type": "material", "grade": 1, "size": [1, 1], "stack": 10, "value": 45, "icon": "flower", "icon_color": "#ff5020", "element": "fire", "tags": ["herb"], "refine": {"exp": 60, "element": "fire"}, "desc": "生长在火脉旁的灵芝。"},
+  {"id": "ore_iron", "name": "玄铁", "type": "material", "grade": 0, "size": [2, 2], "stack": 10, "value": 8, "icon": "ore", "element": "metal", "tags": ["ore"], "desc": "炼器的基础材料。"},
+  {"id": "ore_gengjin", "name": "庚金之精", "type": "material", "grade": 2, "size": [1, 2], "stack": 10, "value": 160, "icon": "crystal", "icon_color": "#fff0a0", "element": "metal", "tags": ["ore"], "refine": {"exp": 150, "element": "metal"}, "desc": "蕴含锐金之气的晶石。"},
+  {"id": "beast_core_1", "name": "一阶妖丹", "type": "material", "grade": 1, "size": [1, 1], "stack": 10, "value": 30, "icon": "core", "tags": ["core"], "refine": {"exp": 40}, "desc": "一阶妖兽体内的妖丹，可炼化或入药。"},
+  {"id": "wolf_pelt", "name": "灰狼皮", "type": "material", "grade": 0, "size": [2, 2], "stack": 5, "value": 5, "icon": "hide", "tags": ["hide"], "desc": "坚韧的狼皮。"},
+
+  {"id": "manual_gengjin", "name": "《庚金诀》玉简", "type": "manual", "grade": 1, "size": [1, 2], "stack": 1, "value": 300, "icon": "scroll", "element": "metal", "teaches": {"technique": "gengjin_jue"}, "desc": "记载着金系功法《庚金诀》。"},
+  {"id": "manual_fireball", "name": "【火球术】玉简", "type": "manual", "grade": 0, "size": [1, 2], "stack": 1, "value": 80, "icon": "scroll", "element": "fire", "teaches": {"spell": "fireball"}, "desc": "记载着入门法诀【火球术】。"},
+
+  {"id": "talisman_fireball", "name": "火球符", "type": "talisman", "grade": 0, "size": [1, 1], "stack": 20, "value": 12, "icon": "talisman", "element": "fire", "use": {"effect": "cast", "spell": "fireball", "text": "激发后释放【火球术】。", "combat": true}, "desc": "一次性符箓。"},
+
+  {"id": "treasure_snow_lotus", "name": "千年雪莲", "type": "treasure", "grade": 3, "size": [2, 2], "stack": 1, "value": 2500, "icon": "flower", "icon_color": "#f0f8ff", "element": "water", "refine": {"exp": 1800, "element": "water"}, "desc": "雪峰之巅千年一开的灵莲。"},
+  {"id": "treasure_sun_fruit", "name": "朱果", "type": "treasure", "grade": 2, "size": [1, 1], "stack": 5, "value": 600, "icon": "fruit", "icon_color": "#ff3020", "element": "fire", "refine": {"exp": 500, "element": "fire"}, "desc": "通体赤红的灵果，服之可增修为。"}
+]

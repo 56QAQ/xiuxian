@@ -1,0 +1,72 @@
+[
+  {
+    "id": "lianqi", "name": "炼气",
+    "stages": ["一层", "二层", "三层", "四层", "五层", "六层", "七层", "八层", "九层"],
+    "lifespan": 120,
+    "base": {"max_hp": 300, "max_shield": 80, "max_qi": 100, "attack": 30, "defense": 15, "poise": 100},
+    "growth": 0.1,
+    "exp": [100, 150, 220, 320, 460, 650, 900, 1250, 1700],
+    "cult_rate": 6,
+    "breakthrough": {"base": 0.4, "pill": "pill_zhuji"},
+    "perks": [],
+    "perk_stats": {},
+    "perk_text": {},
+    "desc": "引天地灵气入体，洗练经脉。九层圆满后可冲击筑基。"
+  },
+  {
+    "id": "zhuji", "name": "筑基",
+    "stages": ["初期", "中期", "后期", "圆满"],
+    "lifespan": 220,
+    "base": {"max_hp": 800, "max_shield": 240, "max_qi": 180, "attack": 75, "defense": 40, "poise": 180},
+    "growth": 0.15,
+    "exp": [3000, 4200, 5800, 8000],
+    "cult_rate": 16,
+    "breakthrough": {"base": 0.25, "pill": "pill_jiejin"},
+    "perks": ["hover"],
+    "perk_stats": {"boost_cost": -0.1, "flight_cost": -0.25},
+    "perk_text": {"hover": "【御空】道基已成，可凌空悬停（空中双击跳跃切换）。"},
+    "desc": "灵气化液，筑就道基。自此可御空而行。"
+  },
+  {
+    "id": "jindan", "name": "金丹",
+    "stages": ["初期", "中期", "后期", "圆满"],
+    "lifespan": 500,
+    "base": {"max_hp": 2200, "max_shield": 700, "max_qi": 320, "attack": 190, "defense": 100, "poise": 320},
+    "growth": 0.15,
+    "exp": [15000, 20000, 27000, 36000],
+    "cult_rate": 42,
+    "breakthrough": {"base": 0.15, "pill": "pill_yuanying"},
+    "perks": ["spell_slot_5", "core_burst"],
+    "perk_stats": {"spell_mult": 0.1},
+    "perk_text": {"spell_slot_5": "【金丹】第五法诀槽开启。", "core_burst": "【金丹爆发】灵力满时可同时按下 E+F 引爆金丹之力。"},
+    "desc": "液化灵气凝结成丹，一丹入腹，寿元五百。"
+  },
+  {
+    "id": "yuanying", "name": "元婴",
+    "stages": ["初期", "中期", "后期", "圆满"],
+    "lifespan": 1000,
+    "base": {"max_hp": 6000, "max_shield": 2000, "max_qi": 550, "attack": 480, "defense": 250, "poise": 520},
+    "growth": 0.15,
+    "exp": [80000, 105000, 135000, 170000],
+    "cult_rate": 110,
+    "breakthrough": {"base": 0.1, "pill": "pill_huashen"},
+    "perks": ["nascent_escape"],
+    "perk_stats": {"dmg_reduction": 0.05},
+    "perk_text": {"nascent_escape": "【元婴出窍】濒死时元婴护主，保命一次（每日一次）。"},
+    "desc": "碎丹成婴，元婴不灭则身死道存。"
+  },
+  {
+    "id": "huashen", "name": "化神",
+    "stages": ["初期", "中期", "后期", "圆满"],
+    "lifespan": 2000,
+    "base": {"max_hp": 16000, "max_shield": 5500, "max_qi": 900, "attack": 1200, "defense": 620, "poise": 800},
+    "growth": 0.15,
+    "exp": [400000, 520000, 680000, 900000],
+    "cult_rate": 300,
+    "breakthrough": {"base": 0.05},
+    "perks": ["domain"],
+    "perk_stats": {"spell_mult": 0.2},
+    "perk_text": {"domain": "【领域】神识所及，皆为吾域。"},
+    "desc": "元婴化神，神游太虚。"
+  }
+]

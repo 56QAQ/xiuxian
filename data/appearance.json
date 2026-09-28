@@ -1,0 +1,20 @@
+{
+  "hair_styles": [
+    {"id": "twin_tails", "name": "双马尾"}, {"id": "ponytail", "name": "高马尾"}, {"id": "long", "name": "长直发"},
+    {"id": "short", "name": "短发"}, {"id": "bun", "name": "道髻"}, {"id": "flowing", "name": "披发"}
+  ],
+  "eye_styles": [{"id": "almond", "name": "杏眼"}, {"id": "round", "name": "圆眼"}, {"id": "sharp", "name": "凤眼"}],
+  "marks": [{"id": "none", "name": "无"}, {"id": "lotus", "name": "莲纹花钿"}, {"id": "flame", "name": "火焰花钿"}, {"id": "dot", "name": "朱砂痣"}],
+  "ears": [{"id": "human", "name": "人耳"}, {"id": "fox", "name": "狐耳"}, {"id": "cat", "name": "猫耳"}, {"id": "elf", "name": "尖耳"}],
+  "tails": [{"id": "none", "name": "无"}, {"id": "fox", "name": "狐尾"}],
+  "horns": [{"id": "none", "name": "无"}, {"id": "dragon", "name": "龙角"}],
+  "outfits": [{"id": "robe", "name": "道袍"}, {"id": "martial", "name": "劲装"}, {"id": "armor", "name": "战甲"}],
+  "hair_colors": ["#c8201e", "#1a1a22", "#f0f0f4", "#e8c060", "#8a4a2a", "#3a5ad0", "#6a2a8a", "#e070a0", "#40a080", "#b0b8c8"],
+  "eye_colors": ["#f0a020", "#d02020", "#3080f0", "#40c060", "#9040d0", "#1a1a1a", "#e8e0f0", "#e06090"],
+  "skin_colors": ["#f8e0d0", "#f3d2bd", "#e8bca0", "#d4a07c", "#b07a58", "#f0f0f8"],
+  "outfit_palettes": [
+    ["#b3201c", "#3b2618", "#e2b23c"], ["#e8ecf4", "#4a5a78", "#d8b050"], ["#5ab86a", "#2a4a30", "#e0d8a0"],
+    ["#3a6ad0", "#1a2a50", "#c8e0ff"], ["#c09040", "#6a4a2a", "#e8dcc0"], ["#2a2a30", "#101014", "#c02030"],
+    ["#f0e8f8", "#9070c0", "#f0c0e0"]
+  ]
+}

@@ -1,0 +1,15 @@
+# Godot
+.godot/
+*.import
+!assets/**/*.import
+export_presets.cfg
+*.translation
+/android/
+/build/
+# OS
+.DS_Store
+Thumbs.db
+# Tools
+__pycache__/
+*.pyc
+/screenshots/

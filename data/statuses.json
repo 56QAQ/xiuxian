@@ -1,0 +1,17 @@
+[
+  {"id": "bleed", "name": "流血", "type": "debuff", "element": "metal", "max_stacks": 10, "duration": 5.0, "dot": 0.05, "moving_mult": 2.0, "color": "#e02828", "desc": "每层每秒受到施加者 5% 攻击的伤害，目标高速移动时翻倍。"},
+  {"id": "poison", "name": "中毒", "type": "debuff", "element": "wood", "max_stacks": 10, "duration": 8.0, "dot": 0.02, "mods_per_stack": {"attack_pct": -0.03, "defense_pct": -0.04, "move_speed_pct": -0.02}, "color": "#60d040", "desc": "每层降低攻击 3%、防御 4%、移速 2%。"},
+  {"id": "bind", "name": "束缚", "type": "gauge", "element": "water", "max_stacks": 100, "duration": 4.0, "slow": 0.5, "root_status": "rooted", "root_duration": 1.6, "immune": 3.0, "color": "#40a0ff", "desc": "积累束缚值减速目标，满 100 时定身。"},
+  {"id": "burn", "name": "灼烧", "type": "debuff", "element": "fire", "max_stacks": 5, "duration": 4.0, "dot": 0.07, "mods_per_stack": {"shield_regen_pct": -0.15}, "color": "#ff7020", "desc": "每层每秒受到施加者 7% 攻击的伤害，并抑制护体回复。"},
+  {"id": "stagger", "name": "震慑", "type": "instant", "element": "earth", "color": "#c09040", "desc": "直接削减目标韧性（层数即韧性伤害）。"},
+  {"id": "rooted", "name": "定身", "type": "control", "duration": 1.6, "color": "#80c8ff", "desc": "无法移动与推进。"},
+  {"id": "slow", "name": "迟滞", "type": "debuff", "max_stacks": 1, "duration": 1.0, "mods_per_stack": {"move_speed_pct": -0.35, "boost_speed_pct": -0.25}, "color": "#8090a0", "desc": "移动速度降低。"},
+  {"id": "regen", "name": "回春", "type": "buff", "max_stacks": 1, "duration": 6.0, "hot": 0.06, "color": "#80ff90", "desc": "每秒恢复 6% 最大生命。"},
+  {"id": "stone_skin", "name": "石肤", "type": "buff", "max_stacks": 1, "duration": 6.0, "mods_per_stack": {"dmg_reduction": 0.2, "poise_pct": 0.6}, "color": "#d0a060", "desc": "伤害减免 +20%，韧性 +60%。"},
+  {"id": "swift", "name": "疾风", "type": "buff", "max_stacks": 1, "duration": 8.0, "mods_per_stack": {"move_speed_pct": 0.25, "boost_cost": -0.3}, "color": "#a0ffe0", "desc": "移速 +25%，疾行消耗 -30%。"},
+  {"id": "fury", "name": "狂火", "type": "buff", "max_stacks": 1, "duration": 8.0, "mods_per_stack": {"attack_pct": 0.25}, "color": "#ff6040", "desc": "攻击 +25%。"},
+  {"id": "keen", "name": "锐意", "type": "buff", "max_stacks": 1, "duration": 8.0, "mods_per_stack": {"crit_rate": 0.2, "crit_dmg": 0.2}, "color": "#fff080", "desc": "暴击率 +20%，暴击伤害 +20%。"},
+  {"id": "qi_surge", "name": "灵涌", "type": "buff", "max_stacks": 1, "duration": 8.0, "mods_per_stack": {"qi_regen_pct": 0.8}, "color": "#60c0ff", "desc": "灵力回复 +80%。"},
+  {"id": "qi_burnout", "name": "灵力枯竭", "type": "control", "duration": 2.0, "color": "#606080", "desc": "灵力耗尽，短时间内无法推进，回复减缓。"},
+  {"id": "injured", "name": "内伤", "type": "debuff", "max_stacks": 1, "duration": 9999.0, "color": "#a04040", "desc": "经脉受损。"}
+]

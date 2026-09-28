@@ -1,0 +1,25 @@
+[
+  {"id": "sword", "name": "剑", "lunge_range": 14.0, "lunge_speed": 36.0, "combo": [
+    {"clip": "sword_1", "dmg": 1.0, "range": 2.9, "arc": 150, "poise": 16, "knock": 2.5, "cancel": 0.55, "lunge": true},
+    {"clip": "sword_2", "dmg": 1.0, "range": 2.9, "arc": 150, "poise": 16, "knock": 2.5, "cancel": 0.55},
+    {"clip": "sword_3", "dmg": 1.15, "range": 3.2, "arc": 70, "poise": 20, "knock": 4.0, "cancel": 0.55, "lunge": true},
+    {"clip": "sword_4", "dmg": 1.8, "range": 3.4, "arc": 120, "poise": 45, "knock": 9.0, "cancel": 0.8, "heavy": true}
+  ]},
+  {"id": "saber", "name": "刀", "lunge_range": 12.0, "lunge_speed": 32.0, "combo": [
+    {"clip": "saber_1", "dmg": 1.35, "range": 3.2, "arc": 190, "poise": 30, "knock": 4.0, "cancel": 0.6, "lunge": true},
+    {"clip": "saber_2", "dmg": 1.35, "range": 3.2, "arc": 190, "poise": 30, "knock": 4.0, "cancel": 0.6},
+    {"clip": "saber_3", "dmg": 2.4, "range": 3.6, "arc": 110, "poise": 70, "knock": 11.0, "cancel": 0.85, "heavy": true}
+  ]},
+  {"id": "spear", "name": "枪", "lunge_range": 16.0, "lunge_speed": 40.0, "combo": [
+    {"clip": "spear_1", "dmg": 1.1, "range": 4.6, "arc": 40, "poise": 18, "knock": 4.0, "cancel": 0.55, "lunge": true},
+    {"clip": "spear_2", "dmg": 1.2, "range": 4.2, "arc": 220, "poise": 24, "knock": 5.0, "cancel": 0.6},
+    {"clip": "spear_3", "dmg": 1.9, "range": 4.2, "arc": 90, "poise": 50, "knock": 3.0, "launch": 9.0, "cancel": 0.8, "heavy": true}
+  ]},
+  {"id": "fist", "name": "拳", "lunge_range": 10.0, "lunge_speed": 34.0, "combo": [
+    {"clip": "fist_1", "dmg": 0.7, "range": 2.2, "arc": 90, "poise": 8, "knock": 1.5, "cancel": 0.5, "lunge": true},
+    {"clip": "fist_2", "dmg": 0.7, "range": 2.2, "arc": 90, "poise": 8, "knock": 1.5, "cancel": 0.5},
+    {"clip": "fist_3", "dmg": 0.85, "range": 2.4, "arc": 140, "poise": 12, "knock": 2.0, "cancel": 0.5},
+    {"clip": "fist_4", "dmg": 1.0, "range": 2.6, "arc": 120, "poise": 18, "knock": 3.5, "cancel": 0.55},
+    {"clip": "fist_5", "dmg": 1.6, "range": 2.6, "arc": 70, "poise": 40, "knock": 10.0, "cancel": 0.8, "heavy": true}
+  ]}
+]

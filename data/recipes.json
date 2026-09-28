@@ -1,0 +1,11 @@
+[
+  {"id": "r_pill_heal", "name": "回春丹", "profession": "alchemy", "level": 0, "inputs": [["herb_lingcao", 2]], "output": ["pill_heal_small", 2], "time": 2, "success": 0.8, "desc": "最基础的疗伤丹。"},
+  {"id": "r_pill_qi", "name": "回灵丹", "profession": "alchemy", "level": 0, "inputs": [["herb_lingcao", 1], ["spirit_stone", 5]], "output": ["pill_qi_small", 2], "time": 2, "success": 0.8},
+  {"id": "r_pill_exp", "name": "聚气丹", "profession": "alchemy", "level": 1, "inputs": [["herb_lingcao", 3], ["beast_core_1", 1]], "output": ["pill_exp_small", 2], "time": 4, "success": 0.65},
+  {"id": "r_pill_zhuji", "name": "筑基丹", "profession": "alchemy", "level": 4, "inputs": [["treasure_sun_fruit", 1], ["herb_fire_ganoderma", 3], ["beast_core_1", 3]], "output": ["pill_zhuji", 1], "time": 24, "success": 0.35},
+  {"id": "r_sword_green", "name": "青锋剑", "profession": "forging", "level": 1, "inputs": [["ore_iron", 3], ["herb_lingcao", 1]], "output": ["sword_green", 1], "time": 8, "success": 0.7},
+  {"id": "r_ring_crit", "name": "锐金戒", "profession": "forging", "level": 3, "inputs": [["ore_gengjin", 2], ["ore_iron", 1]], "output": ["ring_crit", 1], "time": 12, "success": 0.55},
+  {"id": "r_talisman_fireball", "name": "火球符", "profession": "talisman", "level": 0, "inputs": [["spirit_stone", 3], ["herb_fire_ganoderma", 1]], "output": ["talisman_fireball", 3], "time": 1, "success": 0.8},
+  {"id": "r_jade_pendant", "name": "护身玉佩", "profession": "formation", "level": 1, "inputs": [["spirit_stone", 20], ["ore_iron", 1]], "output": ["jade_pendant", 1], "time": 6, "success": 0.7},
+  {"id": "r_grow_lingcao", "name": "培育凝露灵草", "profession": "herbalism", "level": 0, "inputs": [["herb_lingcao", 1], ["spirit_stone", 2]], "output": ["herb_lingcao", 4], "time": 48, "success": 0.9}
+]

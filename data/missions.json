@@ -1,0 +1,16 @@
+[
+  {"id": "hunt_beasts", "name": "猎杀妖兽", "type": "kill", "targets": ["wolf_grey", "fox_flame", "boar_iron"], "count": [3, 6], "min_rank": 0,
+   "reward": {"contribution": [20, 40], "stones": [10, 30], "rep": [15, 25]}, "text": "近来{target}频繁袭扰山下村落，前往猎杀 {count} 只。"},
+  {"id": "gather_herbs", "name": "采集灵草", "type": "deliver", "items": ["herb_lingcao", "herb_fire_ganoderma"], "count": [2, 5], "min_rank": 0,
+   "reward": {"contribution": [15, 35], "stones": [5, 20], "rep": [10, 20]}, "text": "丹房缺少{item}，上交 {count} 份。"},
+  {"id": "gather_ore", "name": "收集矿材", "type": "deliver", "items": ["ore_iron", "ore_gengjin"], "count": [1, 4], "min_rank": 0,
+   "reward": {"contribution": [20, 40], "stones": [10, 25], "rep": [10, 20]}, "text": "器阁需要{item}，上交 {count} 份。"},
+  {"id": "realm_fetch", "name": "秘境寻宝", "type": "deliver", "items": ["beast_core_1", "spirit_stone_mid", "treasure_sun_fruit"], "count": [1, 2], "min_rank": 1,
+   "reward": {"contribution": [50, 90], "stones": [30, 60], "rep": [30, 50]}, "text": "宗门需要{item}，此物多见于秘境之中。带回 {count} 份。"},
+  {"id": "slay_evil", "name": "斩除魔修", "type": "kill", "targets": ["xuesha_disciple"], "count": [1, 2], "min_rank": 1,
+   "reward": {"contribution": [60, 100], "stones": [40, 80], "rep": [40, 60]}, "text": "血煞宗魔修在青州出没，斩杀 {count} 名。"},
+  {"id": "spar_disciple", "name": "同门切磋", "type": "spar", "count": [1, 1], "min_rank": 0,
+   "reward": {"contribution": [15, 25], "stones": [0, 0], "rep": [15, 25]}, "text": "与同门切磋一场，检验修为。"},
+  {"id": "rescue", "name": "驰援同门", "type": "kill", "targets": ["wolf_grey", "boar_iron"], "count": [4, 6], "min_rank": 1,
+   "reward": {"contribution": [40, 70], "stones": [20, 40], "rep": [30, 50]}, "text": "有同门在外遇险，清除{target} {count} 只。"}
+]

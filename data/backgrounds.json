@@ -1,0 +1,18 @@
+[
+  {"id": "rogue", "name": "散修", "desc": "无门无派，四海为家。自由，但一切都要靠自己。", "stones": 60, "bag": "bag_basic",
+   "items": [["pill_heal_small", 3], ["pill_qi_small", 2], ["herb_lingcao", 2]],
+   "equip": {"weapon": "sword_iron", "armor": "robe_cloth"},
+   "techniques": ["tuna_basic"], "spells": ["qi_palm"], "stats": {"luck": 1}},
+  {"id": "clan", "name": "世家子弟", "desc": "出身修仙世家，家底殷实，但也背负家族期望。", "stones": 200, "bag": "bag_fine",
+   "items": [["pill_heal_small", 5], ["pill_qi_small", 3], ["pill_exp_small", 2]],
+   "equip": {"weapon": "sword_green", "armor": "robe_silk", "accessory1": "jade_pendant"},
+   "techniques": ["tuna_basic"], "spells": ["qi_palm"], "stats": {}},
+  {"id": "village", "name": "山野村童", "desc": "偶得仙缘的山村少年，一无所有，却福缘深厚。", "stones": 10, "bag": "bag_basic",
+   "items": [["pill_heal_small", 2], ["herb_lingcao", 3]],
+   "equip": {"weapon": "fist_wraps", "armor": "robe_cloth"},
+   "techniques": ["tuna_basic"], "spells": ["qi_palm"], "stats": {"luck": 3, "loot_bonus": 0.08}},
+  {"id": "servant", "name": "宗门杂役", "desc": "在宗门做了多年杂役，终于被准许修行。起始即为记名弟子。", "stones": 30, "bag": "bag_basic",
+   "items": [["pill_heal_small", 3], ["pill_qi_small", 2]],
+   "equip": {"weapon": "sword_iron", "armor": "robe_cloth"},
+   "techniques": ["tuna_basic"], "spells": ["qi_palm"], "stats": {}, "sect_choice": true}
+]

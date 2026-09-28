@@ -1,0 +1,11 @@
+[
+  {"id": "tuna_basic", "name": "基础吐纳法", "element": "none", "grade": 0, "slot": "main", "cult_mult": 1.0, "max_realm": 1, "stats": {}, "req": {}, "desc": "人人可修的入门吐纳法门，可修炼至筑基。"},
+  {"id": "gengjin_jue", "name": "庚金诀", "element": "metal", "grade": 1, "slot": "main", "cult_mult": 1.3, "max_realm": 2, "stats": {"crit_rate": 0.03, "dmg_metal": 0.1, "bleed_power": 0.1}, "req": {"root": {"metal": 20}}, "desc": "天剑宗入门功法，吐纳庚金锐气。"},
+  {"id": "changchun_gong", "name": "长春功", "element": "wood", "grade": 1, "slot": "main", "cult_mult": 1.25, "max_realm": 2, "stats": {"max_hp_pct": 0.08, "heal_mult": 0.1, "dmg_wood": 0.1}, "req": {"root": {"wood": 20}}, "desc": "青木谷入门功法，生生不息。"},
+  {"id": "xuanshui_jue", "name": "玄水诀", "element": "water", "grade": 1, "slot": "main", "cult_mult": 1.3, "max_realm": 2, "stats": {"max_qi_pct": 0.1, "qi_regen_pct": 0.1, "dmg_water": 0.1}, "req": {"root": {"water": 20}}, "desc": "玄水阁入门功法，上善若水。"},
+  {"id": "lihuo_jue", "name": "离火诀", "element": "fire", "grade": 1, "slot": "main", "cult_mult": 1.3, "max_realm": 2, "stats": {"attack_pct": 0.06, "dmg_fire": 0.1}, "req": {"root": {"fire": 20}}, "desc": "离火殿入门功法，心火炼身。"},
+  {"id": "houtu_jue", "name": "厚土诀", "element": "earth", "grade": 1, "slot": "main", "cult_mult": 1.2, "max_realm": 2, "stats": {"max_shield_pct": 0.15, "defense_pct": 0.08, "dmg_earth": 0.1}, "req": {"root": {"earth": 20}}, "desc": "厚土宗入门功法，厚德载物。"},
+  {"id": "duanti_shu", "name": "锻体术", "element": "none", "grade": 0, "slot": "aux", "stats": {"max_hp_pct": 0.1, "poise_pct": 0.1}, "req": {}, "desc": "打熬筋骨的外功。"},
+  {"id": "qingshen_shu", "name": "轻身术", "element": "none", "grade": 0, "slot": "aux", "stats": {"move_speed_pct": 0.06, "boost_cost": -0.1, "qb_cost": -0.1}, "req": {}, "desc": "身轻如燕，踏雪无痕。"},
+  {"id": "jingxin_jue", "name": "静心诀", "element": "none", "grade": 0, "slot": "aux", "stats": {"qi_regen_pct": 0.12, "status_resist": 0.05}, "req": {}, "desc": "静心凝神，抵御外邪。"}
+]

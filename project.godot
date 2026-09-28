@@ -1,0 +1,63 @@
+; Engine configuration file.
+; 问道长生 - Godot 4.4+ project
+
+config_version=5
+
+[application]
+
+config/name="问道长生"
+config/description="修仙开放世界 RPG：体素画风、AC4 式高速斗法、五行构筑、秘境搜打撤。"
+config/version="0.1.0"
+run/main_scene="res://scenes/main_menu.tscn"
+config/features=PackedStringArray("4.4", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Settings="*res://src/autoload/settings.gd"
+Events="*res://src/autoload/events.gd"
+DB="*res://src/autoload/db.gd"
+GS="*res://src/autoload/game_state.gd"
+SaveManager="*res://src/autoload/save_manager.gd"
+Audio="*res://src/autoload/audio.gd"
+Scenes="*res://src/autoload/scenes.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom_font="res://assets/fonts/XianKai-Regular.ttf"
+theme/default_font_antialiasing=1
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="actors"
+3d_physics/layer_4="projectiles"
+3d_physics/layer_5="debris"
+3d_physics/layer_6="interact"
+3d_physics/layer_7="destructible"
+3d_physics/layer_8="water"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=60
+common/max_physics_steps_per_frame=8
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=1
+anti_aliasing/quality/screen_space_aa=1
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+environment/defaults/default_clear_color=Color(0.55, 0.62, 0.7, 1)
