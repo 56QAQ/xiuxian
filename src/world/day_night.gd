@@ -18,6 +18,8 @@ var hour := 9.0
 var sky_tint := Color(0.6, 0.75, 0.9)
 var water: Node = null
 var shadow_distance := 220.0
+## 夜晚程度 0~1（黄昏开始点亮夜灯）
+var night_amount := 0.0
 var _cloud_offset := 0.0
 var _cloud_mat: ShaderMaterial
 var _last_applied := -99.0
@@ -64,7 +66,7 @@ func _build() -> void:
 	env.volumetric_fog_enabled = false
 	env.sdfgi_enabled = false
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.12
+	env.adjustment_saturation = 1.06
 	env.adjustment_contrast = 1.04
 	world_env = WorldEnvironment.new()
 	world_env.environment = env
@@ -134,7 +136,7 @@ func apply_hour(h: float) -> void:
 	# 月亮
 	_orient(moon, md)
 	var night := smoothstep(0.0, 0.2, md.y) * (1.0 - day)
-	moon.light_energy = 0.32 * night
+	moon.light_energy = 0.5 * night
 	moon.visible = night > 0.01
 	moon.shadow_enabled = night > 0.2
 	# 天空关键帧（按太阳高度）
@@ -145,7 +147,7 @@ func apply_hour(h: float) -> void:
 	var fog: Color
 	var amb_e: float
 	var keys := [
-		[-0.35, Color(0.015, 0.02, 0.06), Color(0.04, 0.06, 0.13), Color(0.2, 0.2, 0.4), Color(0.13, 0.17, 0.30), Color(0.05, 0.07, 0.13), 0.55],
+		[-0.35, Color(0.015, 0.02, 0.06), Color(0.05, 0.07, 0.15), Color(0.2, 0.2, 0.4), Color(0.18, 0.23, 0.40), Color(0.06, 0.08, 0.15), 0.75],
 		[-0.08, Color(0.08, 0.10, 0.24), Color(0.40, 0.30, 0.38), Color(0.9, 0.4, 0.3), Color(0.30, 0.28, 0.40), Color(0.28, 0.24, 0.32), 0.5],
 		[0.04, Color(0.26, 0.38, 0.66), Color(1.0, 0.64, 0.42), Color(1.0, 0.55, 0.3), Color(0.62, 0.52, 0.52), Color(0.86, 0.66, 0.54), 0.5],
 		[0.2, Color(0.24, 0.46, 0.82), Color(0.80, 0.84, 0.88), Color(1.0, 0.78, 0.5), Color(0.58, 0.62, 0.72), Color(0.74, 0.80, 0.88), 0.55],
@@ -191,6 +193,14 @@ func apply_hour(h: float) -> void:
 		_cloud_mat.set_shader_parameter("tint", Color(cc.r, cc.g, cc.b))
 	if water and water.has_method("set_sky_color"):
 		water.call("set_sky_color", sky_tint, day)
+	# 夜灯（group "night_light"，meta base_energy）：黄昏后点亮
+	night_amount = 1.0 - smoothstep(-0.12, 0.08, e)
+	if is_inside_tree():
+		for n in get_tree().get_nodes_in_group("night_light"):
+			var l := n as Light3D
+			if l:
+				l.light_energy = float(l.get_meta("base_energy", 1.0)) * night_amount
+				l.visible = night_amount > 0.02
 
 
 func _orient(light: DirectionalLight3D, toward: Vector3) -> void:

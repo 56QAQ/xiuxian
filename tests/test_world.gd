@@ -277,3 +277,34 @@ func test_map_image() -> void:
 	var c0 := img.get_pixel(1, 1)
 	var c1 := img.get_pixel(32, 32)
 	_ok(c0 != c1, "地图图像有内容（海 vs 陆）")
+
+
+func test_overworld_standalone() -> void:
+	var saved_pos := GS.overworld_position
+	GS.overworld_position = Vector3.INF
+	var t0 := Time.get_ticks_msec()
+	var ow: Node3D = load("res://src/world/overworld.gd").new()
+	add_child(ow)
+	var load_ms := Time.get_ticks_msec() - t0
+	_ok(ow.get("terrain") is TerrainGen, "overworld.terrain 为 TerrainGen")
+	var st: TerrainStreamer = ow.get("streamer")
+	_ok(st != null and st.loaded_count() > 0, "开局已同步加载区块（%d）" % st.loaded_count())
+	var sp: Vector3 = ow.call("get_spawn_position")
+	var home_spawn: Transform3D = WorldMap.marker("home", "home_spawn")
+	_ok(sp.distance_to(home_spawn.origin) < 0.5, "未开局时出生于洞府 home_spawn")
+	var sects := 0
+	for n in get_tree().get_nodes_in_group("poi_marker"):
+		if n.name == "npc_master" and ow.is_ancestor_of(n):
+			sects += 1
+	_ok(sects == 5, "五宗建筑群已生成（npc_master × %d）" % sects)
+	_ok(ow.call("get_marker", "town", "town_center") != null, "get_marker 可取得坊市中心")
+	_ok(not get_tree().get_nodes_in_group("night_light").is_empty(), "有夜灯")
+	var h0 := GS.hours()
+	for i in 5:
+		await get_tree().process_frame
+	_ok(GS.hours() >= h0, "时间推进不倒退")
+	_ok(load_ms < 10000, "大地图加载 < 10 秒（%d ms）" % load_ms)
+	print("    大地图加载 %d ms" % load_ms)
+	ow.queue_free()
+	await get_tree().process_frame
+	GS.overworld_position = saved_pos

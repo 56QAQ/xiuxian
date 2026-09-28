@@ -232,9 +232,14 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 	var wz0 := cz - d * 0.5
 	var wz1 := cz + d * 0.5
 	var wt := 0.5
-	# 下碱（墙裙）
+	# 下碱（墙裙）：沿墙一圈，正门处留门槛缺口
 	var skirt_c := col(p, "stone2")
-	m.box(Vector3(wx0, y0, wz0), Vector3(wx1, y0 + 0.75, wz1), skirt_c, true)
+	m.box(Vector3(wx0, y0, wz1 - wt), Vector3(wx1, y0 + 0.75, wz1), skirt_c, true)
+	m.box(Vector3(wx0, y0, wz0), Vector3(wx0 + wt, y0 + 0.75, wz1), skirt_c, true)
+	m.box(Vector3(wx1 - wt, y0, wz0), Vector3(wx1, y0 + 0.75, wz1), skirt_c, true)
+	m.box(Vector3(wx0, y0, wz0), Vector3(cx - door_w * 0.5, y0 + 0.75, wz0 + wt), skirt_c, true)
+	m.box(Vector3(cx + door_w * 0.5, y0, wz0), Vector3(wx1, y0 + 0.75, wz0 + wt), skirt_c, true)
+	m.box(Vector3(cx - door_w * 0.5, y0, wz0), Vector3(cx + door_w * 0.5, y0 + 0.12, wz0 + wt), skirt_c.darkened(0.1))
 	# 后墙与两侧墙
 	m.box(Vector3(wx0, y0 + 0.75, wz1 - wt), Vector3(wx1, y0 + ch, wz1), wall, true)
 	m.box(Vector3(wx0, y0 + 0.75, wz0), Vector3(wx0 + wt, y0 + ch, wz1), wall, true)
@@ -283,7 +288,9 @@ static func hall(m: BuildingMesh, cx: float, cz: float, w: float, d: float, ph: 
 	var ncol := maxi(int(round(w / 3.5)), 2)
 	for i in ncol + 1:
 		var x := cx - colx + i * (colx * 2.0) / ncol
-		pillar(m, x, cz - colz + 0.25, y0, ch, p)
+		# 正门前不立柱
+		if absf(x - cx) > door_w * 0.5 + 0.3:
+			pillar(m, x, cz - colz + 0.25, y0, ch, p)
 		pillar(m, x, cz + colz - 0.25, y0, ch, p)
 	var nsz := maxi(int(round(d / 3.5)), 1)
 	for i in range(1, nsz + 1):

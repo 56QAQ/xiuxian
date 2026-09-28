@@ -81,7 +81,7 @@ const S_CANOPY := 21     ## 远景 LOD 树冠
 
 ## 地表调色（sRGB）：[顶面, 顶块侧面, 表土, 表土厚度, 岩层 A, 岩层 B]
 const SURF := [
-	[Color(0.42, 0.66, 0.28), Color(0.44, 0.50, 0.27), Color(0.52, 0.38, 0.25), 3, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 草地
+	[Color(0.41, 0.63, 0.28), Color(0.44, 0.50, 0.27), Color(0.52, 0.38, 0.25), 3, Color(0.50, 0.50, 0.50), Color(0.44, 0.45, 0.46)],   # 草地
 	[Color(0.26, 0.50, 0.22), Color(0.32, 0.40, 0.22), Color(0.38, 0.28, 0.19), 3, Color(0.42, 0.46, 0.41), Color(0.36, 0.40, 0.36)],   # 林地
 	[Color(0.94, 0.96, 1.00), Color(0.90, 0.93, 0.98), Color(0.78, 0.84, 0.92), 2, Color(0.55, 0.58, 0.65), Color(0.47, 0.50, 0.58)],   # 雪
 	[Color(0.56, 0.56, 0.56), Color(0.53, 0.53, 0.53), Color(0.50, 0.50, 0.50), 1, Color(0.50, 0.50, 0.51), Color(0.44, 0.45, 0.46)],   # 岩石
@@ -170,6 +170,7 @@ var n_mesa: FastNoiseLite
 var n_detail: FastNoiseLite
 var n_patch: FastNoiseLite
 
+var _map_cache: Dictionary = {}
 var _macro_h := PackedFloat32Array()
 var _macro_r := PackedFloat32Array()
 var _hf := PackedFloat32Array()
@@ -1397,6 +1398,7 @@ func carve_crater_data(pos: Vector3, radius: float) -> Dictionary:
 						affected[Vector2i(ax / CHUNK, az / CHUNK)] = true
 	if not affected.is_empty():
 		craters.append({"pos": pos, "radius": r})
+		_map_cache.clear()
 		# LOD 高度同步
 		for cz in range(z0 / LOD_CELL, z1 / LOD_CELL + 1):
 			for cx in range(x0 / LOD_CELL, x1 / LOD_CELL + 1):
@@ -1409,42 +1411,54 @@ func carve_crater_data(pos: Vector3, radius: float) -> Dictionary:
 
 # ================================================================ 地图
 
-## 俯视彩色地图（px×px），含水深、山体晕渲与道路。可供地图 UI 使用。
+## 俯视彩色地图（px×px），含水深、山体晕渲、道路与熔岩。可供地图 UI 使用。
+## 按行多线程生成并缓存（弹坑后失效）。512 像素约 0.2~0.4 秒。
 func render_map_image(px: int) -> Image:
 	px = clampi(px, 16, SIZE)
-	var img := Image.create_empty(px, px, false, Image.FORMAT_RGB8)
-	var step := float(SIZE) / px
-	var water_shallow := Color(0.36, 0.62, 0.72)
-	var water_deep := Color(0.12, 0.26, 0.45)
+	if _map_cache.has(px):
+		return (_map_cache[px] as Image).duplicate()
+	var rows: Array = []
+	rows.resize(px)
+	var gid := WorkerThreadPool.add_group_task(func(j: int) -> void:
+		rows[j] = _map_row(j, px), px, -1, true, "terrain_map")
+	WorkerThreadPool.wait_for_group_task_completion(gid)
+	var data := PackedByteArray()
 	for j in px:
-		var z := clampi(int((j + 0.5) * step), 1, SIZE - 2)
-		for i in px:
-			var x := clampi(int((i + 0.5) * step), 1, SIZE - 2)
-			var idx := z * SIZE + x
-			var h := int(hmap[idx])
-			var hw := int(hmap[idx - 1])
-			var he := int(hmap[idx + 1])
-			var hn := int(hmap[idx - SIZE])
-			var hs := int(hmap[idx + SIZE])
-			var fl := int(flags[idx])
+		data.append_array(rows[j])
+	var img := Image.create_from_data(px, px, false, Image.FORMAT_RGB8, data)
+	_map_cache[px] = img
+	return img.duplicate()
+
+
+func _map_row(j: int, px: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(px * 3)
+	var step := float(SIZE) / px
+	var hm := hmap
+	var fla := flags
+	var z := clampi(int((j + 0.5) * step), 2, SIZE - 3)
+	for i in px:
+		var x := clampi(int((i + 0.5) * step), 2, SIZE - 3)
+		var idx := z * SIZE + x
+		var h := int(hm[idx])
+		var fl := int(fla[idx])
+		var c: Color
+		if h < SEA_LEVEL and fl & F_LAVA == 0:
+			var depth := clampf(float(SEA_LEVEL - h) / 9.0, 0.0, 1.0)
+			c = Color(0.36, 0.62, 0.72).lerp(Color(0.12, 0.26, 0.45), depth)
+		elif fl & F_LAVA:
+			c = Color(1.0, 0.45, 0.1)
+		else:
 			var patch := n_patch.get_noise_2d(x, z)
-			var c: Color
-			if h < SEA_LEVEL and fl & F_LAVA == 0:
-				var depth := clampf(float(SEA_LEVEL - h) / 9.0, 0.0, 1.0)
-				c = water_shallow.lerp(water_deep, depth)
-			else:
-				var s := surface_at(x, z, h, hw, he, hn, hs, fl, patch)
-				c = top_color(s, x, z, patch)
-				c.a = 1.0
-				# 晕渲：光从西北
-				var sx := float(hmap[idx + 2 if x + 2 < SIZE else idx] - hmap[idx - 2 if x >= 2 else idx])
-				var sz := float(hmap[idx + SIZE * 2 if z + 2 < SIZE else idx] - hmap[idx - SIZE * 2 if z >= 2 else idx])
-				var shade := clampf(1.0 - (sx + sz) * 0.05, 0.6, 1.3)
-				c = Color(c.r * shade, c.g * shade, c.b * shade)
-				# 高度微调
-				var hk := clampf(0.9 + float(h - SEA_LEVEL) * 0.004, 0.9, 1.15)
-				c = Color(minf(c.r * hk, 1.0), minf(c.g * hk, 1.0), minf(c.b * hk, 1.0))
-				if fl & F_LAVA:
-					c = Color(1.0, 0.45, 0.1)
-			img.set_pixel(i, j, c)
-	return img
+			var s := surface_at(x, z, h, int(hm[idx - 1]), int(hm[idx + 1]), int(hm[idx - SIZE]), int(hm[idx + SIZE]), fl, patch)
+			c = top_color(s, x, z, patch)
+			# 晕渲：光从西北
+			var sx := float(int(hm[idx + 2]) - int(hm[idx - 2]))
+			var sz := float(int(hm[idx + SIZE * 2]) - int(hm[idx - SIZE * 2]))
+			var shade := clampf(1.0 - (sx + sz) * 0.05, 0.6, 1.3)
+			var hk := clampf(0.9 + float(h - SEA_LEVEL) * 0.004, 0.9, 1.15) * shade
+			c = Color(c.r * hk, c.g * hk, c.b * hk)
+		out[i * 3] = clampi(int(c.r * 255.0), 0, 255)
+		out[i * 3 + 1] = clampi(int(c.g * 255.0), 0, 255)
+		out[i * 3 + 2] = clampi(int(c.b * 255.0), 0, 255)
+	return out

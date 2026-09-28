@@ -188,7 +188,7 @@ static func _pine(rng: RandomNumberGenerator, v: int, snowy: bool) -> VoxelGrid:
 	var g := VoxelGrid.new(w, h + 2, w)
 	var c := w / 2
 	var bark := Color(0.34, 0.24, 0.17)
-	g.fill_box(Vector3i(c, 0, c), Vector3i(c, h - 2, c), bark)
+	g.fill_box(Vector3i(c, 0, c), Vector3i(c, h - 5, c), bark)
 	var leaf := Color(0.14, 0.33, 0.24) if snowy else Color(0.16, 0.38, 0.22)
 	var snow := Color(0.93, 0.95, 1.0)
 	var tiers := 5 + v

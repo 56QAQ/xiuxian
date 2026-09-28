@@ -67,14 +67,20 @@ func _exit_tree() -> void:
 		GS.overworld_position = _focus.global_position
 
 
-## 出生点：GS.overworld_position（有效时）否则洞府门前
+## 出生点：GS.overworld_position（有效时）否则洞府的 home_spawn 标记点
 func get_spawn_position() -> Vector3:
+	return get_spawn_transform().origin
+
+
+## 出生变换（含朝向：-Z 为面朝方向）
+func get_spawn_transform() -> Transform3D:
 	var p := GS.overworld_position
 	if p != Vector3.INF and p.x >= 0.0 and p.z >= 0.0 and p.x < TerrainGen.SIZE and p.z < TerrainGen.SIZE:
-		return Vector3(p.x, maxf(p.y, terrain.get_height(p.x, p.z) + 0.1), p.z)
+		return Transform3D(Basis.IDENTITY, Vector3(p.x, maxf(p.y, terrain.get_height(p.x, p.z) + 0.1), p.z))
 	var home := terrain.find_poi("home")
-	var sp := TerrainGen.local_to_world2(home, Vector2(0, -4))
-	return Vector3(sp.x, float(home["height"]) + 0.05, sp.y)
+	var xf: Transform3D = BuildingLayouts.marker_transforms(home)["home_spawn"]
+	xf.origin.y += 0.05
+	return xf
 
 
 ## 设置流式加载焦点（玩家或相机）
@@ -116,11 +122,10 @@ func _spawn_player() -> void:
 	var cam := FreeCam.new()
 	cam.name = "FreeCam"
 	add_child(cam)
-	var sp := get_spawn_position()
-	var home := terrain.find_poi("home")
-	var f: Vector3 = home["facing"]
-	cam.global_position = sp + Vector3(0, 2.5, 0) + f * 6.0
-	cam.look_at(sp + f * 40.0 + Vector3(0, 1.0, 0))
+	var sp := get_spawn_transform()
+	var f := -sp.basis.z
+	cam.global_position = sp.origin + Vector3(0, 2.5, 0) - f * 4.0
+	cam.look_at(sp.origin + f * 40.0 + Vector3(0, 1.0, 0))
 	cam.sync_angles()
 	player = cam
 	set_focus(cam)

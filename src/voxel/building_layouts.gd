@@ -15,7 +15,7 @@ const SECT_MARKERS := {
 	"npc_teacher": [Vector3(-16.5, 0, 2), F_E],
 	"npc_steward": [Vector3(16.5, 0, -1.5), F_W],
 	"npc_senior": [Vector3(-7, 0, -5), F_N],
-	"shop": [Vector3(-21.25, 0, -30), F_E],
+	"shop": [Vector3(-23.75, 0.3, -30), F_E],
 	"mission_board": [Vector3(18, 0, 7), F_W],
 	"cultivation_room": [Vector3(27, 0.25, -30), F_W],
 }
@@ -127,6 +127,25 @@ static func _finish(root: Node3D, m: BuildingMesh) -> void:
 	var body := m.build_body()
 	body.name = "Body"
 	root.add_child(body)
+
+
+## 夜灯：只在夜晚点亮的暖色点光（DayNight 按时辰调节，group "night_light"）
+static func night_light(root: Node3D, local: Vector3, color: Color = Color(1.0, 0.62, 0.32), energy: float = 1.6, rng: float = 9.0) -> OmniLight3D:
+	energy *= 1.8
+	rng *= 1.25
+	var l := OmniLight3D.new()
+	l.name = "NightLight"
+	l.light_color = color
+	l.light_energy = 0.0
+	l.omni_range = rng
+	l.omni_attenuation = 0.9
+	l.shadow_enabled = false
+	l.visible = false
+	l.set_meta("base_energy", energy)
+	l.add_to_group("night_light")
+	root.add_child(l)
+	l.position = local
+	return l
 
 
 static func _place(root: Node3D, n: Node3D, local: Vector3, yaw: float = 0.0) -> Node3D:
@@ -267,6 +286,14 @@ static func build_sect(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 		B.stone_post(m, -41, z, 2.0, p)
 		B.stone_post(m, 41, z, 2.0, p)
 	_finish(root, m)
+	# 夜灯：山门、主殿前、中轴
+	var lc: Color = Color(1.0, 0.62, 0.32) if sid != "xuanshui" else Color(0.5, 0.75, 1.0)
+	for sx in [-1.0, 1.0]:
+		night_light(root, Vector3(sx * 5.0, 5.5, -50.0), lc, 1.8, 11.0)
+		night_light(root, Vector3(sx * 4.5, 6.0, 20.5), lc, 1.6, 12.0)
+		night_light(root, Vector3(sx * 5.0, 1.8, -30.0), lc, 1.2, 8.0)
+	if sid == "lihuo":
+		night_light(root, Vector3(0, 6.0, -2.0), Color(1.0, 0.45, 0.15), 3.0, 16.0)
 	# 可破坏石灯笼（中轴两侧）
 	var glow := Color(1.0, 0.72, 0.38) if sid != "xuanshui" else Color(0.55, 0.85, 1.0)
 	for i in 4:
@@ -482,6 +509,14 @@ static func build_town(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 			B.lantern(m, Vector3(x, 4.0, z - sz * 0.7), p, 0.9)
 	B.paving(m, -16, -16, 16, 16, 0.05, p, 2.0)
 	_finish(root, m)
+	# 夜灯：广场四角与主街
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			night_light(root, Vector3(sx * 6.5, 2.0, sz * 6.5), Color(1.0, 0.66, 0.36), 1.4, 9.0)
+		for x in [36.0, 64.0]:
+			night_light(root, Vector3(sx * x, 3.4, 5.2), Color(1.0, 0.55, 0.28), 1.6, 10.0)
+			night_light(root, Vector3(sx * x, 3.4, -5.2), Color(1.0, 0.55, 0.28), 1.6, 10.0)
+	night_light(root, Vector3(48, 3.5, -9.0), Color(1.0, 0.6, 0.3), 2.0, 12.0)
 	# 广场花树
 	_place(root, PropBuilder.make_tree("blossom", 0), Vector3(10, 0, 11))
 	_place(root, PropBuilder.make_tree("blossom", 1), Vector3(-12.5, 0, -14.5))
@@ -643,6 +678,7 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 		var z := -16.0 + i * 2.2
 		m.box(Vector3(-0.8, -0.1, z), Vector3(0.8, 0.12, z + 1.6), p["stone"])
 	_finish(root, m)
+	night_light(root, Vector3(0, 3.8, -1.2), Color(1.0, 0.66, 0.36), 1.5, 9.0)
 	_place(root, PropBuilder.make_tree("pine", 1), Vector3(-9, 0, -3))
 	_place(root, PropBuilder.make_tree("blossom", 1), Vector3(9, 0, -4))
 	for sx in [-1.0, 1.0]:

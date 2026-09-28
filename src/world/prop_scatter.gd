@@ -171,6 +171,16 @@ func prime() -> void:
 
 # ================================================================ 生成（工作线程，只读地形）
 
+## 与四邻的最大高差（使用高度图快照，线程安全）
+static func _slope(hm: PackedByteArray, x: int, z: int) -> int:
+	var S := TerrainGen.SIZE
+	x = clampi(x, 1, S - 2)
+	z = clampi(z, 1, S - 2)
+	var i := z * S + x
+	var h := int(hm[i])
+	return maxi(maxi(absi(h - int(hm[i - 1])), absi(h - int(hm[i + 1]))), maxi(absi(h - int(hm[i - S])), absi(h - int(hm[i + S]))))
+
+
 static func _add_inst(mm: Dictionary, key: String, pos: Vector3, yaw: float, s: float) -> void:
 	var buf: PackedFloat32Array = mm.get(key, PackedFloat32Array())
 	mm[key] = PackedFloat32Array()  # 释放字典中的引用，避免写时复制
@@ -211,7 +221,7 @@ static func generate_tile(t: TerrainGen, tx: int, tz: int) -> Dictionary:
 				rng.randf()
 				continue
 			var h := int(hm[idx])
-			if h < sea or t.slope_at(ix, iz) >= 3:
+			if h < sea or _slope(hm, ix, iz) >= 3:
 				rng.randf()
 				continue
 			var r := t._region_at(ix, iz)
@@ -319,7 +329,7 @@ static func generate_tile(t: TerrainGen, tx: int, tz: int) -> Dictionary:
 			if r == TerrainGen.R_LAKE and h == sea - 1 and roll < 0.25:
 				_add_inst(mm, "reed|%d|0|reed" % (q % 2), pos, yaw, s)
 			continue
-		if t.slope_at(ix, iz) >= 2:
+		if _slope(hm, ix, iz) >= 2:
 			continue
 		var patch := t.n_patch.get_noise_2d(ix, iz)
 		match r:
@@ -365,7 +375,7 @@ static func generate_tile(t: TerrainGen, tx: int, tz: int) -> Dictionary:
 		var ix := x0 + rng.randi_range(4, TILE - 5)
 		var iz := z0 + rng.randi_range(4, TILE - 5)
 		var idx := iz * S + ix
-		if fl[idx] & blocked or hm[idx] < sea or t.slope_at(ix, iz) >= 2 or rng.randf() < 0.35:
+		if fl[idx] & blocked or hm[idx] < sea or _slope(hm, ix, iz) >= 2 or rng.randf() < 0.35:
 			continue
 		var r := t._region_at(ix, iz)
 		drocks.append([Vector3(ix + 0.5 - cx, float(hm[idx]), iz + 0.5 - cz), rng.randi(), 3 + rng.randi() % 2, DROCK_BY_REGION[r]])
