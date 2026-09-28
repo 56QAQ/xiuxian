@@ -85,7 +85,7 @@ func _build_3d() -> void:
 	var spear: Dictionary = DB.item("flag_spear_fire").get("weapon", {}).get("visual", {})
 	_rig = CharacterBuilder.build({"hair_style": "twin_tails", "ears": "fox", "outfit": "armor", "mark": "flame"}, {"weapon": spear})
 	_rig.position = Vector3(0.1, 0.1, 0.2)
-	_rig.rotation_degrees.y = 150.0
+	_rig.rotation_degrees.y = 140.0
 	_island.add_child(_rig)
 	for i in 4:
 		var l := _make_lantern(i)

@@ -335,8 +335,11 @@ func _update_backdrop() -> void:
 	if modal_idx >= 0:
 		target = 0.55
 		# 遮罩放在最上层模态窗口之下
-		_backdrop.reparent(_layer)
-		_layer.move_child(_backdrop, _stack[modal_idx].get_index())
+		if _backdrop.get_parent() != _layer:
+			_backdrop.reparent(_layer)
+		var mi := _stack[modal_idx].get_index()
+		var bi := _backdrop.get_index()
+		_layer.move_child(_backdrop, mi if bi > mi else mi - 1)
 		_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
 		if _backdrop.get_parent() != _root:

@@ -567,8 +567,8 @@ static func card_box(selected: bool) -> OrnateBox:
 
 static func parchment_box() -> OrnateBox:
 	var b := OrnateBox.new()
-	b.bg_top = Color(0.96, 0.91, 0.79, 0.98)
-	b.bg_bottom = Color(0.86, 0.78, 0.62, 0.98)
+	b.bg_top = Color(0.96, 0.91, 0.79, 1.0)
+	b.bg_bottom = Color(0.86, 0.78, 0.62, 1.0)
 	b.border_color = Color(0.45, 0.3, 0.16, 0.9)
 	b.border_width = 1.5
 	b.inner_line_color = Color(0.5, 0.34, 0.18, 0.35)

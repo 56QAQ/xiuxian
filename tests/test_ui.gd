@@ -375,3 +375,90 @@ func test_item_icons_render() -> void:
 				if img.get_pixel(x, y).a > 0.5:
 					solid += 1
 		_ok(solid > 20, "图标种类 %s 有内容" % k)
+
+
+func test_panel_interactions() -> void:
+	_new_game()
+	var p := GS.player
+	var ui := _manager()
+	await get_tree().process_frame
+	# 网格视图的拖放处理（跨网格 + 装备槽）
+	var inv: InventoryPanel = ui.open("inventory")
+	await get_tree().process_frame
+	var bag_view: GridView = inv.get("_bag_view")
+	var secure_view: GridView = inv.get("_secure_view")
+	p.bag.clear()
+	p.secure.clear()
+	var ring := ItemInstance.create("ring_crit")
+	p.bag.place(ring, 0, 0, false)
+	var data := InvOps.make_drag(ring, p.bag, p.bag.entries[0], "", false, bag_view)
+	var at := Vector2(1.5, 1.5) * secure_view.cell
+	_ok(secure_view._can_drop_data(at, data), "可拖入本命空间")
+	secure_view._drop_data(at, data)
+	_eq(p.secure.entries.size(), 1, "已放入本命空间")
+	_eq(p.bag.entries.size(), 0, "已离开储物袋")
+	var crit0 := float(GS.stats["crit_rate"])
+	var slot := EquipSlot.create("accessory1", Vector2(64, 64))
+	add_child(slot)
+	var d2 := InvOps.make_drag(ring, p.secure, p.secure.entries[0], "", false, secure_view)
+	_ok(slot._can_drop_data(Vector2.ZERO, d2), "佩饰可拖入佩饰槽")
+	slot._drop_data(Vector2.ZERO, d2)
+	_eq(p.equipped("accessory1"), ring, "拖放装备")
+	_ok(float(GS.stats["crit_rate"]) > crit0 + 0.04, "装备后属性刷新")
+	var d3 := InvOps.make_drag(ring, null, {}, "accessory1", false, slot)
+	_ok(bag_view._can_drop_data(Vector2(10, 10), d3), "可从装备槽拖回储物袋")
+	bag_view._drop_data(Vector2(10, 10), d3)
+	_ok(p.equipped("accessory1") == null and p.bag.count_of("ring_crit") == 1, "拖放卸下")
+	var weapon_slot := EquipSlot.create("weapon", Vector2(64, 64))
+	add_child(weapon_slot)
+	var d4 := InvOps.make_drag(ring, p.bag, p.bag.entries[0], "", false, bag_view)
+	_ok(not weapon_slot._can_drop_data(Vector2.ZERO, d4), "佩饰不能进兵刃槽")
+	slot.queue_free()
+	weapon_slot.queue_free()
+	ui.close_all()
+	# 对话选项
+	var chosen := [0]
+	var dlg: DialoguePanel = ui.open("dialogue", {"name": "甲", "text": "……", "options": [
+		{"text": "一", "callback": func() -> void: chosen[0] = 1},
+		{"text": "二", "callback": func() -> void: chosen[0] = 2, "disabled": true},
+	]})
+	await get_tree().process_frame
+	dlg._choose(1)
+	_eq(chosen[0], 0, "禁用选项无效")
+	dlg._choose(0)
+	_eq(chosen[0], 1, "选项回调")
+	_ok(not ui.is_open("dialogue"), "选择后关闭")
+	# 商店默认购买
+	p.spirit_stones = 50
+	var entry := {"item": "pill_heal_small", "price": 20, "currency": "灵石"}
+	_ok(ShopPanel.can_buy(entry), "灵石足够")
+	_ok(ShopPanel.default_buy(entry), "购买")
+	_eq(p.spirit_stones, 30, "扣除灵石")
+	_ok(p.bag.count_of("pill_heal_small") >= 1, "获得物品")
+	_ok(not ShopPanel.can_buy({"item": "sword_green", "price": 10, "currency": "贡献"}), "无宗门无贡献")
+	_eq(ShopPanel.sell_value(ItemInstance.create("sword_green"), 1), 90, "五成售价")
+	# 闭关
+	var cult: CultivationPanel = ui.open("cultivation", {"location": "home"})
+	await get_tree().process_frame
+	var h0 := GS.hours()
+	var s0 := p.stage
+	cult._do_seclude(24.0 * 7.0, "闭关七日")
+	_ok(GS.hours() > h0, "闭关推进时间")
+	_ok(p.stage > s0 or p.cult_exp > 0.0, "闭关增加修为")
+	# 突破（经确认框）
+	p.stage = 8
+	p.cult_exp = Cultivation.exp_needed(p)
+	GS.give_item("pill_zhuji", 1, false)
+	GS.recompute()
+	cult.refresh()
+	cult._on_breakthrough()
+	var top := ui.top_panel()
+	_ok(top is ConfirmDialog, "突破前确认")
+	if top is ConfirmDialog:
+		(top as ConfirmDialog)._on_yes()
+	_eq(p.bag.count_of("pill_zhuji"), 0, "服下筑基丹")
+	_ok(p.realm == 1 or p.breakthrough_fails == 1, "突破有结果")
+	ui.close_all()
+	await get_tree().process_frame
+	ui.queue_free()
+	await get_tree().process_frame
