@@ -12,6 +12,7 @@ var rig: Node3D
 var enemy_id: String = ""
 var def: Dictionary = {}
 var ai: BeastAI
+var nameplate: Nameplate
 var size: float = 1.0
 var speed: float = 8.0
 var action: String = ""
@@ -67,6 +68,10 @@ func setup(id: String, level_bonus: int = 0) -> void:
 	combatant.faction = "beast"
 	combatant.setup(st, realm, stage, str(def.get("element", Elem.NONE)))
 	combatant.died.connect(_on_died)
+	nameplate = Nameplate.new()
+	nameplate.name = "Nameplate"
+	add_child(nameplate)
+	nameplate.setup(combatant, 1.3 * size + 0.6, "首领" if def.get("boss", false) else "")
 	combatant.poise_broken.connect(func() -> void: _stagger(0.8))
 	_build_rig()
 
@@ -332,6 +337,8 @@ func _stagger(t: float) -> void:
 
 func _on_died(killer: Combatant) -> void:
 	action = "dead"
+	if nameplate != null:
+		nameplate.visible = false
 	collision_layer = 0
 	if rig is CharacterRig and has_clip("death"):
 		(rig as CharacterRig).play("death")

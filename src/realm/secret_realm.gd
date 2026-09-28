@@ -348,7 +348,9 @@ func _spawn_boss() -> void:
 	b.ai.aggro = 18.0
 	b.ai.leash = 40.0
 	b.set_meta("boss", true)
-	b.combatant.display_name = "【首领】" + b.combatant.display_name
+	if b.nameplate != null:
+		b.nameplate.subtitle = "首领"
+		b.nameplate.refresh()
 
 
 ## 已接的“秘境寻物”任务：把任务物品藏进某个容器

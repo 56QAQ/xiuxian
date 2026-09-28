@@ -34,7 +34,7 @@ var weapon_element: String = Elem.NONE
 var bolt_element: String = Elem.NONE
 var is_player: bool = false
 var trail: WeaponTrail
-var nameplate: Label3D
+var nameplate: Nameplate
 
 # ---------------------------------------------------------------- 意图（控制器写入）
 var in_move: Vector3 = Vector3.ZERO
@@ -166,28 +166,15 @@ func refresh_stats() -> void:
 
 
 func _make_nameplate() -> void:
-	nameplate = Label3D.new()
-	nameplate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	nameplate.font = load("res://assets/fonts/XianKai-Medium.ttf")
-	nameplate.font_size = 40
-	nameplate.pixel_size = 0.005
-	nameplate.outline_size = 8
-	nameplate.position = Vector3(0, 2.25, 0)
-	nameplate.no_depth_test = false
+	nameplate = Nameplate.new()
+	nameplate.name = "Nameplate"
 	add_child(nameplate)
-	update_nameplate()
+	nameplate.setup(combatant, 2.25)
 
 
 func update_nameplate() -> void:
-	if nameplate == null:
-		return
-	nameplate.text = "%s\n%s" % [combatant.display_name, DB.realm_name(combatant.realm, combatant.stage)]
-	var player := get_tree().get_first_node_in_group("player") if is_inside_tree() else null
-	var pc := CombatUtil.combatant_of(player)
-	if pc != null and combatant.is_hostile_to(pc):
-		nameplate.modulate = Color(1.0, 0.45, 0.4)
-	else:
-		nameplate.modulate = Color(0.92, 0.95, 1.0)
+	if nameplate != null:
+		nameplate.refresh()
 
 
 # ================================================================ 查询

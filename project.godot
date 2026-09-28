@@ -7,7 +7,7 @@ config_version=5
 
 config/name="问道长生"
 config/description="修仙开放世界 RPG：体素画风、AC4 式高速斗法、五行构筑、秘境搜打撤。"
-config/version="0.1.0"
+config/version="0.15.0"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"

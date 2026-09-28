@@ -2,7 +2,7 @@ extends Control
 ## 主菜单（scenes/main_menu.tscn）：水墨远山 + 浮空仙岛上打坐的体素修士（3D，透明叠加）+ 飘落花瓣 + 灵气微光。
 ## 按钮：新的仙途 / 继续仙途 / 读取存档 / 设置 / 退出。
 
-const VERSION_TEXT := "v0.1「初入仙途」"
+const VERSION_TEXT := "v0.15「初入仙途 · 画卷」"
 
 var ui: UIManager
 var _vp: SubViewport
