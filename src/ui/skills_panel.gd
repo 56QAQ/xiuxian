@@ -289,14 +289,10 @@ class ElemSeal extends Control:
 
 	func _draw() -> void:
 		var c := Elem.color_of(element)
-		var r := Rect2(Vector2(4, 4), Vector2(40, 40))
-		draw_rect(r, Color(c.r * 0.18, c.g * 0.18, c.b * 0.18, 0.9))
-		draw_rect(r, c, false, 1.5)
-		draw_rect(r.grow(-4), Color(c.r, c.g, c.b, 0.35), false, 1.0)
-		var t := Elem.name_of(element) if Elem.is_valid(element) else "道"
-		var f := UITheme.font_title()
-		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
-		draw_string(f, Vector2(24 - ts.x * 0.5, 33), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, c.lightened(0.25))
+		var valid := Elem.is_valid(element)
+		var t := Elem.name_of(element) if valid else "道"
+		var body := c.darkened(0.3) if valid else Color(0.24, 0.22, 0.2)
+		InkArt.seal(get_canvas_item(), size * 0.5, minf(size.x, size.y) - 6.0, t, body, Color(1.0, 0.96, 0.88), false, -0.05)
 
 
 ## 可拖动的法诀卡片
@@ -335,27 +331,30 @@ class SpellSlot extends Control:
 		return "【%s】\n%s\n灵力 %d · 冷却 %s 秒\n右键卸下" % [sp.get("name", ""), sp.get("desc", ""), int(sp.get("qi", 0)), str(sp.get("cd", 0))]
 
 	func _draw() -> void:
-		var r := Rect2(Vector2(0, 0), Vector2(size.x, size.x))
-		var gold := UITheme.GOLD
-		draw_rect(r.grow(-2), Color(0, 0, 0, 0.5))
-		draw_rect(r.grow(-2), Color(gold.r, gold.g, gold.b, 0.2 if locked else 0.55), false, 1.0)
+		# 符纸槽：与战斗 HUD 法诀栏一致
+		var ci := get_canvas_item()
+		var r := Rect2(Vector2(6, 2), Vector2(size.x - 12, size.y - 4))
+		if locked:
+			HUDSpellBar.draw_paper(ci, r, 1.0, index, true, Color(0.3, 0.28, 0.26, 0.8))
+		elif spell_id == "":
+			HUDSpellBar.draw_paper(ci, r, 1.0, index, false, Color(0.72, 0.1, 0.06, 0.5))
+			draw_rect(r, Color(0, 0, 0, 0.25))
+		else:
+			HUDSpellBar.draw_paper(ci, r, 1.0, index)
 		if _hl != 0:
 			var col := Color(0.4, 0.95, 0.6) if _hl > 0 else Color(1.0, 0.35, 0.3)
-			draw_rect(r.grow(-2), col, false, 2.0)
+			draw_rect(r.grow(1), col, false, 2.0)
 		if spell_id != "":
-			SpellIcon.draw_spell(self, r.grow(-12), spell_id)
-		var f := UITheme.font_title()
+			var ic := Rect2(Vector2(r.get_center().x - 30, r.position.y + 12), Vector2(60, 60))
+			SpellIcon.draw_spell(self, ic, spell_id)
+		var f := UITheme.font_display()
 		var key := str(index + 1)
-		draw_string_outline(f, Vector2(8, 22), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 4, Color(0, 0, 0, 0.9))
-		draw_string(f, Vector2(8, 22), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UITheme.GOLD_BRIGHT if not locked else UITheme.TEXT_FAINT)
+		draw_string(f, r.position + Vector2(8, 20), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.3, 0.15, 0.07) if not locked else Color(0.2, 0.2, 0.2))
 		var name_t := "封印" if locked else (str(DB.spell(spell_id).get("name", "")) if spell_id != "" else "空")
-		var nf := UITheme.font_regular()
-		var ts := nf.get_string_size(name_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15)
-		draw_string(nf, Vector2((size.x - ts.x) * 0.5, size.y - 2), name_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.TEXT if spell_id != "" else UITheme.TEXT_FAINT)
+		var ts := f.get_string_size(name_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20)
+		draw_string(f, Vector2((size.x - ts.x) * 0.5, r.end.y - 9), name_t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.55, 0.06, 0.04) if spell_id != "" else Color(0.35, 0.22, 0.14, 0.7))
 		if locked:
-			var lf := UITheme.font_title()
-			var ls := lf.get_string_size("锁", HORIZONTAL_ALIGNMENT_LEFT, -1, 30)
-			draw_string(lf, Vector2((size.x - ls.x) * 0.5, size.x * 0.5 + 10), "锁", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(1, 1, 1, 0.15))
+			InkArt.seal(ci, r.get_center() + Vector2(0, -8), 44.0, "锁", Color(0.3, 0.28, 0.26, 0.9), Color(0.75, 0.72, 0.66), false, -0.1)
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_MOUSE_EXIT or what == NOTIFICATION_DRAG_END:

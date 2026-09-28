@@ -96,11 +96,17 @@ func _draw() -> void:
 	var mp := _map_px()
 	var mr := Rect2(tl, Vector2(mp, mp))
 	if texture != null:
-		draw_texture_rect(texture, mr, false, Color(0.92, 0.9, 0.84))
+		draw_texture_rect(texture, mr, false, Color(0.9, 0.85, 0.72))
 	else:
 		draw_rect(mr, Color(0.2, 0.22, 0.2))
-	# 宣纸色调与网格
-	draw_rect(mr, Color(0.35, 0.28, 0.18, 0.12))
+	# 绢本设色：泛黄色调 + 宣纸纤维与斑驳（只铺可见部分）
+	var ci := get_canvas_item()
+	draw_rect(mr, Color(0.42, 0.3, 0.16, 0.16))
+	var vis := mr.intersection(Rect2(Vector2.ZERO, size))
+	if vis.size.x > 1.0 and vis.size.y > 1.0:
+		var off := (vis.position - mr.position) / maxf(zoom, 0.1)
+		InkArt.tile(ci, vis, InkArt.tex("paper_mottle"), Color(0.38, 0.24, 0.1, 0.2), 0.9, off)
+		InkArt.tile(ci, vis, InkArt.tex("paper_fiber"), Color(0.3, 0.2, 0.1, 0.22), 0.6, off)
 	var divs := 8
 	for i in divs + 1:
 		var f := float(i) / divs
@@ -122,18 +128,18 @@ func _draw() -> void:
 			c = CharacterBuilder.col(poi["color"], c)
 		var hovered := i == _hover
 		var r := 13.0 if not hovered else 16.0
-		draw_circle(sp + Vector2(1, 2), r, Color(0, 0, 0, 0.45))
-		draw_circle(sp, r, Color(c.r * 0.22, c.g * 0.22, c.b * 0.22, 0.95))
-		draw_arc(sp, r, 0, TAU, 24, c, 2.0, true)
 		var g := str(poi.get("glyph", stl["glyph"]))
-		var gs := f2.get_string_size(g, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
-		draw_string(f2, sp + Vector2(-gs.x * 0.5, 6), g, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c.lightened(0.25))
+		# 印章式地标：印泥取类型色（压暗），略带倾斜
+		var body := c.darkened(0.3).lerp(Color(0.72, 0.12, 0.08), 0.15)
+		InkArt.seal(ci, sp + Vector2(1.5, 2.5), r * 2.3, "", Color(0, 0, 0, 0.35), Color.WHITE, false, -0.05 + (i % 3) * 0.04)
+		InkArt.seal(ci, sp, r * 2.2, g, body, Color(1.0, 0.96, 0.88), false, -0.05 + (i % 3) * 0.04, UITheme.font_display())
 		if zoom >= 0.9 or hovered:
 			var nm := str(poi.get("name", ""))
-			var ns := lf.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
-			var np := sp + Vector2(-ns.x * 0.5, r + 17)
-			draw_string_outline(lf, np, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 5, Color(0.05, 0.04, 0.03, 0.9))
-			draw_string(lf, np, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 0.96, 0.88) if hovered else Color(0.95, 0.9, 0.8))
+			var fd := UITheme.font_display()
+			var ns := fd.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 19)
+			var np := sp + Vector2(-ns.x * 0.5, r + 22)
+			draw_string_outline(fd, np, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, 5, Color(0.06, 0.04, 0.02, 0.9))
+			draw_string(fd, np, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color(1, 0.96, 0.88) if hovered else Color(0.97, 0.91, 0.78))
 	# 玩家
 	if player_pos != Vector3.INF:
 		var pp := to_screen(norm_of(player_pos))
@@ -145,9 +151,25 @@ func _draw() -> void:
 		draw_colored_polygon(tri, Color(1.0, 0.32, 0.25))
 		tri.append(tri[0])
 		draw_polyline(tri, Color(1, 0.95, 0.85), 1.5, true)
-	# 暗角
-	var vg := Color(0, 0, 0, 0.35)
-	draw_rect(Rect2(Vector2.ZERO, size), vg, false, 6.0)
+	# 焦黄暗角（旧舆图边缘）
+	var edge := minf(size.x, size.y) * 0.12
+	var dark := Color(0.12, 0.07, 0.03, 0.55)
+	var clear := Color(0.12, 0.07, 0.03, 0.0)
+	var W2 := size.x
+	var H2 := size.y
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(W2, 0), Vector2(W2, edge), Vector2(0, edge)]), PackedColorArray([dark, dark, clear, clear]))
+	draw_polygon(PackedVector2Array([Vector2(0, H2 - edge), Vector2(W2, H2 - edge), Vector2(W2, H2), Vector2(0, H2)]), PackedColorArray([clear, clear, dark, dark]))
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(edge, 0), Vector2(edge, H2), Vector2(0, H2)]), PackedColorArray([dark, clear, clear, dark]))
+	draw_polygon(PackedVector2Array([Vector2(W2 - edge, 0), Vector2(W2, 0), Vector2(W2, H2), Vector2(W2 - edge, H2)]), PackedColorArray([clear, dark, dark, clear]))
+	# 指北：右上角小罗盘
+	var cc := Vector2(size.x - 50.0, 68.0)
+	draw_circle(cc, 30.0, Color(0.08, 0.05, 0.03, 0.55))
+	draw_arc(cc, 30.0, 0, TAU, 40, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.8), 1.5, true)
+	draw_arc(cc, 24.0, 0, TAU, 40, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35), 1.0, true)
+	draw_colored_polygon(PackedVector2Array([cc + Vector2(0, -22), cc + Vector2(5, 0), cc + Vector2(-5, 0)]), Color(0.85, 0.15, 0.1))
+	draw_colored_polygon(PackedVector2Array([cc + Vector2(0, 22), cc + Vector2(5, 0), cc + Vector2(-5, 0)]), Color(0.9, 0.85, 0.75))
+	InkArt.seal(ci, cc + Vector2(0, -44), 20.0, "北", Color(0.78, 0.13, 0.08), Color(1, 0.96, 0.88), false, 0.0)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.35), false, 4.0)
 
 
 func _gui_input(event: InputEvent) -> void:

@@ -31,7 +31,7 @@ func _build() -> void:
 	add(row)
 	# 头像
 	var pv := PanelContainer.new()
-	pv.theme_type_variation = "InsetPanel"
+	pv.theme_type_variation = "PortraitPanel"
 	pv.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var app: Dictionary = args.get("portrait_appearance", {})
 	if not app.is_empty():
@@ -59,9 +59,9 @@ func _build() -> void:
 		var tl := UITheme.label(t, 17, UITheme.TEXT_DIM)
 		tl.size_flags_vertical = Control.SIZE_SHRINK_END
 		plate.add_child(tl)
-	var sep := GoldSeparator.new()
-	sep.ornament = false
-	sep.fade_left = false
+	var sep := BrushLine.new()
+	sep.color = Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.45)
+	sep.thickness = 6.0
 	sep.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	plate.add_child(sep)
 	if closable:

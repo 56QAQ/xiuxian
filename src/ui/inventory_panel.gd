@@ -74,7 +74,7 @@ func _build_equipment() -> Control:
 	left.add_child(_slot("bag", Vector2(88, 88)))
 	doll.add_child(left)
 	var mid := PanelContainer.new()
-	mid.theme_type_variation = "InsetPanel"
+	mid.theme_type_variation = "PortraitPanel"
 	_preview = RigPreview.new()
 	_preview.custom_minimum_size = Vector2(196, 262)
 	_preview.allow_zoom = false

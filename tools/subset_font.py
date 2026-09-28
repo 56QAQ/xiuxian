@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
-"""Subset LXGW WenKai into assets/fonts/XianKai-*.ttf.
+"""Subset the project fonts into assets/fonts/.
 
-Keeps ASCII, CJK punctuation, the full GB2312 hanzi set, and every character
-that appears in data/ and src/ so generated names and UI text always render.
+Body text: LXGW WenKai -> assets/fonts/XianKai-*.ttf
+Display (brush calligraphy for titles / banners / HUD numerals):
+    Ma Shan Zheng -> assets/fonts/XianShu-Regular.ttf
+
+Keeps ASCII, CJK punctuation, the full GB2312 hanzi set (as far as the source
+font covers it), and every character that appears in data/, src/, scenes/ and
+tools/shots/ so generated names and UI text always render. Characters missing
+from the display font fall back to XianKai at runtime (UITheme.font_display()).
 
 The OFL Reserved Font Name clause forbids a modified (subsetted) font from
-using the original name, so the family is renamed to "XianKai".
+using a reserved original name, so the families are renamed to "XianKai" and
+"XianShu" respectively.
 
-Usage: python3 tools/subset_font.py <path/to/LXGWWenKai-Regular.ttf> [Medium.ttf]
+Usage:
+    python3 tools/subset_font.py <path/to/LXGWWenKai-Regular.ttf> [Medium.ttf]
+    python3 tools/subset_font.py --display <path/to/MaShanZheng-Regular.ttf>
 """
 import os
 import sys
@@ -30,7 +39,7 @@ def gb2312_chars():
 
 def project_chars():
     chars = set()
-    for sub in ("data", "src", "scenes"):
+    for sub in ("data", "src", "scenes", os.path.join("tools", "shots")):
         for dirpath, _, files in os.walk(os.path.join(ROOT, sub)):
             for f in files:
                 if f.endswith((".json", ".gd", ".tscn", ".tres", ".txt")):
@@ -39,7 +48,7 @@ def project_chars():
     return chars
 
 
-def build(src, dst, style):
+def build(src, dst, style, family="XianKai"):
     chars = set(chr(c) for c in range(0x20, 0x7F))
     chars |= set("·、。，：；！？“”‘’（）《》【】〔〕…—～￥×÷±°℃①②③④⑤⑥⑦⑧⑨⑩→←↑↓★☆●○◆◇■□▲△")
     chars |= gb2312_chars()
@@ -55,7 +64,6 @@ def build(src, dst, style):
     sub.populate(text="".join(sorted(chars)))
     sub.subset(font)
     name = font["name"]
-    family = "XianKai"
     for rec in name.names:
         if rec.nameID in (1, 16):
             rec.string = family
@@ -74,6 +82,9 @@ def build(src, dst, style):
 if __name__ == "__main__":
     out = os.path.join(ROOT, "assets", "fonts")
     os.makedirs(out, exist_ok=True)
+    if sys.argv[1] == "--display":
+        build(sys.argv[2], os.path.join(out, "XianShu-Regular.ttf"), "Regular", "XianShu")
+        sys.exit(0)
     build(sys.argv[1], os.path.join(out, "XianKai-Regular.ttf"), "Regular")
     if len(sys.argv) > 2:
         build(sys.argv[2], os.path.join(out, "XianKai-Medium.ttf"), "Medium")

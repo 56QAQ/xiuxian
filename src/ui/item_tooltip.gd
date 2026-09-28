@@ -16,11 +16,13 @@ static func build(item: ItemInstance, extra: String = "", price_text: String = "
 	var plate := PanelContainer.new()
 	var sb := OrnateBox.new()
 	var gc := item.color()
-	sb.bg_top = Color(0.1, 0.08, 0.06, 0.96)
-	sb.bg_bottom = Color(0.05, 0.05, 0.06, 0.96)
+	sb.bg_top = Color(0.11, 0.085, 0.065, 0.97)
+	sb.bg_bottom = Color(0.05, 0.045, 0.05, 0.97)
 	sb.border_color = Color(gc.r, gc.g, gc.b, 0.8)
 	sb.accent_width = 4.0
 	sb.accent_color = gc
+	sb.chamfer = 5.0
+	sb.paper_color = Color(1.0, 0.9, 0.72, 0.04)
 	sb.set_margins(12, 6, 10, 7)
 	plate.add_theme_stylebox_override("panel", sb)
 	var ph := HBoxContainer.new()
@@ -34,9 +36,9 @@ static func build(item: ItemInstance, extra: String = "", price_text: String = "
 	names.add_theme_constant_override("separation", 0)
 	var n := Label.new()
 	n.text = item.display_name() + ("  ×%d" % item.count if item.count > 1 else "")
-	n.add_theme_font_override("font", UITheme.font_title())
-	n.add_theme_font_size_override("font_size", 21)
-	n.add_theme_color_override("font_color", gc.lightened(0.1))
+	n.add_theme_font_override("font", UITheme.font_display())
+	n.add_theme_font_size_override("font_size", 25)
+	n.add_theme_color_override("font_color", gc.lightened(0.15))
 	names.add_child(n)
 	var lines := item.describe().split("\n")
 	var sub := Label.new()
@@ -44,7 +46,13 @@ static func build(item: ItemInstance, extra: String = "", price_text: String = "
 	sub.add_theme_font_size_override("font_size", 15)
 	sub.add_theme_color_override("font_color", Color(gc.r, gc.g, gc.b, 0.85).lerp(Color(0.8, 0.76, 0.68), 0.4))
 	names.add_child(sub)
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ph.add_child(names)
+	# 品阶小印（凡灵玄地天仙）
+	var g := clampi(item.get_grade(), 0, Grade.MAX)
+	var gseal := InkSeal.make(Grade.SHORT[g], 34.0, gc.darkened(0.45).lerp(Color(0.7, 0.12, 0.08), 0.25 if g >= 4 else 0.0))
+	gseal.angle = -0.08
+	ph.add_child(gseal)
 	plate.add_child(ph)
 	box.add_child(plate)
 	# 正文
@@ -96,8 +104,8 @@ static func build_text(title_text: String, title_color: Color, body_bbcode: Stri
 	box.add_theme_constant_override("separation", 4)
 	var t := Label.new()
 	t.text = title_text
-	t.add_theme_font_override("font", UITheme.font_title())
-	t.add_theme_font_size_override("font_size", 20)
+	t.add_theme_font_override("font", UITheme.font_display())
+	t.add_theme_font_size_override("font_size", 24)
 	t.add_theme_color_override("font_color", title_color)
 	box.add_child(t)
 	var rt := RichTextLabel.new()

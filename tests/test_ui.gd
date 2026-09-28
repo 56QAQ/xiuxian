@@ -467,3 +467,107 @@ func test_panel_interactions() -> void:
 	await get_tree().process_frame
 	ui.queue_free()
 	await get_tree().process_frame
+
+
+# ================================================================ 国风美术资源与 HUD
+
+func test_ui_art_assets() -> void:
+	for n in ["paper_fiber", "paper_mottle", "ink_wash", "brush_stroke", "brush_thin", "cloud_corner", "cloud_band",
+			"seal_square", "seal_round", "ink_splash", "noise", "jade", "compass", "lattice_cell"]:
+		var t := InkArt.tex(n)
+		_ok(t != null and t.get_width() > 0, "界面纹理 %s" % n)
+	var fd := UITheme.font_display()
+	_ok(fd is FontFile, "书法字体为 FontFile")
+	_ok(fd.has_char("问".unicode_at(0)) and fd.has_char("斩".unicode_at(0)) and fd.has_char("7".unicode_at(0)), "书法字体含常用字与数字")
+	_ok((fd as FontFile).fallbacks.size() > 0, "书法字体回落到 XianKai")
+	# 样式框属性可完整复制（duplicate 依赖导出属性）
+	var b := OrnateBox.new()
+	b.brush = 1.0
+	b.brush_color = Color(0.1, 0.2, 0.3, 0.4)
+	b.chamfer = 6.0
+	b.ornament = 4
+	var d := b.duplicate() as OrnateBox
+	_eq(d.brush_color, b.brush_color, "OrnateBox 复制墨痕颜色")
+	_eq(d.chamfer, 6.0, "OrnateBox 复制委角")
+	_eq(d.ornament, 4, "OrnateBox 复制角饰")
+	_eq(HUDCluster.status_glyph("poison"), "毒", "状态印字取可区分的字")
+	_eq(InkArt.realm_glyph(2), "丹", "金丹境界印字")
+	_eq(InkArt.elem_glyph("water"), "水", "五行印字")
+	var sp := SpellIcon.new()
+	sp.spell_id = "fireball"
+	sp.size = Vector2(48, 48)
+	add_child(sp)
+	var seal := InkSeal.make("问道", 40.0)
+	add_child(seal)
+	await get_tree().process_frame
+	sp.queue_free()
+	seal.queue_free()
+
+
+func test_hud_states() -> void:
+	GS.active = false
+	var arena: Node = load("res://scenes/dev_arena.tscn").instantiate()
+	get_tree().root.add_child(arena)
+	var session: GameSession = arena.session
+	var hud := session.hud
+	var p := session.player
+	var c := p.combatant
+	for e in arena.enemies:
+		(e as Node).process_mode = Node.PROCESS_MODE_DISABLED
+		(e as HumanoidActor).nameplate.process_mode = Node.PROCESS_MODE_ALWAYS
+	var tgt: HumanoidActor = arena.enemies[0]
+	var other: HumanoidActor = arena.enemies[1]
+	other.global_position = p.global_position + Vector3(2.0, 0.0, -4.0)
+	p.lock_target = tgt
+	c.invuln = 99.0
+	c.apply_status("burn", 3, null)
+	c.apply_status("swift", 1, null)
+	tgt.combatant.apply_status("poison", 2, null)
+	for i in 6:
+		await get_tree().process_frame
+	_ok(hud.ring.visible, "玉璧显示")
+	var rm := hud.ring.material as ShaderMaterial
+	_ok(rm != null and float(rm.get_shader_parameter("hp")) > 0.9, "玉璧生命参数")
+	_ok(not hud.vignette.visible, "满血无渗墨")
+	# 受伤：失血残痕停留，低血量渗墨
+	c.hp = c.stat("max_hp") * 0.15
+	for i in 20:
+		await get_tree().process_frame
+	_ok(hud.vignette.visible, "低血量渗墨")
+	_ok(hud.hp_lag > hud.shown_hp + 0.05, "失血残痕滞后")
+	# 灵力枯竭
+	c.hp = c.stat("max_hp")
+	c.qi = 0.0
+	c.apply_status("qi_burnout", 1, null)
+	for i in 4:
+		await get_tree().process_frame
+	_ok(float(rm.get_shader_parameter("burn")) > 0.5, "灵力枯竭标记")
+	_ok(hud.vignette.visible, "灵力枯竭青灰墨")
+	# 命中、击杀与跳字
+	var numbers := session.numbers
+	Settings.show_damage_numbers = true
+	Events.hit_landed.emit({"pos": tgt.global_position + Vector3.UP, "amount": 120.0, "crit": true, "kind": "melee", "element": "none",
+		"shield": false, "target": tgt, "source": p, "killed": true, "provoked": false})
+	numbers.show_heal(p.global_position + Vector3.UP * 2.0, 40.0)
+	await get_tree().process_frame
+	_ok(hud.kill_t > 0.0 and hud.hit_t > 0.0, "命中与斩印计时")
+	_ok(numbers.active_count() >= 2, "跳字（暴击 + 治疗）")
+	# 被锁定者的头顶名牌隐去（由悬牌显示）
+	for i in 20:
+		await get_tree().process_frame
+	_ok(tgt.nameplate != null and not tgt.nameplate.label.visible, "锁定目标名牌隐去")
+	_ok(other.nameplate != null and other.nameplate.label.visible, "近处未锁定修士显示名牌")
+	# 目标提示、交互提示、搜索进度
+	Events.hud_objective.emit("寻找宝物，在秘境崩塌前撤离")
+	Events.interaction_prompt.emit("E  交谈")
+	Events.search_progress.emit(0.4)
+	p.lock_target = null
+	for i in 3:
+		await get_tree().process_frame
+	_eq(hud.objective, "寻找宝物，在秘境崩塌前撤离", "卷轴目标")
+	Events.hud_objective.emit("")
+	Events.interaction_prompt.emit("")
+	Events.search_progress.emit(-1.0)
+	arena.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame

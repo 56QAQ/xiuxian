@@ -94,19 +94,12 @@ func _draw() -> void:
 	if grid == null:
 		return
 	var full := Rect2(Vector2.ZERO, Vector2(grid.w, grid.h) * cell)
-	draw_rect(full, Color(0.0, 0.0, 0.0, 0.42))
-	var line := Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.09)
-	for y in grid.h:
-		for x in grid.w:
-			var r := Rect2(Vector2(x, y) * cell, Vector2(cell, cell)).grow(-1.5)
-			draw_rect(r, Color(1, 1, 1, 0.025))
-			draw_rect(r, line, false, 1.0)
-	draw_rect(full, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35), false, 1.0)
+	draw_lattice(get_canvas_item(), full, Vector2i(grid.w, grid.h), cell)
 	var hovered := grid.entry_at(_hover.x, _hover.y) if _hover.x >= 0 else {}
 	if hovered.is_empty() and _preview.is_empty() and _hover.x >= 0 and _hover.x < grid.w and _hover.y >= 0 and _hover.y < grid.h:
-		var hr := Rect2(Vector2(_hover) * cell, Vector2(cell, cell)).grow(-1.5)
-		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.08))
-		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35), false, 1.0)
+		var hr := Rect2(Vector2(_hover) * cell, Vector2(cell, cell)).grow(-4.0)
+		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.1))
+		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.45), false, 1.0)
 	var quick := GS.player.quick_item if GS.player != null else ""
 	for e in grid.entries:
 		var it: ItemInstance = e["item"]
@@ -129,6 +122,23 @@ func _draw() -> void:
 		draw_rect(pr.grow(-1.0), Color(col.r, col.g, col.b, 0.85), false, 2.0)
 		if _preview.get("stack", false):
 			_draw_badge(pr.grow(-2.0), "＋")
+
+
+## 窗棂格底：深色木框 + 每格窗棂纹理（凹格心 + 回纹小角）+ 格线交点铜钉
+static func draw_lattice(ci: RID, full: Rect2, cells: Vector2i, cell: float) -> void:
+	RenderingServer.canvas_item_add_rect(ci, full.grow(3.0), Color(0.07, 0.045, 0.03, 0.92))
+	RenderingServer.canvas_item_add_rect(ci, full, Color(0.015, 0.012, 0.01, 0.55))
+	var lt := InkArt.tex("lattice_cell")
+	var wood := Color(0.42, 0.28, 0.15, 0.78)
+	for y in cells.y:
+		for x in cells.x:
+			InkArt.rect_tex(ci, lt, Rect2(full.position + Vector2(x, y) * cell, Vector2(cell, cell)), wood)
+	var stud := Color(0.85, 0.66, 0.36, 0.55)
+	for y in range(1, cells.y):
+		for x in range(1, cells.x):
+			InkArt.diamond(ci, full.position + Vector2(x, y) * cell, 2.2, stud)
+	OrnateBox._frame(ci, full.grow(3.0), 1.0, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.55))
+	OrnateBox._frame(ci, full.grow(1.0), 1.0, Color(0.02, 0.01, 0.0, 0.7))
 
 
 func _draw_badge(r: Rect2, text: String) -> void:

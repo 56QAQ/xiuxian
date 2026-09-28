@@ -79,33 +79,40 @@ static func draw_icon(ci: CanvasItem, rect: Rect2, id: String, g: int = -1, rot:
 		ci.draw_texture_rect(tex, Rect2(center - ds * 0.5, ds), false, Color(1, 1, 1, alpha))
 
 
-## 物品格底色：品阶色渐变 + 细边
+## 物品格底色：品阶色晕染（中心透光的锦缎底）+ 委角细边；地品以上角饰、天品以上外发光
 static func draw_cell_bg(ci: CanvasItem, rect: Rect2, g: int, hovered: bool, alpha: float = 1.0) -> void:
 	var gc := Grade.color_of(g)
-	var top := Color(gc.r * 0.22, gc.g * 0.22, gc.b * 0.22, 0.85 * alpha)
-	var bot := Color(gc.r * 0.08 + 0.02, gc.g * 0.08 + 0.02, gc.b * 0.08 + 0.03, 0.9 * alpha)
+	var rid := ci.get_canvas_item()
+	var top := Color(gc.r * 0.24, gc.g * 0.24, gc.b * 0.24, 0.88 * alpha)
+	var bot := Color(gc.r * 0.07 + 0.02, gc.g * 0.07 + 0.018, gc.b * 0.07 + 0.02, 0.92 * alpha)
 	if hovered:
-		top = top.lightened(0.12)
-	var pts := PackedVector2Array([rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)])
-	ci.draw_polygon(pts, PackedColorArray([top, top, bot, bot]))
-	var bc := Color(gc.r, gc.g, gc.b, (0.75 if hovered else 0.5) * alpha)
-	ci.draw_rect(rect.grow(-0.5), bc, false, 1.5 if g >= 2 else 1.0)
+		top = top.lightened(0.14)
+	var ch := minf(4.0, minf(rect.size.x, rect.size.y) * 0.12)
+	InkArt.plaque(rid, rect, ch, top, bot)
+	# 中心柔光（品阶色）
+	var glow := UITheme.icon("dot")
+	var gs := minf(rect.size.x, rect.size.y) * 1.1
+	ci.draw_texture_rect(glow, Rect2(rect.get_center() - Vector2(gs, gs) * 0.5, Vector2(gs, gs)), false, Color(gc.r, gc.g, gc.b, (0.2 if g >= 1 else 0.1) * alpha))
+	var bc := Color(gc.r, gc.g, gc.b, (0.85 if hovered else 0.55) * alpha)
+	InkArt.outline(rid, InkArt.chamfer_points(rect.grow(-0.75), ch), bc, 1.5 if g >= 2 else 1.0)
 	if g >= 3:
-		# 高品阶：角点亮饰
-		var s := 5.0
-		for c in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
+		# 高品阶：角点金钩
+		var s := 6.0
+		var hook := Color(gc.lightened(0.3).r, gc.lightened(0.3).g, gc.lightened(0.3).b, alpha)
+		for c: Vector2 in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]:
 			var dir: Vector2 = (rect.get_center() - c).sign()
-			ci.draw_line(c + dir, c + dir + Vector2(dir.x * s, 0), gc, 2.0)
-			ci.draw_line(c + dir, c + dir + Vector2(0, dir.y * s), gc, 2.0)
+			var o := c + dir * (ch + 2.0)
+			ci.draw_line(o, o + Vector2(dir.x * s, 0), hook, 1.5)
+			ci.draw_line(o, o + Vector2(0, dir.y * s), hook, 1.5)
 
 
-static func draw_count(ci: CanvasItem, rect: Rect2, n: int, fs: int = 15) -> void:
-	var f := UITheme.font_regular()
+static func draw_count(ci: CanvasItem, rect: Rect2, n: int, fs: int = 17) -> void:
+	var f := UITheme.font_display()
 	var t := str(n)
 	var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	var p := Vector2(rect.end.x - ts.x - 4, rect.end.y - 4)
-	ci.draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.9))
-	ci.draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.95, 0.85))
+	var p := Vector2(rect.end.x - ts.x - 4, rect.end.y - 3)
+	ci.draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0.02, 0.01, 0.0, 0.92))
+	ci.draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.95, 0.84))
 
 
 # ================================================================ 生成纹理
@@ -143,8 +150,45 @@ static func render_image(d: Dictionary, g: int) -> Image:
 static func render(d: Dictionary, g: int) -> ImageTexture:
 	var img := render_image(d, g)
 	img.resize(img.get_width() * UPSCALE, img.get_height() * UPSCALE, Image.INTERPOLATE_NEAREST)
+	img = painterly(img, hash(str(d.get("id", d.get("icon", "")))))
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
+
+
+## 工笔设色感的后期（放大后的像素图上）：左上受光的明暗渐变 + 横向笔丝颗粒 + 右下方淡墨投影。
+static func painterly(img: Image, seed_value: int) -> Image:
+	var w := img.get_width()
+	var h := img.get_height()
+	var data := img.get_data()
+	var shadow := PackedByteArray()
+	shadow.resize(data.size())
+	var i := 0
+	for y in h:
+		var fy := float(y) / float(h)
+		var row := (y >> 1) * 19349663
+		for x in w:
+			var a := data[i + 3]
+			if a > 0:
+				var ramp := 1.1 - 0.24 * (float(x) / float(w) * 0.35 + fy * 0.65)
+				var hsh := (((x >> 3) * 73856093) ^ row ^ seed_value) & 255
+				var k := ramp * (0.955 + float(hsh) / 255.0 * 0.09)
+				data[i] = mini(int(float(data[i]) * k), 255)
+				data[i + 1] = mini(int(float(data[i + 1]) * k), 255)
+				data[i + 2] = mini(int(float(data[i + 2]) * k), 255)
+				shadow[i] = 6
+				shadow[i + 1] = 4
+				shadow[i + 2] = 3
+				shadow[i + 3] = int(float(a) * 0.55)
+			i += 4
+	img.set_data(w, h, false, Image.FORMAT_RGBA8, data)
+	var sh := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, shadow)
+	sh.resize(maxi(w / 6, 1), maxi(h / 6, 1), Image.INTERPOLATE_BILINEAR)
+	sh.resize(w, h, Image.INTERPOLATE_BILINEAR)
+	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var off := Vector2i(maxi(w / 40, 2), maxi(w / 30, 2))
+	out.blend_rect(sh, Rect2i(Vector2i.ZERO, Vector2i(w, h) - off), off)
+	out.blend_rect(img, Rect2i(0, 0, w, h), Vector2i.ZERO)
+	return out
 
 
 static func _col(v: Variant, fallback: Color) -> Color:

@@ -79,8 +79,13 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
 
 - **UIManager**（每个游戏场景一个，组 `ui_manager`）：`open/close/toggle(name, args)`、`is_blocking()`、`confirm`、`ask_number`、`notify`；静态 `register_panel(name, factory)`、`register_args_provider(name, provider)`。
 - 内置面板：inventory（可带 other 网格：仓库/容器）、character、cultivation、skills、map、pause、settings、dialogue、shop、craft、saves；宗门面板 `sect` 由 GameSession 注册（SectPanel）。
-- 面板继承 **UIWindow**：覆盖 `_build()` 与 `refresh()`；主题由 **UITheme** 代码生成。
-- 战斗 HUD（src/ui/hud/combat_hud.gd）由 GameSession 创建：中央环形资源、锁定框、法诀栏、雷达、目标提示。
+- 面板继承 **UIWindow**：覆盖 `_build()` 与 `refresh()`；主题由 **UITheme** 代码生成（样式框 **OrnateBox**：漆墨底、宣纸纤维、委角、祥云角、回纹带、墨痕模式、卷轴木轴）。
+- 国风美术：**InkArt**（src/ui/ink_art.gd）提供纹理平铺、笔触/弧形笔触、印章、八卦、委角牌匾、回纹、竖排书法；纹理由 `tools/gen_ui_textures.py` 程序化生成到 `assets/textures/ui/`；控件 **InkSeal**（印章）、**BrushLine**（笔触线）。
+- 字体：正文 XianKai（霞鹜文楷子集）；标题/横幅/HUD 数字用书法字体 XianShu（马善政子集），`UITheme.font_display()`，缺字回落 XianKai。
+- 战斗 HUD（src/ui/hud/）由 GameSession 创建，`CombatHUD.bind(actor, camera)`：玉璧着色器（jade_ring.gdshader：朱砂笔触生命、青色灵液灵力）+ HUDCluster（八卦护体、状态印章、准星、命中/斩印）+ HUDCanvas（八卦锁定环与悬牌、角落信息、卷轴目标、提示）+ HUDSpellBar（符纸法诀栏、葫芦丹药）+ HUDRadar（罗盘）+ 渗墨暗角（ink_vignette.gdshader）。
+- 伤害跳字 **DamageNumbers**（世界中的 Node3D，内部画布层 9，低于 HUD）：书法数字、暴击墨溅 + “暴”印、治疗 `show_heal(pos, amount)` 或 hit_landed `kind == "heal"`。
+- 头顶名牌 **Nameplate**：`setup(combatant, height, subtitle)` / `refresh()`；书法名 + 境界小印，固定屏幕尺寸，按距离渐隐，被锁定时隐去。
+- 截图：`tools/shots/hud_showcase.gd`（--variant=full|low|burn|calm，--dark）固定一个战斗瞬间检查 HUD；`ui_panels.gd`（--panel=sect|pause|saves|settings|confirm|number）。
 
 ## 物理层
 

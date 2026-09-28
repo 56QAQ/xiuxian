@@ -1072,20 +1072,24 @@ class PointsSeal extends Control:
 		custom_minimum_size = Vector2(112, 112)
 
 	func _draw() -> void:
+		var ci := get_canvas_item()
 		var c := size * 0.5
 		var r := minf(size.x, size.y) * 0.5 - 4.0
 		var col := UITheme.GOLD_BRIGHT if value > 0 else (UITheme.JADE if value == 0 else UITheme.BAD)
-		draw_circle(c, r, Color(0, 0, 0, 0.45))
-		draw_arc(c, r, 0, TAU, 48, col, 2.0, true)
-		draw_arc(c, r - 5.0, 0, TAU, 48, Color(col.r, col.g, col.b, 0.35), 1.0, true)
+		# 小玉璧：玉环 + 金边 + 余点金色笔触弧
+		draw_circle(c, r, Color(0.02, 0.02, 0.02, 0.55))
+		InkArt.arc_band(ci, c, r - 13.0, r - 1.0, 0.0, TAU, Color(0.34, 0.62, 0.52, 0.42), 48)
+		draw_arc(c, r - 0.5, 0, TAU, 48, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.9), 1.5, true)
+		draw_arc(c, r - 13.5, 0, TAU, 48, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.6), 1.0, true)
 		var frac := clampf(float(value) / CreatorLogic.BUDGET, 0.0, 1.0)
 		if frac > 0.0:
-			draw_arc(c, r - 2.5, -PI * 0.5, -PI * 0.5 + TAU * frac, 48, Color(col.r, col.g, col.b, 0.8), 3.0, true)
-		var f := UITheme.font_title()
+			InkArt.brush_arc(ci, c, r - 7.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 11.0, Color(col.r, col.g, col.b, 0.9), "brush_thin", 0.0, lerpf(0.6, 1.0, frac), 40)
+		var f := UITheme.font_display()
 		var t := str(value)
-		var fs := 44
+		var fs := 48
 		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(f, Vector2(c.x - ts.x * 0.5, c.y + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+		f.draw_string_outline(ci, Vector2(c.x - ts.x * 0.5, c.y + 10), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, Color(0.04, 0.02, 0.01, 0.9))
+		f.draw_string(ci, Vector2(c.x - ts.x * 0.5, c.y + 10), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 		var sub := "剩余点数"
 		var lf := UITheme.font_regular()
 		var ss := lf.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
@@ -1141,19 +1145,23 @@ class ElemToggle extends Button:
 		theme_type_variation = "SwatchButton"
 
 	func _draw() -> void:
+		var ci := get_canvas_item()
 		var c := Elem.color_of(element)
 		var on := button_pressed
 		var r := Rect2(Vector2(2, 2), size - Vector2(4, 4))
-		var top := Color(c.r * 0.45, c.g * 0.45, c.b * 0.45, 0.95) if on else Color(0.1, 0.1, 0.11, 0.8)
-		var bot := Color(c.r * 0.18, c.g * 0.18, c.b * 0.18, 0.95) if on else Color(0.05, 0.05, 0.06, 0.8)
-		draw_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]), PackedColorArray([top, top, bot, bot]))
-		draw_rect(r, c if on else Color(c.r, c.g, c.b, 0.35), false, 2.0 if on else 1.0)
+		InkArt.plaque(ci, r, 6.0, Color(0.08, 0.075, 0.07, 0.85), Color(0.04, 0.04, 0.045, 0.85), Color(c.r, c.g, c.b, 0.9 if on else 0.3), 2.0 if on else 1.0)
+		if on:
+			# 一笔元素色墨痕托底
+			InkArt.brush(ci, Vector2(r.position.x + 4, r.get_center().y - 4), Vector2(r.end.x - 2, r.get_center().y - 4), r.size.y * 0.72, Color(c.r * 0.55, c.g * 0.55, c.b * 0.55, 0.9))
 		if is_hovered():
-			draw_rect(r.grow(-3), Color(c.r, c.g, c.b, 0.4), false, 1.0)
-		var f := UITheme.font_title()
+			InkArt.outline(ci, InkArt.chamfer_points(r.grow(-3), 4.0), Color(c.r, c.g, c.b, 0.45), 1.0)
+		var f := UITheme.font_display()
 		var t := Elem.name_of(element)
-		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 30)
-		draw_string(f, Vector2((size.x - ts.x) * 0.5, size.y * 0.5 + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, c.lightened(0.3) if on else Color(c.r, c.g, c.b, 0.45))
+		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
+		var tp := Vector2((size.x - ts.x) * 0.5, size.y * 0.5 + 8)
+		if on:
+			f.draw_string_outline(ci, tp, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, 5, Color(0.03, 0.02, 0.01, 0.8))
+		f.draw_string(ci, tp, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(1.0, 0.97, 0.9) if on else Color(c.r, c.g, c.b, 0.45))
 		var sub := "灵根" if on else "未选"
 		var lf := UITheme.font_regular()
 		var ss := lf.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)

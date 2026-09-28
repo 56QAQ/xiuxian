@@ -90,19 +90,18 @@ func _draw() -> void:
 			draw_arc(vpts[i], 4.5, 0, TAU, 16, Color(0, 0, 0, 0.6), 1.0, true)
 	if not show_labels:
 		return
-	# 顶点标签：元素字 + 百分比
-	var f := UITheme.font_title()
+	# 顶点标签：五行圆印 + 百分比
 	for i in 5:
 		var e3 := ORDER[i]
 		var c3 := Elem.color_of(e3)
 		var p := _vertex(i, R + 17.0)
 		var has := float(_target.get(e3, 0.0)) > 0.0
-		draw_circle(p, 14.0, Color(c3.r * 0.25, c3.g * 0.25, c3.b * 0.25, 0.95) if has else Color(0.08, 0.08, 0.09, 0.9))
-		draw_arc(p, 14.0, 0, TAU, 24, c3 if has else Color(c3.r, c3.g, c3.b, 0.35), 1.5, true)
-		var t := Elem.name_of(e3)
-		var fs := 18
-		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		draw_string(f, p + Vector2(-ts.x * 0.5, fs * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, c3.lightened(0.2) if has else Color(0.5, 0.5, 0.5))
+		# 五行圆印：拥有的灵根为元素色印泥，缺失者为淡墨
+		var body := c3.darkened(0.3) if has else Color(0.2, 0.19, 0.18, 0.85)
+		var ink := Color(1.0, 0.96, 0.88) if has else Color(0.55, 0.53, 0.5)
+		InkArt.seal(get_canvas_item(), p, 34.0 if has else 30.0, Elem.name_of(e3), body, ink, true, 0.0)
+		if has:
+			draw_arc(p, 18.5, 0, TAU, 28, Color(c3.r, c3.g, c3.b, 0.5), 1.0, true)
 		if has:
 			var pt := "%d%%" % int(round(float(_target.get(e3, 0.0))))
 			var fs2 := 14
