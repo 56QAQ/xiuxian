@@ -42,6 +42,8 @@ const KIND_COLORS := {
 
 const FONT_REGULAR := "res://assets/fonts/XianKai-Regular.ttf"
 const FONT_MEDIUM := "res://assets/fonts/XianKai-Medium.ttf"
+## 书法字体（马善政毛笔楷书子集，改名 XianShu）：标题、横幅、HUD 数字
+const FONT_DISPLAY := "res://assets/fonts/XianShu-Regular.ttf"
 
 static var _theme: Theme = null
 static var _fonts: Dictionary = {}
@@ -62,6 +64,19 @@ static func font_regular() -> Font:
 
 static func font_title() -> Font:
 	return _font(FONT_MEDIUM)
+
+
+## 书法字体；缺字回落到 XianKai
+static func font_display() -> Font:
+	if not _fonts.has(FONT_DISPLAY):
+		var f: Font = null
+		if ResourceLoader.exists(FONT_DISPLAY):
+			var ff: FontFile = load(FONT_DISPLAY)
+			if ff != null:
+				ff.fallbacks = [font_title()]
+				f = ff
+		_fonts[FONT_DISPLAY] = f if f != null else font_title()
+	return _fonts[FONT_DISPLAY]
 
 
 static func _font(path: String) -> Font:
