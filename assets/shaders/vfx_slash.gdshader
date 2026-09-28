@@ -9,7 +9,7 @@ render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shado
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 // 0 剑光（金/无）；1 水；2 火；3 木；4 土
 uniform int style = 0;
-uniform float intensity = 2.2;
+uniform float intensity = 1.8;
 uniform float occlude = 0.45;  // 对背景的遮挡（预乘混合），明亮场景中保持元素色饱和
 uniform float thickness = 0.55;
 uniform float near_fade = 1.2;

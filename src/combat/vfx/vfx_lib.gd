@@ -150,7 +150,7 @@ static func ribbon_mat(profile: String) -> ShaderMaterial:
 		"fire":
 			return _make("rb:fire", "ribbon", {"streak_tex": "tex:ribbon", "profile": 0, "intensity": 1.6, "streak_amount": 0.9, "scroll": 3.0, "fire": 1})
 		"wake":
-			return _make("rb:wake", "ribbon", {"streak_tex": "tex:ribbon", "profile": 0, "intensity": 1.2, "core_power": 0.25, "streak_amount": 0.9, "scroll": 2.5, "near_fade": 1.4, "occlude": 0.25})
+			return _make("rb:wake", "ribbon", {"streak_tex": "tex:ribbon", "profile": 0, "intensity": 1.1, "core_power": 0.25, "streak_amount": 0.9, "scroll": 2.5, "near_fade": 3.2, "occlude": 0.2})
 		_:
 			return _make("rb:center", "ribbon", {"streak_tex": "tex:ribbon", "profile": 0, "intensity": 1.7, "streak_amount": 0.6, "scroll": 2.0})
 
@@ -192,6 +192,14 @@ static func field_mat(style: int) -> ShaderMaterial:
 
 static func ghost_mat() -> ShaderMaterial:
 	return _make("ghost", "ghost", {})
+
+
+## 热浪扭曲（读取屏幕纹理，仅 Forward+ 使用）
+static func distort_mat() -> ShaderMaterial:
+	var m := _make("distort", "distort", {"noise_tex": "tex:noise"})
+	# 先于其他透明特效绘制：屏幕纹理只含不透明物体，避免把身后的光效“抹掉”
+	m.render_priority = -20
+	return m
 
 
 ## 护盾材质：每个护盾独立（受击涟漪 uniform 数组）

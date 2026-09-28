@@ -2,7 +2,7 @@ extends RefCounted
 ## 特效图鉴（v0.15 战斗特效语言）：tools/shot.sh <godot> vfx_gallery out.png --size=1600x900 --panel=<名字> [--dusk]
 ## 面板：proj 弹道 / impact 爆炸 / nova 爆发 / strike 天降 / field 领域 / beam 光束 / melee 近战 /
 ##       status 状态 / move 身法 / cast 施法 / summon 召唤 / misc 破盾·死亡·突破·天材地宝
-## 在固定机位下按帧触发特效；每帧模拟时间固定为 1/60 秒（动态调整 time_scale 补偿软件渲染的慢帧），定格到选定时刻。
+## 在固定机位下按帧触发特效；每帧模拟时间固定为 1/60 秒（VfxShotClock），定格到选定时刻。
 
 var panel: String = "proj"
 var dusk: bool = false
@@ -11,8 +11,6 @@ var cam: Camera3D
 var total: int = 40
 var _events: Dictionary = {}
 var _every: Array[Callable] = []
-var _last_us: int = 0
-var _ema: float = 0.0
 var _actors: Array[HumanoidActor] = []
 
 
@@ -49,23 +47,11 @@ func build(root: Node) -> void:
 	cam = Camera3D.new()
 	cam.fov = 50.0
 	stage.add_child(cam)
-	Engine.time_scale = 0.05
+	VfxShotClock.fix()
 	call("_panel_" + panel)
 
 
 func step(_root: Node, i: int) -> void:
-	# 固定模拟步长约 1/60 秒：用真实帧时间的平滑值（剔除着色器编译等卡顿）换算 time_scale
-	var now := Time.get_ticks_usec()
-	if _last_us > 0:
-		var dt := float(now - _last_us) / 1000000.0
-		if _ema <= 0.0:
-			_ema = dt
-		else:
-			_ema = lerpf(_ema, minf(dt, _ema * 2.0), 0.3)
-		# 引擎把单帧真实时间限制在 max_physics_steps_per_frame 个物理步长以内
-		var cap := float(Engine.max_physics_steps_per_frame) / float(Engine.physics_ticks_per_second)
-		Engine.time_scale = clampf((1.0 / 60.0) / clampf(_ema, 0.001, cap), 0.0005, 1.0)
-	_last_us = now
 	for c in _every:
 		c.call(i)
 	for c in _events.get(i, []):

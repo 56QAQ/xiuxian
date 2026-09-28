@@ -133,8 +133,11 @@ static func explosion(pos: Vector3, radius: float, elem: String, opts: Dictionar
 	var p := VfxLib.pal(e)
 	var main: Color = p["main"]
 	var core: Color = p["core"]
-	var r := maxf(radius, 0.5)
 	var molten := bool(opts.get("molten", false))
+	# 镜头贴近爆炸中心时缩小表现，避免满屏遮挡（可读性优先）
+	var cd := FX.cam_pos(pos + Vector3(0, 0, 100)).distance_to(pos)
+	var prox := clampf((cd - 1.5) / (radius * 1.6 + 5.0), 0.35, 1.0)
+	var r := maxf(radius, 0.5) * lerpf(0.6, 1.0, prox)
 	var gp := _ground(pos, 0.6, r * 0.7 + 1.0)
 	var on_ground := gp != Vector3.INF
 	FX.flash(pos, main, minf(r * 0.8, 4.5), 0.2)
@@ -142,12 +145,15 @@ static func explosion(pos: Vector3, radius: float, elem: String, opts: Dictionar
 	if on_ground:
 		var ring_style := {"fire": 2, "water": 1, "earth": 3}.get(e, 0) as int
 		FX.shock_ring(gp + Vector3.UP * 0.12, r * 1.35, main, 0.5, 0.25, Vector3.UP, ring_style)
-	var n := clampi(int(8 + r * 4), 8, 40)
+	var n := clampi(int((8 + r * 4) * prox), 5, 40)
 	match e:
 		"fire":
-			VfxParticles.burst("flame", pos, Color.WHITE, n, {"spread": 180.0, "speed": 1.4 + r * 0.45, "size": 0.9 + r * 0.22, "life": 1.0, "shape": "sphere", "shape_r": r * 0.25})
+			# 火球核心：迅速膨胀的橙色火团
+			FX.sprite(pos, "glow", Color(1.0, 0.5, 0.15), r * 0.9, 0.4, 2.2, 0.9)
+			VfxParticles.burst("flame", pos, Color.WHITE, n, {"spread": 180.0, "speed": 1.4 + r * 0.45, "size": 1.2 + r * 0.3, "life": 1.0, "shape": "sphere", "shape_r": r * 0.25})
 			VfxParticles.burst("ember", pos, Color(1, 0.8, 0.4), n, {"spread": 180.0, "speed": 1.5 + r * 0.2})
 			VfxParticles.burst("smoke", pos + Vector3.UP * 0.4, Color(0.22, 0.18, 0.16), clampi(int(4 + r * 1.5), 4, 16), {"spread": 60.0, "speed": 1.2, "size": 1.0 + r * 0.25, "life": 1.3, "shape": "sphere", "shape_r": r * 0.35})
+			FX.heat(pos, r * 2.2, 0.9)
 			if on_ground:
 				FX.ground_decal(gp, r * 0.95, "scorch", 8.0, Color(1.0, 0.4, 0.1), 1.6)
 		"earth":
@@ -519,7 +525,7 @@ static func meteor(from: Vector3, to: Vector3, elem: String, time: float, size: 
 			body = WeaponBuilder.build({"kind": "sword", "length": 30, "blade": "#fff2c8", "guard": "#e0b050", "glow": "metal"})
 			holder.add_child(body)
 			holder.basis = FX._basis_fwd(dir).scaled(Vector3.ONE * clampf(size * 1.4, 1.0, 3.0))
-			var r := VfxRibbon.create(holder, c, 0.35 * size, 0.28, "center")
+			var r := VfxRibbon.create(holder, c, 0.35 * size, 0.18, "center")
 			if r != null:
 				r.taper = 0.0
 			FX.sprite(from, "glow", c, 1.2, 0.2)
@@ -547,7 +553,8 @@ static func meteor(from: Vector3, to: Vector3, elem: String, time: float, size: 
 			var sm := VfxParticles.make("smoke", 10, holder, Color(0.25, 0.2, 0.18))
 			sm.scale_amount_max = 1.6 * size
 			VfxParticles.make("ember", 12, holder, Color(1, 0.8, 0.4))
-			var r3 := VfxRibbon.create(holder, c, size * 1.1, 0.35, "fire")
+			FX.heat(from, size * 3.0, 0.0, holder)
+			var r3 := VfxRibbon.create(holder, c, size * 0.9, 0.16, "fire")
 			if r3 != null:
 				r3.taper = 0.0
 			var gl := MeshInstance3D.new()
@@ -653,6 +660,9 @@ static func field_visual(field: Node3D, radius: float, elem: String, color: Colo
 			VfxParticles.set_shape(p, "box", radius * 0.8, 0.1)
 			out.append(p)
 			out.append(VfxParticles.make("ember", mini(area, 30), field, Color(1, 0.8, 0.4)))
+			var h := FX.heat(field.global_position, radius * 1.6, 0.0, field)
+			if h != null:
+				out.append(h)
 		_:
 			p = VfxParticles.make("mote", mini(area, 30), field, color)
 			VfxParticles.set_shape(p, "box", radius * 0.8, 0.2)
@@ -707,9 +717,12 @@ static func field_fade(nodes: Array[Node], time: float = 0.5) -> void:
 		elif n is MeshInstance3D:
 			var mi := n as MeshInstance3D
 			var tw := mi.create_tween()
-			if mi.material_override is ShaderMaterial and (mi.material_override as ShaderMaterial).shader == VfxLib.shader("field"):
+			var sh: Shader = (mi.material_override as ShaderMaterial).shader if mi.material_override is ShaderMaterial else null
+			if sh == VfxLib.shader("field"):
 				tw.tween_property(mi, "instance_shader_parameters/alpha", 0.0, time)
-			elif mi.material_override is ShaderMaterial:
+			elif sh == VfxLib.shader("distort"):
+				tw.tween_property(mi, "instance_shader_parameters/fade", 0.0, time)
+			elif sh != null:
 				tw.tween_property(mi, "instance_shader_parameters/prog", 1.0, time)
 			else:
 				tw.tween_property(mi, "scale", Vector3(0.01, 0.01, 0.01), time).set_ease(Tween.EASE_IN)

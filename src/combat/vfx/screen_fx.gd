@@ -43,7 +43,8 @@ func kick(amount: float) -> void:
 
 func _process(delta: float) -> void:
 	var on := enabled()
-	var real_dt := delta / maxf(Engine.time_scale, 0.05)
+	# 使用真实时间（顿帧期间也按正常速度消退），并限制单帧步长以防卡顿时瞬间消失
+	var real_dt := minf(delta / maxf(Engine.time_scale, 0.05), 0.05)
 	_speed_v = move_toward(_speed_v, speed if on else 0.0, real_dt * 2.5)
 	_kick = maxf(_kick - real_dt * 4.0, 0.0)
 	var vis := on and (_speed_v > 0.01 or _kick > 0.01)

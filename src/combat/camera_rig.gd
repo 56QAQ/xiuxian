@@ -138,7 +138,7 @@ func _process(delta: float) -> void:
 	camera.fov = Settings.fov + _fov_extra + _fov_kick
 	# 速度线：高速疾行 / 瞬步
 	if screen != null:
-		screen.speed = clampf((speed - 16.0) / 18.0, 0.0, 1.0) * 0.85 if boosting or qbt > 0.0 else 0.0
+		screen.speed = clampf((speed - 12.0) / 14.0, 0.0, 1.0) * 0.85 if boosting or qbt > 0.0 else 0.0
 	_dist = lerpf(_dist, BOOST_DISTANCE if boosting else DISTANCE, 1.0 - exp(-3.0 * delta))
 	arm.spring_length = _dist
 	global_position = _follow

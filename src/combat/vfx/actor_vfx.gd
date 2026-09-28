@@ -146,10 +146,10 @@ func _boost(alive: bool) -> void:
 	if on and _wake.is_empty():
 		var c := _move_color()
 		var rig := humanoid.rig
-		var specs := [["shin_l", Vector3(0, -0.3, 0.06), 0.28], ["shin_r", Vector3(0, -0.3, 0.06), 0.28], ["spine", Vector3(0, 0.3, 0.2), 0.75]]
+		var specs := [["shin_l", Vector3(0, -0.3, 0.06), 0.28], ["shin_r", Vector3(0, -0.3, 0.06), 0.28], ["spine", Vector3(0, 0.3, 0.2), 0.6]]
 		for s in specs:
 			var b := rig.bone(s[0])
-			var r := VfxRibbon.create(b if b != null else actor, c, s[2], 0.34, "wake", s[1] if b != null else Vector3(0, 1.0, 0.2))
+			var r := VfxRibbon.create(b if b != null else actor, c, s[2], 0.24, "wake", s[1] if b != null else Vector3(0, 1.0, 0.2))
 			if r != null:
 				r.taper = 0.0
 				_wake.append(r)

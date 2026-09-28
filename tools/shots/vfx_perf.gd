@@ -5,8 +5,6 @@ extends RefCounted
 
 var arena: Node
 var total: int = 330
-var _last_us: int = 0
-var _ema: float = 0.0
 var _samples: Array[Dictionary] = []
 var _proc_ms: Array[float] = []
 
@@ -30,17 +28,10 @@ func build(root: Node) -> void:
 	for i in ids.size():
 		var a := TAU * i / ids.size()
 		ActorFactory.spawn_beast(arena, ids[i], Vector3(cos(a) * 9.0, 0.5, sin(a) * 9.0 - 4.0))
-	Engine.time_scale = 0.1
+	VfxShotClock.fix()
 
 
 func step(_root: Node, i: int) -> void:
-	var now := Time.get_ticks_usec()
-	if _last_us > 0:
-		var dt := float(now - _last_us) / 1000000.0
-		_ema = dt if _ema <= 0.0 else lerpf(_ema, minf(dt, _ema * 2.0), 0.3)
-		var cap := float(Engine.max_physics_steps_per_frame) / float(Engine.physics_ticks_per_second)
-		Engine.time_scale = clampf((1.0 / 60.0) / clampf(_ema, 0.001, cap), 0.0005, 1.0)
-	_last_us = now
 	var player: HumanoidActor = arena.session.player
 	if player == null or not is_instance_valid(player):
 		return

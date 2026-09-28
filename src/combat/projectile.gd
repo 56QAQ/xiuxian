@@ -115,8 +115,10 @@ func _build_visual(shp: String) -> void:
 				fl.set_meta("flare", true)
 	# 尾迹条带
 	var profile := "fire" if e == "fire" else ("bolt" if e == "thunder" else "center")
-	var rw := size * (1.9 if shape != "rock" else 1.3)
-	_ribbon = VfxRibbon.create(self, color, rw, 0.12 + size * 0.22, profile)
+	var rw := size * (1.7 if shape != "rock" else 1.2)
+	if e == "fire":
+		rw = size * 1.3
+	_ribbon = VfxRibbon.create(self, color, rw, 0.08 + size * 0.14, profile)
 	if _ribbon != null:
 		_ribbon.taper = 0.0
 		_ribbon.min_step = maxf(size * 0.4, 0.08)
@@ -135,6 +137,7 @@ func _build_visual(shp: String) -> void:
 				if big:
 					var sm := _emit("smoke", n / 3, Color(0.25, 0.2, 0.18))
 					sm.scale_amount_max = size * 3.0
+					FX.heat(global_position, size * 4.0, 0.0, self)
 			"water":
 				var dr := _emit("droplet", n / 2, Color(0.75, 0.92, 1.0))
 				dr.gravity = Vector3(0, -6, 0)

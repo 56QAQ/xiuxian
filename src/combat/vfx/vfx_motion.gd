@@ -14,8 +14,8 @@ static func quick_boost(actor: Node3D, dir: Vector3, color: Color) -> void:
 	if not FX._visible(chest, 90.0):
 		return
 	var d := dir.normalized() if dir.length_squared() > 0.01 else -actor.global_basis.z
-	FX.shock_ring(chest - d * 0.35, 1.05, color, 0.26, 0.24, d, 0, 0.3)
-	FX.shock_ring(chest - d * 0.9, 0.7, color.lerp(Color.WHITE, 0.4), 0.2, 0.3, d, 0, 0.3)
+	FX.shock_ring(chest - d * 0.3, 0.85, color, 0.22, 0.22, d, 0, 0.3)
+	FX.shock_ring(chest - d * 0.8, 0.55, color.lerp(Color.WHITE, 0.4), 0.18, 0.3, d, 0, 0.3)
 	VfxParticles.burst("streak", chest, color.lerp(Color.WHITE, 0.45), 14, {"dir": -d, "spread": 16.0, "shape": "sphere", "shape_r": 0.35})
 	FX.sprite(chest - d * 0.3, "glow", color, 1.6, 0.18, 1.3, 0.6)
 	var rig: Node3D = actor.get("rig")

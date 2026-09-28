@@ -262,6 +262,33 @@ static func magic_circle(pos: Vector3, radius: float, elem: String, life: float,
 	return mi
 
 
+## 热浪扭曲（火焰上方的空气折射）。parent 非空时作为其子节点跟随（持续，需由调用方释放）；
+## 否则在 pos 处生成并在 life 秒内消散。Compatibility 渲染器下不生成。
+static func heat(pos: Vector3, size: float, life: float, parent: Node3D = null) -> MeshInstance3D:
+	if VfxLib.is_lite():
+		return null
+	var m := mgr()
+	if m == null or not m.visible_at(pos, 50.0):
+		return null
+	var mi := MeshInstance3D.new()
+	mi.mesh = VfxLib.quad()
+	mi.material_override = VfxLib.distort_mat()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if parent != null:
+		parent.add_child(mi)
+		mi.position = Vector3(0, size * 0.35, 0)
+	else:
+		m.add(mi)
+		mi.position = pos + Vector3.UP * size * 0.35
+	mi.scale = Vector3.ONE * size
+	mi.set_instance_shader_parameter("fade", 1.0)
+	if life > 0.0:
+		var tw := mi.create_tween()
+		tw.tween_property(mi, "instance_shader_parameters/fade", 0.0, life).set_ease(Tween.EASE_IN)
+		tw.tween_callback(mi.queue_free)
+	return mi
+
+
 ## 两点之间的能量光束（绕轴朝向镜头的单片）
 static func beam_strip(from: Vector3, to: Vector3, color: Color, width: float, life: float, style: int = 0, alpha: float = 1.0) -> MeshInstance3D:
 	var m := mgr()
@@ -411,8 +438,8 @@ static func crit_burst(pos: Vector3, elem: String) -> void:
 		return
 	var e := elem if VfxLib.is_elem(elem) else "none"
 	var c := VfxLib.main_color(e)
-	sprite(pos, "flare", Color(1, 0.97, 0.85), 2.4, 0.18, 1.4)
-	cam_ring(pos, 1.5, c, 0.3, 0.12)
+	sprite(pos, "flare", Color(1, 0.97, 0.85), 1.9, 0.16, 1.4)
+	cam_ring(pos, 1.0, c, 0.22, 0.14)
 	VfxParticles.burst("streak", pos, VfxLib.core_color(e), 14, {"spread": 180.0, "speed": 0.8})
 
 
