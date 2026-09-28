@@ -87,6 +87,10 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 	var k0: float = AO_CURVE[0]
 	var k1: float = AO_CURVE[1]
 	var k2: float = AO_CURVE[2]
+	# 合并方向：±X/±Z 面沿 Y 合并（发丝、布褶多为竖向同色），±Y 面沿 X 合并
+	var along_u := [false, true, true, false, true, false]
+	var used := PackedByteArray()
+	used.resize(d.size())
 	for z in range(1, sz - 1):
 		for y in range(1, sy - 1):
 			var row := y * sx + z * sxy
@@ -102,9 +106,12 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 				# 四个 AO 等级的明暗色（每个体素只算一次）
 				var shaded: Array[Color] = [Color(col.r * k0, col.g * k0, col.b * k0, col.a), Color(col.r * k1, col.g * k1, col.b * k1, col.a), Color(col.r * k2, col.g * k2, col.b * k2, col.a), col]
 				var pmin := origin + Vector3(x, y, z) * vs
+				var um := used[i]
 				for f in 6:
 					var ni := i + nof[f]
 					if d[ni] != 0:
+						continue
+					if um & (1 << f):
 						continue
 					var uo := uof[f]
 					var vo := vof[f]
@@ -116,10 +123,32 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 					var a1 := 0 if (su_p + sv_n) == 2 else 3 - (su_p + sv_n + (1 if d[ni + uo - vo] != 0 else 0))
 					var a2 := 0 if (su_p + sv_p) == 2 else 3 - (su_p + sv_p + (1 if d[ni + uo + vo] != 0 else 0))
 					var a3 := 0 if (su_n + sv_p) == 2 else 3 - (su_n + sv_p + (1 if d[ni - uo + vo] != 0 else 0))
+					# 沿合并轴延伸：同色、同样暴露、AO 完全一致且沿轴方向无渐变
+					var au: bool = along_u[f]
+					var run := 1
+					if (au and a0 == a1 and a3 == a2) or (not au and a0 == a3 and a1 == a2):
+						var mo := uo if au else vo
+						var packed := a0 | (a1 << 2) | (a2 << 4) | (a3 << 6)
+						var lim := (sx - 2 - x) if f == 2 or f == 3 else (sy - 2 - y)
+						var j := i + mo
+						while run <= lim - 0:
+							if run > lim:
+								break
+							if d[j] != raw or d[j + nof[f]] != 0 or (used[j] & (1 << f)) != 0:
+								break
+							if _ao_packed(d, j + nof[f], uo, vo) != packed:
+								break
+							used[j] = used[j] | (1 << f)
+							run += 1
+							j += mo
 					var base := verts.size()
 					var pf: Vector3 = pmin + pofs[f]
 					var uf: Vector3 = uvec[f]
 					var vf: Vector3 = vvec[f]
+					if au:
+						uf = uf * run
+					else:
+						vf = vf * run
 					verts.append(pf)
 					verts.append(pf + uf)
 					verts.append(pf + uf + vf)
@@ -147,3 +176,16 @@ static func _mesh_canvas(cv: VoxCanvas, vs: float, verts: PackedVector3Array, no
 						indices.append(base + 1)
 						indices.append(base + 3)
 						indices.append(base)
+
+
+## 某个面的 4 个角 AO（打包为 8 位），ni 为面外侧的邻格索引
+static func _ao_packed(d: PackedInt32Array, ni: int, uo: int, vo: int) -> int:
+	var su_p := 1 if d[ni + uo] != 0 else 0
+	var su_n := 1 if d[ni - uo] != 0 else 0
+	var sv_p := 1 if d[ni + vo] != 0 else 0
+	var sv_n := 1 if d[ni - vo] != 0 else 0
+	var a0 := 0 if (su_n + sv_n) == 2 else 3 - (su_n + sv_n + (1 if d[ni - uo - vo] != 0 else 0))
+	var a1 := 0 if (su_p + sv_n) == 2 else 3 - (su_p + sv_n + (1 if d[ni + uo - vo] != 0 else 0))
+	var a2 := 0 if (su_p + sv_p) == 2 else 3 - (su_p + sv_p + (1 if d[ni + uo + vo] != 0 else 0))
+	var a3 := 0 if (su_n + sv_p) == 2 else 3 - (su_n + sv_p + (1 if d[ni - uo + vo] != 0 else 0))
+	return a0 | (a1 << 2) | (a2 << 4) | (a3 << 6)

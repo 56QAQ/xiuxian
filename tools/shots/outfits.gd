@@ -20,4 +20,5 @@ func build(root: Node) -> void:
 		var rig := CharacterBuilder.build(looks[i])
 		rig.position = Vector3(-3.25 + i * 1.3, 0, 0)
 		rig.rotation_degrees.y = 180.0 + (20.0 if i % 2 == 1 else -15.0)
+		rig.stance = "none"
 		root.add_child(rig)

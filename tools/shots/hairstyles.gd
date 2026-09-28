@@ -32,4 +32,5 @@ func build(root: Node) -> void:
 			var rig := CharacterBuilder.build(app)
 			rig.position = Vector3(-3.3 + i * 1.4 + 0.7 * g, 0, -3.2 * g)
 			rig.rotation_degrees.y = yaw
-			root.add_child(rig)
+			rig.stance = "none"
+		root.add_child(rig)

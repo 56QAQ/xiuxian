@@ -22,6 +22,31 @@ func _step(rig: CharacterRig, seconds: float, dt: float = 1.0 / 30.0) -> void:
 		t += dt
 
 
+func test_vox_mesh() -> void:
+	# 单体素：6 面 24 顶点
+	var cv := VoxCanvas.new(Vector3i(0, 0, 0), Vector3i(2, 2, 2))
+	cv.put(1, 1, 1, Color.RED)
+	var m := VoxMesh.build_one(cv, 1.0)
+	_ok(m.surface_get_array_len(0) == 24, "单体素 24 顶点")
+	# 同色竖柱（1×4×1）：侧面沿 Y 合并 → 4 个侧面 + 顶 + 底 = 6 个四边形
+	var col := VoxCanvas.new(Vector3i(0, 0, 0), Vector3i(0, 3, 0))
+	col.box(Vector3i(0, 0, 0), Vector3i(0, 3, 0), Color.BLUE)
+	_ok(VoxMesh.build_one(col, 1.0).surface_get_array_len(0) == 24, "竖柱侧面合并")
+	# 异色竖柱不合并
+	col.put(0, 1, 0, Color.GREEN)
+	_ok(VoxMesh.build_one(col, 1.0).surface_get_array_len(0) > 24, "异色不合并")
+	# 包围盒尺寸：网格 AABB 与体素范围一致（含 shift）
+	var b := VoxCanvas.new(Vector3i(-3, 0, -3), Vector3i(3, 5, 3))
+	b.shift = Vector3(-0.5, 0, -0.5)
+	b.box(Vector3i(-3, 0, -3), Vector3i(3, 5, 3), Color.WHITE, 0.1)
+	var aabb := VoxMesh.build_one(b, 1.0).get_aabb()
+	_ok(aabb.position.is_equal_approx(Vector3(-3.5, 0, -3.5)) and aabb.size.is_equal_approx(Vector3(7, 6, 7)), "奇数宽度半格居中 %s" % str(aabb))
+	# 缓存
+	var k1 := VoxMesh.cached("test|a", func() -> ArrayMesh: return VoxMesh.build_one(cv, 1.0))
+	var k2 := VoxMesh.cached("test|a", func() -> ArrayMesh: return ArrayMesh.new())
+	_ok(k1 == k2, "网格缓存命中")
+
+
 func test_hairstyle_gender_outfit_matrix() -> void:
 	var n := 0
 	for st in CharacterBuilder.HAIR_STYLES:

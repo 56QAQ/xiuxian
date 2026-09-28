@@ -331,7 +331,8 @@ static func paint_horns(cv: VoxCanvas, s: CharSpec) -> void:
 
 ## 生成一段发束画布：沿 -Y 延伸 length 格（顶部向上重叠 2 格以遮住关节）
 ## r0/r1：顶/底截面半径（x, z）；bulge：中段鼓起；ragged：末端参差（0 = 平齐）
-static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: float, ragged: int, seed: int, layered: bool = true) -> VoxCanvas:
+## tier > 0：分层剪（每 tier 格一层，层底外扩、层顶略暗），形成参考图那样的层叠轮廓
+static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: float, ragged: int, seed: int, layered: bool = true, tier: int = 0) -> VoxCanvas:
 	var rmax := maxf(maxf(r0.x, r1.x), maxf(r0.y, r1.y)) * (1.0 + bulge) + 1.0
 	var R := int(ceil(rmax))
 	var cv := VoxCanvas.new(Vector3i(-R, -length, -R), Vector3i(R - 1, 2, R - 1))
@@ -360,6 +361,10 @@ static func bundle(s: CharSpec, length: int, r0: Vector2, r1: Vector2, bulge: fl
 		if yi < 0:
 			r *= 0.9
 		var shade := 1.0 - 0.14 * t
+		if tier > 0 and yi >= 0:
+			var ph := float(posmod(yi + seed, tier)) / float(tier - 1)
+			r *= 0.87 + 0.15 * ph
+			shade *= 0.88 + 0.12 * ph
 		for z in range(-R, R):
 			for x in range(-R, R):
 				var sec := col_sec[(z + R) * W + (x + R)]
@@ -417,13 +422,13 @@ static func build_springs(head: Node3D, s: CharSpec, key: String) -> void:
 				var sc := 1.0 if s.female else 0.8
 				var b0 := spring_bone(head, "hair_tail_%s_0" % sn, Vector3(side * 11.0, 16.5, 2.5), Vector3(0, 0, side * 76), 9, 0.2, 25, 0.0)
 				attach_mesh(b0, VoxMesh.cached("tt0|%s" % key, func() -> ArrayMesh:
-					return VoxMesh.build_one(bundle(s, 10, Vector2(2.8, 3.6) * sc, Vector2(3.6, 4.8) * sc, 0.05, 0, 12), VOXEL)), "Mesh", side < 0)
+					return VoxMesh.build_one(bundle(s, 10, Vector2(2.8, 3.6) * sc, Vector2(3.8, 5.0) * sc, 0.05, 0, 12, true, 5), VOXEL)), "Mesh", side < 0)
 				var b1 := spring_bone(b0, "hair_tail_%s_1" % sn, Vector3(0, -9, 0), Vector3(0, 0, -side * 60), 14, 0.12, 40, 0.2)
 				attach_mesh(b1, VoxMesh.cached("tt1|%s" % key, func() -> ArrayMesh:
-					return VoxMesh.build_one(bundle(s, 15, Vector2(3.7, 4.9) * sc, Vector2(3.5, 4.7) * sc, 0.06, 0, 22), VOXEL)), "Mesh", side < 0)
+					return VoxMesh.build_one(bundle(s, 15, Vector2(3.9, 5.1) * sc, Vector2(3.8, 5.0) * sc, 0.06, 0, 22, true, 5), VOXEL)), "Mesh", side < 0)
 				var b2 := spring_bone(b1, "hair_tail_%s_2" % sn, Vector3(0, -14, 0), Vector3(0, 0, side * 6), 16, 0.1, 45, 0.15)
 				attach_mesh(b2, VoxMesh.cached("tt2|%s" % key, func() -> ArrayMesh:
-					return VoxMesh.build_one(bundle(s, 17 if s.female else 11, Vector2(3.5, 4.7) * sc, Vector2(1.6, 2.2) * sc, 0.04, 6, 32), VOXEL)), "Mesh", side < 0)
+					return VoxMesh.build_one(bundle(s, 17 if s.female else 11, Vector2(3.8, 5.0) * sc, Vector2(1.8, 2.4) * sc, 0.04, 6, 32, true, 5), VOXEL)), "Mesh", side < 0)
 		"ponytail":
 			var male := not s.female
 			var p0 := spring_bone(head, "hair_pony_0", Vector3(0, 15.5, 10.0), Vector3(-40, 0, 0), 7, 0.2, 25)
@@ -431,10 +436,10 @@ static func build_springs(head: Node3D, s: CharSpec, key: String) -> void:
 				return VoxMesh.build_one(bundle(s, 7, Vector2(2.6, 2.4), Vector2(3.2, 2.8), 0.1, 0, 41), VOXEL)))
 			var p1 := spring_bone(p0, "hair_pony_1", Vector3(0, -7, 0), Vector3(52, 0, 0), 14, 0.12, 40, 0.5)
 			attach_mesh(p1, VoxMesh.cached("pt1|" + key, func() -> ArrayMesh:
-				return VoxMesh.build_one(bundle(s, 14, Vector2(3.3, 2.9), Vector2(3.4, 2.8), 0.1, 0, 42), VOXEL)))
+				return VoxMesh.build_one(bundle(s, 14, Vector2(3.3, 2.9), Vector2(3.5, 3.0), 0.1, 0, 42, true, 5), VOXEL)))
 			var p2 := spring_bone(p1, "hair_pony_2", Vector3(0, -14, 0), Vector3(6, 0, 0), 14, 0.1, 45, 0.3)
 			attach_mesh(p2, VoxMesh.cached("pt2|" + key, func() -> ArrayMesh:
-				return VoxMesh.build_one(bundle(s, 10 if male else 15, Vector2(3.3, 2.8), Vector2(1.4, 1.2), 0.05, 5, 43), VOXEL)))
+				return VoxMesh.build_one(bundle(s, 10 if male else 15, Vector2(3.5, 3.0), Vector2(1.4, 1.2), 0.05, 5, 43, true, 5), VOXEL)))
 		"long":
 			_back_panel(head, s, key, "hair_back", 0.0, 16, 30 if s.female else 20, 1)
 			_side_locks(head, s, key, 13 if s.female else 8)

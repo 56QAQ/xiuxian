@@ -63,7 +63,7 @@ static func paint_head(cv: VoxCanvas, s: CharSpec) -> void:
 	var hn := s.neck_w / 2
 	cv.box(Vector3i(-hn, -1, -hn), Vector3i(hn - 1, 2, hn - 1), s.skin_sh, 0.02)
 	# 头颅
-	cv.box(Vector3i(-8, 2, -8), Vector3i(7, 17, 7), s.skin, 0.012)
+	cv.box(Vector3i(-8, 2, -8), Vector3i(7, 17, 7), s.skin)
 	# 脸下缘略暗（下巴阴影），下颌圆角
 	for x in range(-8, 8):
 		cv.put(x, 2, -8, VoxCanvas.tone(s.skin, 0.97))

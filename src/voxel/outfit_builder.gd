@@ -62,10 +62,10 @@ static func torso(s: CharSpec) -> VoxCanvas:
 	var cv := VoxCanvas.new(Vector3i(-cw - 3, -2, zl - 5), Vector3i(cw + 2, 19, zh + 3))
 	cv.shift = Vector3(0, 0, half_shift(s.torso_d))
 	# 身体
-	cv.box(Vector3i(-ww, 0, zl), Vector3i(ww - 1, 5, zh), s.skin, 0.015)
-	cv.box(Vector3i(-cw, 6, zl), Vector3i(cw - 1, 17, zh), s.skin, 0.015)
+	cv.box(Vector3i(-ww, 0, zl), Vector3i(ww - 1, 5, zh), s.skin)
+	cv.box(Vector3i(-cw, 6, zl), Vector3i(cw - 1, 17, zh), s.skin)
 	if s.female:
-		cv.box(Vector3i(-cw + 1, 4, zl), Vector3i(cw - 2, 5, zh), s.skin, 0.015)
+		cv.box(Vector3i(-cw + 1, 4, zl), Vector3i(cw - 2, 5, zh), s.skin)
 	# 腹部阴影与肚脐
 	for x in range(-ww, ww):
 		cv.put(x, 0, zl, VoxCanvas.tone(s.skin, 0.95))
@@ -394,7 +394,7 @@ static func upper_arm(s: CharSpec, side: int) -> VoxCanvas:
 	var zh := hi_of(s.arm_d)
 	var cv := VoxCanvas.new(Vector3i(xl - 5, -14, zl - 3), Vector3i(xh + 5, 5, zh + 3))
 	cv.shift = Vector3(half_shift(s.arm_w), 0, half_shift(s.arm_d))
-	cv.box(Vector3i(xl, -12, zl), Vector3i(xh, 1, zh), s.skin, 0.015)
+	cv.box(Vector3i(xl, -12, zl), Vector3i(xh, 1, zh), s.skin)
 	var outx := xh if side > 0 else xl   # 外侧
 	match s.outfit:
 		"robe":
@@ -477,7 +477,7 @@ static func forearm(s: CharSpec, side: int) -> VoxCanvas:
 	var zh := hi_of(s.arm_d)
 	var cv := VoxCanvas.new(Vector3i(xl - 5, -17, zl - 5), Vector3i(xh + 5, 3, zh + 5))
 	cv.shift = Vector3(half_shift(s.arm_w), 0, half_shift(s.arm_d))
-	cv.box(Vector3i(xl, -9, zl), Vector3i(xh, 1, zh), s.skin, 0.015)
+	cv.box(Vector3i(xl, -9, zl), Vector3i(xh, 1, zh), s.skin)
 	# 手腕略细
 	cv.clear(Vector3i(xl, -9, zl), Vector3i(xl, -8, zl))
 	cv.clear(Vector3i(xh, -9, zh), Vector3i(xh, -8, zh))
@@ -577,7 +577,7 @@ static func thigh(s: CharSpec, side: int) -> VoxCanvas:
 	var zh := hi_of(s.leg_d)
 	var cv := VoxCanvas.new(Vector3i(xl - 3, -17, zl - 3), Vector3i(xh + 3, 4, zh + 3))
 	cv.shift = Vector3(half_shift(s.leg_w), 0, half_shift(s.leg_d))
-	cv.box(Vector3i(xl, -15, zl), Vector3i(xh, 1, zh), s.skin, 0.015)
+	cv.box(Vector3i(xl, -15, zl), Vector3i(xh, 1, zh), s.skin)
 	match s.outfit:
 		"robe":
 			for y in range(-15, 2):
@@ -615,7 +615,7 @@ static func shin(s: CharSpec, side: int) -> VoxCanvas:
 	var zh := hi_of(s.leg_d)
 	var cv := VoxCanvas.new(Vector3i(xl - 3, -16, zl - 7), Vector3i(xh + 3, 5, zh + 3))
 	cv.shift = Vector3(half_shift(s.leg_w), 0, half_shift(s.leg_d))
-	cv.box(Vector3i(xl, -15, zl), Vector3i(xh, 1, zh), s.skin, 0.015)
+	cv.box(Vector3i(xl, -15, zl), Vector3i(xh, 1, zh), s.skin)
 	cv.box(Vector3i(xl, -15, zl - 3), Vector3i(xh, -13, zl - 1), s.skin)
 	match s.outfit:
 		"robe":
