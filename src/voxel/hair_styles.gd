@@ -305,26 +305,35 @@ static func _bun(cv: VoxCanvas, s: CharSpec) -> void:
 # ================================================================ 龙角（头网格内）
 
 static func paint_horns(cv: VoxCanvas, s: CharSpec) -> void:
-	var base := Color("e8dcc0")
-	var tipc := s.hair2.lerp(Color("f0c060"), 0.5)
+	# 鹿角状龙角：自额角向上、后弯，中段分叉；根部象牙色 → 角尖金色
+	var base := Color("efe4c8")
+	var tipc := Color("e8b848").lerp(s.hair2, 0.25)
 	for side: int in [-1, 1]:
-		var p := Vector3(-5.0 if side < 0 else 4.0, 18.0, -3.0)
+		var sx := float(side)
+		var p := Vector3(-4.0 if side < 0 else 3.0, 16.5, -5.0)
 		var pts: Array[Vector3] = []
-		# 主干：向上后方弯曲
-		for i in 12:
-			var t := i / 11.0
-			pts.append(p + Vector3(side * (1.5 * t), 7.5 * t, 5.0 * t * t))
+		for i in 16:
+			var t := i / 15.0
+			pts.append(p + Vector3(sx * (4.5 * t), 11.0 * t, 6.5 * t * t))
 		for i in pts.size():
 			var t := i / float(pts.size() - 1)
-			var c := base.lerp(tipc, t)
+			var c := base.lerp(tipc, t * t)
 			var q: Vector3 = pts[i]
-			var rr := 1.2 * (1.0 - t) + 0.4
+			var rr := 1.7 * (1.0 - t) + 0.62
 			cv.ellipsoid(q + Vector3(0.5, 0.5, 0.5), Vector3(rr, rr, rr), c)
-		# 分叉
-		var b0: Vector3 = pts[5]
+			# 角上的环纹
+			if i % 3 == 1 and t < 0.7:
+				cv.ellipsoid(q + Vector3(0.5, 0.5, 0.5), Vector3(rr + 0.25, 0.5, rr + 0.25), VoxCanvas.tone(c, 0.82))
+		# 前向分叉
+		var b0: Vector3 = pts[6]
+		for i in 7:
+			var t := i / 6.0
+			cv.ellipsoid(b0 + Vector3(sx * 2.5 * t + 0.5, 3.5 * t + 0.5, -2.5 * t + 0.5), Vector3(0.95, 0.95, 0.95) * (1.0 - t * 0.35), base.lerp(tipc, 0.35 + t * 0.65))
+		# 后向小分叉
+		var b1: Vector3 = pts[11]
 		for i in 5:
 			var t := i / 4.0
-			cv.ellipsoid(b0 + Vector3(side * 2.5 * t + 0.5, 1.5 * t + 0.5, -1.5 * t + 0.5), Vector3(0.7, 0.7, 0.7), base.lerp(tipc, 0.4 + t * 0.6))
+			cv.ellipsoid(b1 + Vector3(sx * 2.0 * t + 0.5, 1.4 * t + 0.5, 2.0 * t + 0.5), Vector3(0.8, 0.8, 0.8), base.lerp(tipc, 0.6 + t * 0.4))
 
 
 # ================================================================ 弹簧发束

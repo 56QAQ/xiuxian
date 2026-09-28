@@ -148,8 +148,13 @@ static func head_canvas(s: CharSpec) -> VoxCanvas:
 	if ears == "elf":
 		lo.x = -16
 		hi.x = 15
-	if s.hair_style == "bun" or horns == "dragon":
+	if s.hair_style == "bun":
 		hi.y = 27
+	if horns == "dragon":
+		hi.y = 31
+		hi.z = 14
+		lo.x = mini(lo.x, -14)
+		hi.x = maxi(hi.x, 13)
 	var cv := VoxCanvas.new(lo, hi)
 	FacePainter.paint_head(cv, s)
 	if ears == "human" or ears == "elf":
