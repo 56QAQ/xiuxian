@@ -117,8 +117,20 @@ func get_marker(poi_id: String, marker_name: String) -> Marker3D:
 	return null
 
 
-## 生成玩家。当前为调试自由飞行相机（玩家模块会替换此方法）。
+## 生成玩家与玩法层（OverworldGameplay：玩家、HUD、UI、NPC、遭遇、交互点）。
+## 未开局（直接运行本场景）时仍使用调试自由相机。
 func _spawn_player() -> void:
+	if GS.active:
+		var gp := OverworldGameplay.new()
+		gp.name = "Gameplay"
+		add_child(gp)
+		gp.start(self, get_spawn_position())
+		player = gp.player
+		return
+	_spawn_free_cam()
+
+
+func _spawn_free_cam() -> void:
 	var cam := FreeCam.new()
 	cam.name = "FreeCam"
 	add_child(cam)

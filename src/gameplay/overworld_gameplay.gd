@@ -59,13 +59,7 @@ func _exit_tree() -> void:
 
 
 func _read_pois() -> void:
-	if not ClassDB.class_exists("WorldMap") and not _has_global_class("WorldMap"):
-		return
-	var wm: Variant = load(_global_class_path("WorldMap"))
-	if wm == null:
-		return
-	var pois: Array = wm.call("pois")
-	for p in pois:
+	for p in WorldMap.pois():
 		var t := str(p.get("type", ""))
 		var pos: Vector3 = p.get("pos", Vector3.ZERO)
 		match t:
@@ -75,17 +69,31 @@ func _read_pois() -> void:
 				_town_pos = pos
 			"home":
 				_home_pos = pos
+	UIManager.register_args_provider("map", _map_args)
 
 
-static func _has_global_class(cls: String) -> bool:
-	return _global_class_path(cls) != ""
-
-
-static func _global_class_path(cls: String) -> String:
-	for info in ProjectSettings.get_global_class_list():
-		if info["class"] == cls:
-			return info["path"]
-	return ""
+## 地图面板参数（M 键）
+func _map_args() -> Dictionary:
+	var pois := []
+	var colors := {"sect": Color(0.95, 0.8, 0.4), "town": Color(0.9, 0.9, 0.9), "home": Color(0.6, 1.0, 0.6), "portal": Color(0.7, 0.5, 1.0), "landmark": Color(0.75, 0.75, 0.7)}
+	for p in WorldMap.pois():
+		var e := {"name": p["name"], "type": p["type"], "pos": p["pos"]}
+		var t := str(p["type"])
+		if colors.has(t):
+			e["color"] = colors[t]
+		if t == "sect" and str(p.get("sect_id", "")) == GS.player.sect:
+			e["desc"] = "本门"
+		if t == "portal":
+			e["desc"] = str(DB.secret_realms.get(str(p.get("realm_id", "")), {}).get("desc", ""))
+		pois.append(e)
+	var yaw := 0.0
+	if player != null and is_instance_valid(player):
+		yaw = player.rotation.y
+	return {
+		"image": TerrainGen.shared().render_map_image(512), "pois": pois,
+		"player_pos": player.global_position if player != null and is_instance_valid(player) else Vector3.ZERO,
+		"player_yaw": yaw, "world_size": TerrainGen.SIZE,
+	}
 
 
 # ================================================================ 每帧
