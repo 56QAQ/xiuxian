@@ -20,7 +20,7 @@
 | 字段 | 说明 |
 |---|---|
 | name, type, grade, size[w,h], stack, value, icon, icon_color?, element?, tags[]?, desc | 通用。type：weapon armor accessory pill material currency manual talisman treasure bag formation seed key misc |
-| weapon{kind, attack, stats{}, visual{}} | 兵刃。kind：sword saber spear fist；visual 传给 WeaponBuilder |
+| weapon{kind, attack, stats{}, visual{}} | 兵刃。kind：sword saber spear fist；visual 传给 WeaponBuilder：kind、length、blade、guard、grip、glow（元素，发光符文）、flag（旗面颜色，旗枪）、detail（0~2 装饰繁复度）或 grade |
 | equip{stats{}, visual{}} | 法衣/佩饰。法衣 visual 可覆盖外貌中的 outfit / outfit_colors |
 | use{effect, ..., text, combat?} | 使用效果。effect：heal(amount=比例) qi shield buff(status,duration) cast(spell) exp(amount,toxicity) breakthrough(realm,bonus) heal_injury detox attribute(attr,amount)。combat=true 可在战斗中用 Q 使用 |
 | refine{exp, element?} | 可炼化获得修为 |
@@ -129,3 +129,5 @@ eye_style: almond|round|sharp      brow_style: 0~2      mark: none|lotus|flame|d
 ears: human|fox|cat|elf      tail: none|fox      horns: none|dragon
 outfit: robe|martial|armor   outfit_colors: [主色, 副色, 饰边]
 ```
+凡品（grade 0）法衣不改变外观；灵品以上法衣/战甲的 `equip.visual` 会覆盖 outfit 与配色。
+角色持械姿势 `CharacterRig.stance`：sword / saber / spear / fist（战斗架势）或 none（放松站姿，脱战 8 秒后自动切换）。

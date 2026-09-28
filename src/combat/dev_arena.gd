@@ -51,8 +51,9 @@ static func build_arena(root: Node3D) -> void:
 	sky.sky_material = sm
 	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	e.ambient_light_energy = 0.8
+	e.ambient_light_energy = 0.45
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.tonemap_exposure = 0.9
 	e.ssao_enabled = true
 	e.glow_enabled = true
 	e.glow_intensity = 0.7
@@ -63,7 +64,7 @@ static func build_arena(root: Node3D) -> void:
 	root.add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, 40, 0)
-	sun.light_energy = 1.2
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	root.add_child(sun)
@@ -80,7 +81,7 @@ static func build_arena(root: Node3D) -> void:
 	for z in 80:
 		for x in 80:
 			var n := sin(x * 0.7) * cos(z * 0.5) * 0.03 + ((x + z) % 2) * 0.02
-			var c := Color(0.55 + n, 0.56 + n, 0.52 + n)
+			var c := Color(0.42 + n, 0.44 + n, 0.4 + n)
 			if (x / 8 + z / 8) % 2 == 0:
 				c = c.darkened(0.06)
 			g.set_color(x, 0, z, c)

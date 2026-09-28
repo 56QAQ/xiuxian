@@ -59,8 +59,9 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
   - 表现：`flash(amount, color)`、`set_dissolve(v)`、`set_tint(c, a)`、`attach_to_hand(node, "r")`、`weapon_tip()`。
   - 旋转约定：面朝 -Z，右手 +X；下垂肢体 +X=前摆，膝 -X，肘 +X；向上骨骼 -X=前倾；右臂 +Z 外展，左臂 -Z 外展；+Y=左转。武器握把在原点、刃沿 -Z。
 - **AnimLib**：`stance_pose(kind)`、`pose(name)`、`get_clip(name)`。剪辑为关键帧字典，支持 mask（full/upper/arm）、缓动、事件、loop、hold。
-- **CharacterBuilder.build(appearance, equip_visual) -> CharacterRig**：外貌字段见 DATA.md。VOXEL = 0.025m，身高约 1.75m。
-- **WeaponBuilder.build(visual) -> Node3D**：meta `tip_length`。
+- **CharacterBuilder.build(appearance, equip_visual) -> CharacterRig**（实际为 HumanoidRig：裙摆随腿、发丝重力、眨眼）：外貌字段见 DATA.md。VOXEL = 0.025m，身高约 1.75m。`random_appearance(rng, gender)` 生成 NPC 外貌。部件以 VoxCanvas 绘制、VoxMesh 网格化（面合并 + 部件缓存，单角色约 45 ms，缓存命中约 1 ms）。
+- **WeaponBuilder.build(visual, hand) -> Node3D**：meta `tip_length`；`attach_to_rig(rig, visual)`（拳套双手）；旗枪旗面与流苏有摆动。
+- **BeastBuilder.build(model, colors, size) -> BeastRig**：wolf fox boar bear snake crane spider golem；体型 quad/serpent/bird/spider/humanoid 各有步态；剪辑 bite pounce charge slam spit hit_front stagger death howl（`BeastRig.hit_time()` 给出出手帧）。
 
 ## 大地图（src/world）
 

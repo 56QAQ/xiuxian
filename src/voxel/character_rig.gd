@@ -287,7 +287,7 @@ func _process(delta: float) -> void:
 		hips.position = (rest["hips"] as Transform3D).origin + ro
 	_update_springs(delta)
 	if _flash > 0.0:
-		_flash = maxf(_flash - delta * 6.0, 0.0)
+		_flash = maxf(_flash - delta * 9.0, 0.0)
 		_apply_instance_param("flash", _flash)
 
 

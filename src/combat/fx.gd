@@ -149,7 +149,9 @@ static func shock_sphere(pos: Vector3, radius: float, color: Color, time: float 
 	sm.height = 2.0
 	mi.mesh = sm
 	var m := glow_mat(color).duplicate() as StandardMaterial3D
-	m.albedo_color = Color(color.r, color.g, color.b, 0.6)
+	m.albedo_color = Color(color.r, color.g, color.b, 0.32)
+	# 只渲染外表面：镜头处于冲击波内部时不会整屏染色
+	m.cull_mode = BaseMaterial3D.CULL_BACK
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	r.add_child(mi)

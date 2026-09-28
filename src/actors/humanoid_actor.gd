@@ -879,7 +879,7 @@ func on_hit(info: Dictionary, res: Dictionary) -> void:
 		if not res.get("killed", false):
 			rig.flash(0.35, Color(1, 0.8, 0.8))
 			return
-	rig.flash(0.9)
+	rig.flash(0.45 if is_player else 0.85)
 	var dir: Vector3 = info.get("dir", -forward())
 	var knock := float(info.get("knock", 0.0))
 	var resist := clampf(combatant.poise / maxf(combatant.stat("poise"), 1.0), 0.3, 1.0)

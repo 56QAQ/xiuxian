@@ -37,8 +37,8 @@ void fragment() {
 	vec3 c = srgb_to_linear(COLOR.rgb);
 	c = mix(c, c * srgb_to_linear(tint.rgb), tint.a);
 	float glow = clamp((1.0 - COLOR.a) * 2.0, 0.0, 1.0);
-	ALBEDO = mix(c, srgb_to_linear(flash_color.rgb), flash);
+	ALBEDO = mix(c, srgb_to_linear(flash_color.rgb), flash * 0.8);
 	ROUGHNESS = roughness_value;
 	SPECULAR = 0.3;
-	EMISSION = c * glow * emission_gain + srgb_to_linear(flash_color.rgb) * flash * 1.5;
+	EMISSION = c * glow * emission_gain + srgb_to_linear(flash_color.rgb) * flash * 0.6;
 }
