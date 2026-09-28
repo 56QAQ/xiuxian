@@ -52,7 +52,15 @@ static func build(visual: Dictionary, hand: String = "r") -> Node3D:
 ## 把兵器挂到角色手上并设置持械姿势（拳套挂两只手）
 static func attach_to_rig(rig: CharacterRig, visual: Dictionary) -> void:
 	var kind := str(visual.get("kind", "fist"))
-	rig.attach_to_hand(null, "l")
+	# 立即摘下旧挂件（attach_to_hand 用 queue_free，本帧内 weapon_tip() 仍会找到旧兵器）
+	for h in ["l", "r"]:
+		var hand := rig.bone("hand_" + h)
+		if hand == null:
+			continue
+		for c in hand.get_children():
+			if c.has_meta("attachment"):
+				hand.remove_child(c)
+				c.queue_free()
 	if kind == "fist":
 		rig.attach_to_hand(build(visual, "r"), "r")
 		rig.attach_to_hand(build(visual, "l"), "l")

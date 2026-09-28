@@ -84,7 +84,8 @@ static func from(appearance: Dictionary) -> CharSpec:
 	# ---- 颜色
 	var sk := CharacterBuilder.col(ap.get("skin", "#f3d2bd"), Color("f3d2bd"))
 	# 动漫肤色：略提饱和度、偏粉，避免在亮光下发白
-	s.skin = Color.from_hsv(sk.h, minf(sk.s * 1.35 + 0.02, 1.0), sk.v * 0.99)
+	var boost := 1.35 if sk.v > 0.9 else (1.15 if sk.v > 0.8 else 1.0)
+	s.skin = Color.from_hsv(sk.h, minf(sk.s * boost + (0.02 if sk.v > 0.9 else 0.0), 1.0), sk.v * 0.99)
 	s.skin_sh = Color(s.skin.r * 0.88, s.skin.g * 0.72, s.skin.b * 0.7)
 	s.skin_hi = VoxCanvas.tone(s.skin, 1.04)
 	s.hair = CharacterBuilder.col(ap.get("hair_color", "#c8201e"), Color("c8201e"))
