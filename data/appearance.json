@@ -1,7 +1,7 @@
 {
-  "hair_styles": [{"id": "twin_tails", "name": "双马尾"}, {"id": "ponytail", "name": "高马尾"}, {"id": "long", "name": "长直发"}, {"id": "short", "name": "短发"}, {"id": "bun", "name": "道髻"}, {"id": "flowing", "name": "披发"}],
-  "eye_styles": [{"id": "almond", "name": "杏眼"}, {"id": "round", "name": "圆眼"}, {"id": "sharp", "name": "凤眼"}],
-  "marks": [{"id": "none", "name": "无"}, {"id": "lotus", "name": "莲纹花钿"}, {"id": "flame", "name": "火焰花钿"}, {"id": "dot", "name": "朱砂痣"}],
+  "hair_styles": [{"id": "twin_tails", "name": "双马尾"}, {"id": "ponytail", "name": "高马尾"}, {"id": "long", "name": "长直发"}, {"id": "short", "name": "短发"}, {"id": "bun", "name": "道髻"}, {"id": "flowing", "name": "披发"}, {"id": "double_bun", "name": "双丸子"}, {"id": "braid", "name": "麻花辫"}],
+  "eye_styles": [{"id": "almond", "name": "杏眼"}, {"id": "round", "name": "圆眼"}, {"id": "sharp", "name": "凤眼"}, {"id": "droopy", "name": "垂眼"}],
+  "marks": [{"id": "none", "name": "无"}, {"id": "lotus", "name": "莲纹花钿"}, {"id": "flame", "name": "火焰花钿"}, {"id": "dot", "name": "朱砂痣"}, {"id": "crescent", "name": "月牙花钿"}, {"id": "tear", "name": "水滴花钿"}],
   "ears": [{"id": "human", "name": "人耳"}, {"id": "fox", "name": "狐耳"}, {"id": "cat", "name": "猫耳"}, {"id": "elf", "name": "尖耳"}],
   "tails": [{"id": "none", "name": "无"}, {"id": "fox", "name": "狐尾"}],
   "horns": [{"id": "none", "name": "无"}, {"id": "dragon", "name": "龙角"}],

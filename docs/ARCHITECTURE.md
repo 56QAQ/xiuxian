@@ -59,9 +59,14 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
   - 表现：`flash(amount, color)`、`set_dissolve(v)`、`set_tint(c, a)`、`attach_to_hand(node, "r")`、`weapon_tip()`。
   - 旋转约定：面朝 -Z，右手 +X；下垂肢体 +X=前摆，膝 -X，肘 +X；向上骨骼 -X=前倾；右臂 +Z 外展，左臂 -Z 外展；+Y=左转。武器握把在原点、刃沿 -Z。
 - **AnimLib**：`stance_pose(kind)`、`pose(name)`、`get_clip(name)`。剪辑为关键帧字典，支持 mask（full/upper/arm）、缓动、事件、loop、hold。
-- **CharacterBuilder.build(appearance, equip_visual) -> CharacterRig**（实际为 HumanoidRig：裙摆随腿、发丝重力、眨眼）：外貌字段见 DATA.md。VOXEL = 0.025m，身高约 1.75m。`random_appearance(rng, gender)` 生成 NPC 外貌。部件以 VoxCanvas 绘制、VoxMesh 网格化（面合并 + 部件缓存，单角色约 45 ms，缓存命中约 1 ms）。
-- **WeaponBuilder.build(visual, hand) -> Node3D**：meta `tip_length`；`attach_to_rig(rig, visual)`（拳套双手）；旗枪旗面与流苏有摆动。
-- **BeastBuilder.build(model, colors, size) -> BeastRig**：wolf fox boar bear snake crane spider golem；体型 quad/serpent/bird/spider/humanoid 各有步态；剪辑 bite pounce charge slam spit hit_front stagger death howl（`BeastRig.hit_time()` 给出出手帧）。
+- **CharacterBuilder.build(appearance, equip_visual, opts) -> CharacterRig**（实际为 HumanoidRig：裙摆随腿、发丝重力、眨眼）：外貌字段见 DATA.md。VOXEL = 0.0125m（每米 80 体素，头 32³；骨骼位置的米制尺寸与旧版 0.025m 完全相同），身高约 1.75m。`random_appearance(rng, gender)` 生成 NPC 外貌。opts `{"lod": false}` 不挂远景 LOD（界面预览）。
+  - **build_async(appearance, equip_visual, opts)**：同参数，立即返回（隐藏的）骨架，网格在工作线程生成，完成后自动显示并发出 `rig.meshes_ready`；动画/挂武器/闪白可立即使用。`rig.meshes_pending()`、`rig.finish_meshes()`（阻塞等待）。
+  - 部件以 VoxCanvas 绘制、VoxMesh 网格化（隐藏面剔除 + AO + 二维贪心合并 + 按参数缓存）。缺失部件在 WorkerThreadPool（高优先级）并行生成；同步构建只等近景 LOD0，远景 LOD1（2× 降采样）随后在后台生成，由 `VoxMesh.poll()`（CharacterRig 每帧调用）填入；`VoxMesh.finish_pending()` 阻塞等待全部完成。
+  - LOD：每个部件两个 MeshInstance3D，visibility range 在约 22m 处切换（`VoxMesh.lod_distance`）。
+  - 材质通道：体素低 8 位为属性字节（材质 << 4 | 发光等级），经顶点色 alpha 传给 `assets/shaders/voxel_char.gdshader`：布、皮肤（包裹光 + 次表面暖色）、头发（各向异性光泽）、金饰/钢银（GGX 金属高光）、宝石（高光 + 微自发光）、皮革、毛皮、眼睛、石、鳞角、丝绸、玉、火焰；另有菲涅尔边缘光。instance uniform 与 voxel.gdshader 相同（`flash`、`flash_color`、`dissolve`、`tint`）。
+- **WeaponBuilder.build(visual, hand) -> Node3D**：meta `tip_length`；`attach_to_rig(rig, visual)`（拳套双手）；旗枪旗面与流苏有摆动。visual.length 仍为旧单位（0.025m），内部 ×2。
+- **BeastBuilder.build(model, colors, size) -> BeastRig**（另有 `build_async` 同参数）：wolf fox boar bear snake crane spider golem；体型 quad/serpent/bird/spider/humanoid 各有步态；剪辑 bite pounce charge slam spit hit_front stagger death howl（`BeastRig.hit_time()` 给出出手帧）。
+- **RigPreview**（src/ui）：捏人/角色面板/对话头像共用的影棚预览；取景 `full`/`upper`/`bust`（面容特写）/`face`。
 
 ## 大地图（src/world）
 

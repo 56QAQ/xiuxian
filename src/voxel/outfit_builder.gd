@@ -833,45 +833,46 @@ static func forearm(s: CharSpec, side: int) -> VoxCanvas:
 	return cv
 
 
-## 道袍宽袖：外扩袖筒 + 下垂袖囊 + 袖口饰边（云纹点缀）+ 内衬
+## 道袍宽袖：肘部贴身、向腕部渐宽；袖口向前臂背侧（+Z，抬臂时朝下）垂成袖囊；袖口饰边 + 金点；内衬
 static func _sleeve_robe(cv: VoxCanvas, s: CharSpec, side: int, xl: int, xh: int, zl: int, zh: int) -> void:
 	cv.set_mat(VoxCanvas.M_SILK)
+	var ft := cv.fold_table(s.c1, 3)
+	var d := cv.data
+	var v_trim := cv.e(s.c3)
+	var v_trim_d := cv.e(VoxCanvas.tone(s.c3, 0.72))
+	var v_edge := cv.e(s.c1_sh)
+	var v_gold := VoxCanvas.encm(s.gold, VoxCanvas.M_GOLD)
+	var v_lining := VoxCanvas.encm(s.c2.darkened(0.45), VoxCanvas.M_CLOTH)
 	for y in range(-20, 4):
-		var o := 3 if y > -8 else 5
-		var zb := zh + o + (5 if y < -12 else (2 if y < -6 else 0))
-		for z in range(zl - o, zb + 1):
-			for x in range(xl - o, xh + o + 1):
-				var edge := x == xl - o or x == xh + o or z == zl - o or z == zb or y == 3
+		var t := clampf(float(2 - y) / 22.0, 0.0, 1.0)      # 0 肘 → 1 袖口
+		var os := 1 + int(round(t * 2.0))                   # 两侧外扩
+		var of := 1 + int(round(t * 1.0))                   # 前侧
+		var ob := 1 + int(round(t * t * 8.0))               # 背侧（袖囊）
+		var x0 := xl - os
+		var x1 := xh + os
+		var z0 := zl - of
+		var z1 := zh + ob
+		for z in range(z0, z1 + 1):
+			var row := cv.ix(0, y, z)
+			for x in range(x0, x1 + 1):
+				var edge := x == x0 or x == x1 or z == z0 or z == z1 or y == 3
 				if not edge:
 					continue
-				# 圆角
-				if (x == xl - o or x == xh + o) and (z == zl - o or z == zb):
+				if (x == x0 or x == x1) and (z == z0 or z == z1):
 					continue
-				var c := fold(s.c1, z + x, 3)
-				var m := VoxCanvas.M_SILK
+				var v := ft[posmod(z + x, 6)]
 				if y <= -18:
-					# 袖口饰边：下缘深、中间饰边色、上缘一道细金点
-					c = VoxCanvas.tone(s.c3, 0.72) if y == -20 else (s.c3 if y == -19 else s.c1_sh)
+					v = v_trim_d if y == -20 else (v_trim if y == -19 else v_edge)
 					if y == -18 and posmod(x + z, 4) == 0:
-						c = s.gold
-						m = VoxCanvas.M_GOLD
-				cv.putm(x, y, z, c, m)
-	# 袖囊（后侧下垂）
-	for y in range(-30, -20):
-		for z in range(zh, zh + 11):
-			for x in range(xl - 5, xh + 6):
-				var edge2 := x == xl - 5 or x == xh + 5 or z == zh + 10 or y == -30
-				if not edge2:
-					continue
-				if y > -24 and z < zh + 4:
-					continue
-				var c2 := s.c3 if y == -30 else fold(s.c1, z + x, 3)
-				cv.putm(x, y, z, c2, VoxCanvas.M_SILK)
-	# 袖口内衬（暗）
-	for z in range(zl - 4, zh + 5):
-		for x in range(xl - 4, xh + 5):
-			if cv.get_raw(x, -20, z) == 0 and not (x >= xl and x <= xh and z >= zl and z <= zh):
-				cv.putm(x, -19, z, s.c2.darkened(0.45), VoxCanvas.M_CLOTH)
+						v = v_gold
+				d[row + x] = v
+		# 袖口内衬（开口里的暗色）
+		if y == -19:
+			for z in range(z0 + 1, z1):
+				var row2 := cv.ix(0, -18, z)
+				for x in range(x0 + 1, x1):
+					if not (x >= xl and x <= xh and z >= zl and z <= zh) and d[row2 + x] == 0:
+						d[row2 + x] = v_lining
 
 
 ## 护腕：皮革 + 金/饰边带 + 外侧金护板（刻面宝石）或缠布斜纹
@@ -914,26 +915,38 @@ static func hand(s: CharSpec, side: int) -> VoxCanvas:
 	var cv := VoxCanvas.new(Vector3i(xl - 3, -9, xl - 3), Vector3i(xh + 3, 7, xh + 3))
 	cv.shift = Vector3(half_shift(w), 0, half_shift(w))
 	cv.set_mat(VoxCanvas.M_SKIN)
-	cv.rbox(Vector3i(xl, -6, xl), Vector3i(xh, 5, xh), s.skin, 1)
+	cv.rbox(Vector3i(xl, -6, xl), Vector3i(xh, 5, xh), s.skin, 2)
+	# 拳底圆角
+	for z in range(xl, xh + 1):
+		cv.clear_at(xl, -6, z)
+		cv.clear_at(xh, -6, z)
 	var sh := s.skin.lerp(s.skin_sh, 0.55)
-	var dk := s.skin.lerp(s.skin_dk, 0.5)
-	# 握拳：掌心一侧（朝身体）的指缝（四指沿 Z 排列）、指节（下缘外侧亮）
+	var dk := s.skin.lerp(s.skin_dk, 0.55)
 	var inx := xl if side > 0 else xh
 	var outx := xh if side > 0 else xl
-	for z in range(xl, xh + 1):
-		for y in range(-6, 1):
-			var fz := posmod(z - xl, 3)
-			if fz == 0:
-				cv.put(inx, y, z, dk)
-			elif y == -6:
-				cv.put(inx, y, z, sh)
-	for z in range(xl, xh + 1):
-		cv.put(outx, -6, z, s.skin_hi if posmod(z - xl, 3) == 1 else sh)
-		cv.put(outx, -5, z, s.skin_hi if posmod(z - xl, 3) == 1 else s.skin)
-	# 拇指：前方包住握把
+	# 四指沿 Z 排列（食指在前）：底面与掌心一侧画指缝，外侧下缘一排指节凸起（受光亮、缝暗）
+	for k in 4:
+		var z0 := xl + int(round(k * w / 4.0))
+		var z1 := xl + int(round((k + 1) * w / 4.0)) - 1
+		for z in range(z0, z1 + 1):
+			var groove := z == z0 and k > 0
+			for x in range(xl + 1, xh):
+				if cv.solid(x, -6, z):
+					cv.put(x, -6, z, dk if groove else (s.skin_hi if x == outx - (1 if side > 0 else -1) else s.skin))
+			for y in range(-5, 1):
+				if cv.solid(inx, y, z):
+					cv.put(inx, y, z, dk if groove else (sh if y < -3 else s.skin))
+			if groove:
+				cv.put(outx, -5, z, sh)
+				cv.put(outx, -4, z, sh)
+		# 指节
+		var zc := (z0 + z1) / 2
+		cv.put(outx + side, -4, zc, s.skin_hi)
+		cv.put(outx + side, -5, zc, s.skin)
+	# 拇指：前方包住握把（压在食指上），指尖朝上
 	cv.box(Vector3i(xl + 2, -3, xl - 2), Vector3i(xh - 2, 2, xl - 1), s.skin)
-	cv.put(xl + 2, -1, xl - 2, sh)
-	cv.put(xh - 2, 2, xl - 2, s.skin_hi)
+	cv.box(Vector3i(xl + 2, -3, xl - 2), Vector3i(xh - 2, -3, xl - 2), sh)
+	cv.put(xh - 2 if side > 0 else xl + 2, 2, xl - 2, s.skin_hi)
 	# 指甲（拇指尖）
 	cv.put(xl + 3, -3, xl - 2, s.skin.lerp(Color(1, 0.85, 0.85), 0.4))
 	if s.outfit == "armor":

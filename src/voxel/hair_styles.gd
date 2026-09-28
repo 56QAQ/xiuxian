@@ -437,7 +437,7 @@ static func paint_extras(cv: VoxCanvas, s: CharSpec) -> void:
 			_bun(cv, s, Vector3(-0.5, 42.0, 2.0), 1.0, true)
 		"double_bun":
 			for side: int in [-1, 1]:
-				_bun(cv, s, Vector3(side * 10.5 - 0.5, 39.0, 2.0), 0.72, false)
+				_bun(cv, s, Vector3(side * 12.0 - 0.5, 41.0, 1.0), 0.95, false)
 		"short":
 			if s.female:
 				# 侧边发夹：金条 + 宝石
