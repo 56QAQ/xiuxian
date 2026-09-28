@@ -137,3 +137,69 @@ func test_secret_realm_flow() -> void:
 	HitStop.enabled = true
 	HitStop.reset()
 	await get_tree().process_frame
+
+
+func test_encounters() -> void:
+	_new_game()
+	HitStop.enabled = false
+	var root := Node3D.new()
+	get_tree().root.add_child(root)
+	var arena_script: GDScript = load("res://src/combat/dev_arena.gd")
+	arena_script.build_arena(root)
+	var session := GameSession.new()
+	root.add_child(session)
+	session.start(root, Vector3(0, 0.5, 0))
+	var player := session.player
+	var dir := EncounterDirector.new()
+	dir.world = root
+	dir.player = player
+	dir.enabled = false
+	root.add_child(dir)
+	await get_tree().physics_frame
+	# 切磋
+	dir.trigger("spar")
+	var npc: HumanoidActor = null
+	for a in dir.active:
+		if a is HumanoidActor:
+			npc = a
+	_ok(npc != null, "切磋者出现")
+	if npc != null:
+		var id := npc.combatant.npc_id
+		EncounterDirector.start_spar(player, npc)
+		_ok(npc.combatant.is_hostile_to(player.combatant), "切磋中互为对手")
+		var f0 := int(NpcSystem.get_npc(id).get("favor", 0))
+		for i in 30:
+			npc.combatant.invuln = 0.0
+			npc.combatant.take_damage({"source": player.combatant, "kind": "env", "flat": 99999.0})
+			if not npc.combatant.nonlethal_vs:
+				break
+		_ok(npc.combatant.alive, "切磋不会致死")
+		_ok(int(NpcSystem.get_npc(id).get("favor", 0)) > f0, "切磋获胜增加好感")
+		_ok(not npc.combatant.is_hostile_to(player.combatant), "切磋结束后不再敌对")
+	# 劫修
+	dir.trigger("robber")
+	var robbers: Array[HumanoidActor] = []
+	for a in dir.active:
+		if a is HumanoidActor and a != npc:
+			robbers.append(a)
+	_ok(robbers.size() >= 1, "劫修出现")
+	dir._robber_fight(robbers)
+	_ok(robbers[0].combatant.is_hostile_to(player.combatant), "拒绝后劫修敌对")
+	# 天材地宝 / 妖兽 / 救援
+	dir.trigger("treasure")
+	var sites := 0
+	for a in dir.active:
+		if a is TreasureSite:
+			sites += 1
+	_ok(sites == 1, "天材地宝出世")
+	dir.trigger("beast_attack")
+	dir.trigger("rescue")
+	var beasts := get_tree().get_nodes_in_group("beasts").size()
+	_ok(beasts >= 2, "妖兽出现（%d）" % beasts)
+	for i in 120:
+		player.combatant.invuln = 1.0
+		await get_tree().physics_frame
+	root.queue_free()
+	HitStop.enabled = true
+	HitStop.reset()
+	await get_tree().process_frame
