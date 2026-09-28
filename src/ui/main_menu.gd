@@ -392,7 +392,7 @@ class MenuEntry extends Button:
 	func _init() -> void:
 		flat = true
 		focus_mode = Control.FOCUS_NONE
-		custom_minimum_size = Vector2(420, 64)
+		custom_minimum_size = Vector2(460, 64)
 		var empty := StyleBoxEmpty.new()
 		for s in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 			add_theme_stylebox_override(s, empty)
@@ -416,22 +416,23 @@ class MenuEntry extends Button:
 
 	func _draw() -> void:
 		var h := size.y
+		var bottom := 0.97 if sub_text != "" else 0.86
 		if hover_t > 0.01:
 			var w := size.x * hover_t
 			var pts := PackedVector2Array()
 			var n := 16
 			for i in n + 1:
 				var x := w * i / n
-				pts.append(Vector2(x, h * 0.18 + sin(i * 1.7) * 2.0))
+				pts.append(Vector2(x, h * 0.1 + sin(i * 1.7) * 2.0))
 			for i in range(n, -1, -1):
 				var x2 := w * i / n
-				pts.append(Vector2(x2, h * 0.86 + sin(i * 2.3) * 2.0))
+				pts.append(Vector2(x2, h * bottom + sin(i * 2.3) * 2.0))
 			var cols := PackedColorArray()
 			for p in pts:
 				var fa := 1.0 - p.x / maxf(size.x, 1.0)
 				cols.append(Color(0.02, 0.02, 0.03, 0.62 * fa * hover_t))
 			draw_polygon(pts, cols)
-			draw_line(Vector2(0, h * 0.86), Vector2(w * 0.8, h * 0.86), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.6 * hover_t), 1.0)
+			draw_line(Vector2(0, h * bottom), Vector2(w * 0.8, h * bottom), Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.6 * hover_t), 1.0)
 		var f := UITheme.font_title()
 		var fs := 32
 		var x0 := 26.0 + 14.0 * hover_t
