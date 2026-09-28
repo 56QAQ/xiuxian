@@ -21,6 +21,9 @@ var top_glow: float = 0.0
 ## 左侧强调条（如选中卡片），宽度 0 表示不画
 var accent_width: float = 0.0
 var accent_color: Color = Color(0.38, 0.8, 0.64)
+## 水墨晕染（窗口底纹）与右下角远山水印的强度，0 表示不画
+var wash: float = 0.0
+var watermark: float = 0.0
 ## 阴影
 var shadow_size: float = 0.0
 var shadow_color: Color = Color(0, 0, 0, 0.5)
@@ -63,6 +66,10 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	var cols := PackedColorArray([bg_top, bg_top, bg_bottom, bg_bottom])
 	if bg_top.a > 0.0 or bg_bottom.a > 0.0:
 		RenderingServer.canvas_item_add_polygon(ci, pts, cols)
+	if wash > 0.0:
+		_draw_wash(ci, rect)
+	if watermark > 0.0 and rect.size.x > 200.0 and rect.size.y > 160.0:
+		_draw_watermark(ci, rect)
 	if top_glow > 0.0:
 		var gh := minf(rect.size.y * 0.45, 40.0)
 		var g_top := Color(1.0, 0.92, 0.75, 0.06 * top_glow)
@@ -84,6 +91,48 @@ func _draw(ci: RID, rect: Rect2) -> void:
 			_corners_hook(ci, rect)
 		3:
 			_corners_diamond(ci, rect)
+
+
+## 几团柔和的墨晕（位置随尺寸确定，保持稳定）
+func _draw_wash(ci: RID, rect: Rect2) -> void:
+	var tex := UITheme.icon("dot")
+	if tex == null:
+		return
+	var rid := tex.get_rid()
+	var spots := [
+		[Vector2(0.18, 0.2), Vector2(0.7, 0.55), Color(0.55, 0.4, 0.25, 0.07)],
+		[Vector2(0.85, 0.35), Vector2(0.6, 0.7), Color(0.3, 0.38, 0.6, 0.06)],
+		[Vector2(0.3, 0.9), Vector2(0.9, 0.5), Color(0.0, 0.0, 0.0, 0.18)],
+	]
+	for sp in spots:
+		var c: Vector2 = rect.position + rect.size * (sp[0] as Vector2)
+		var sz: Vector2 = rect.size * (sp[1] as Vector2)
+		var col: Color = sp[2]
+		col.a *= wash
+		RenderingServer.canvas_item_add_texture_rect(ci, Rect2(c - sz * 0.5, sz), rid, false, col)
+
+
+## 右下角淡淡的远山剪影
+func _draw_watermark(ci: RID, rect: Rect2) -> void:
+	var w := minf(rect.size.x * 0.5, 520.0)
+	var h := minf(rect.size.y * 0.3, 190.0)
+	var base := Vector2(rect.end.x - w - 6.0, rect.end.y - 6.0)
+	var profiles := [
+		[[0.0, 0.62], [0.12, 0.45], [0.22, 0.58], [0.36, 0.2], [0.46, 0.42], [0.55, 0.3], [0.68, 0.05], [0.8, 0.4], [0.9, 0.3], [1.0, 0.5]],
+		[[0.0, 0.85], [0.15, 0.62], [0.3, 0.78], [0.45, 0.5], [0.6, 0.7], [0.75, 0.55], [0.88, 0.72], [1.0, 0.6]],
+	]
+	var alphas := [0.045, 0.07]
+	for i in profiles.size():
+		var pts := PackedVector2Array()
+		pts.append(base + Vector2(0, 0))
+		for pp in profiles[i]:
+			pts.append(base + Vector2(float(pp[0]) * w, -h + float(pp[1]) * h))
+		pts.append(base + Vector2(w, 0))
+		var c := Color(0.75, 0.78, 0.9, alphas[i] * watermark)
+		var cols := PackedColorArray()
+		for _p in pts:
+			cols.append(c)
+		RenderingServer.canvas_item_add_polygon(ci, pts, cols)
 
 
 static func _frame(ci: RID, r: Rect2, w: float, c: Color) -> void:

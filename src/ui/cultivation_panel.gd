@@ -124,9 +124,9 @@ func _build() -> void:
 	slots.add_child(ref)
 	right.add_child(slots)
 	var open_bag := UITheme.button("打开储物袋", "", func() -> void:
-		var w := ui().open("inventory", {"offset": Vector2(0, 0)})
+		var w := ui().open("inventory")
 		if w != null:
-			w.position.x = maxf(position.x - w.size.x - 12.0, 8.0))
+			ui().arrange_side_by_side(w, self))
 	open_bag.size_flags_horizontal = Control.SIZE_SHRINK_END
 	right.add_child(open_bag)
 	row.add_child(right)

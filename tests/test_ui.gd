@@ -289,6 +289,11 @@ func test_ui_manager_blocking() -> void:
 	_ok(not ui.is_open(d.panel_name), "确认框已关闭")
 	ui.close_all()
 	UIManager.unregister_panel("test_custom")
+	UIManager.register_args_provider("map", func() -> Dictionary: return {"player_pos": Vector3(3, 0, 4), "world_size": 16})
+	var mp := ui.open("map")
+	_eq(mp.args.get("player_pos"), Vector3(3, 0, 4), "默认参数提供者")
+	UIManager.register_args_provider("map", Callable())
+	ui.close_all()
 	Events.notify.emit("测试提示", "good")
 	Events.notify.emit("境界突破", "realm")
 	await get_tree().process_frame

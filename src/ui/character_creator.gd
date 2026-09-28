@@ -193,7 +193,19 @@ func _build() -> void:
 	add_child(ui)
 
 
-func _show_tab(i: int) -> void:
+## 重建当前页并保持滚动位置（切换性别、配色、灵根、出身后）
+func _rebuild_page(i: int) -> void:
+	_show_tab(i, _page_host.scroll_vertical)
+
+
+func _restore_scroll(v: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(_page_host):
+		_page_host.scroll_vertical = v
+
+
+func _show_tab(i: int, keep_scroll: int = -1) -> void:
 	_current_tab = i
 	for j in _tab_buttons.size():
 		_tab_buttons[j].set_pressed_no_signal(j == i)
@@ -217,6 +229,8 @@ func _show_tab(i: int) -> void:
 	m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_page_host.add_child(m)
 	_page_host.scroll_vertical = 0
+	if keep_scroll >= 0:
+		_restore_scroll(keep_scroll)
 	if i == 4 and _name_edit != null:
 		_name_edit.grab_focus.call_deferred()
 
@@ -315,7 +329,7 @@ func _page_appearance() -> Control:
 		if g == "male":
 			appearance["chest"] = 0.0
 		_update_preview(false)
-		_show_tab.call_deferred(0))))
+		_rebuild_page.call_deferred(0))))
 	v.add_child(_row("身高", _slider(0.9, 1.1, 0.01, float(appearance.get("height", 1.0)), func(x: float) -> void: _set_app("height", x))))
 	v.add_child(_row("体型", _slider(0.0, 1.0, 0.01, float(appearance.get("build", 0.4)), func(x: float) -> void: _set_app("build", x))))
 	v.add_child(_row("头身比", _slider(0.9, 1.15, 0.01, float(appearance.get("head_scale", 1.0)), func(x: float) -> void: _set_app("head_scale", x))))
@@ -372,7 +386,7 @@ func _palette_presets(palettes: Array) -> HFlowContainer:
 		b.button_pressed = str(pal) == str(cur)
 		b.pressed.connect(func() -> void:
 			_set_app("outfit_colors", (pal as Array).duplicate())
-			_show_tab.call_deferred(0))
+			_rebuild_page.call_deferred(0))
 		f.add_child(b)
 	return f
 
@@ -388,7 +402,7 @@ func _on_outfit_color(c: Color, i: int) -> void:
 func _after_appearance_reset() -> void:
 	_update_preview(false)
 	if _current_tab == 0:
-		_show_tab(0)
+		_rebuild_page(0)
 	_update_summary()
 
 
@@ -461,7 +475,7 @@ func _page_roots() -> Control:
 
 func _on_root_toggle(e: String) -> void:
 	roots = CreatorLogic.toggle_root(roots, e)
-	_show_tab.call_deferred(1)
+	_rebuild_page.call_deferred(1)
 	_update_summary()
 
 
@@ -793,7 +807,7 @@ func _bg_card(bid: String, g: ButtonGroup) -> Control:
 			sect = ""
 		elif sect == "":
 			sect = str(DB.sects.keys()[0])
-		_show_tab.call_deferred(3)
+		_rebuild_page.call_deferred(3)
 		_update_preview(false)
 		_update_summary())
 	return b
@@ -998,7 +1012,7 @@ func randomize_all() -> void:
 	background = str(bids[rng.randi() % bids.size()])
 	sect = str(DB.sects.keys()[rng.randi() % DB.sects.size()]) if bool(DB.backgrounds[background].get("sect_choice", false)) else ""
 	char_name = CreatorLogic.random_name(str(appearance["gender"]), rng)
-	_show_tab(_current_tab)
+	_rebuild_page(_current_tab)
 	_update_preview(false)
 	_update_summary()
 	Audio.play("ui_dice")

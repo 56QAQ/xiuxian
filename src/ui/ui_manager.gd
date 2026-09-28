@@ -36,6 +36,8 @@ const BUILTIN: Array[String] = [
 
 ## 外部注册的面板工厂：name -> Callable(args: Dictionary) -> UIWindow
 static var _factories: Dictionary = {}
+## 默认参数提供者：name -> Callable() -> Dictionary（快捷键等无参数打开时使用，如 M 键地图）
+static var _arg_providers: Dictionary = {}
 
 var _root: Control
 var _backdrop: ColorRect
@@ -57,6 +59,15 @@ static func register_panel(panel_name: String, factory: Callable) -> void:
 
 static func unregister_panel(panel_name: String) -> void:
 	_factories.erase(panel_name)
+
+
+## 注册默认参数提供者：无参数打开该面板时调用 provider() 取得 args。
+## 例：UIManager.register_args_provider("map", func() -> Dictionary: return {"image": img, "pois": pois, "player_pos": pos, "world_size": 1024})
+static func register_args_provider(panel_name: String, provider: Callable) -> void:
+	if provider.is_valid():
+		_arg_providers[panel_name] = provider
+	else:
+		_arg_providers.erase(panel_name)
 
 
 static func has_panel(panel_name: String) -> bool:
@@ -162,6 +173,12 @@ func open(panel_name: String, args: Dictionary = {}) -> UIWindow:
 			bring_to_front(existing)
 			return existing
 		_remove(existing, false)
+	if args.is_empty() and _arg_providers.has(panel_name):
+		var prov: Callable = _arg_providers[panel_name]
+		if prov.is_valid():
+			var got: Variant = prov.call()
+			if got is Dictionary:
+				args = got
 	var w := _create(panel_name, args)
 	if w == null:
 		push_warning("UIManager: 未知面板 %s" % panel_name)
@@ -245,6 +262,21 @@ func bring_to_front(w: UIWindow) -> void:
 	_stack.append(w)
 	_layer.move_child(w, -1)
 	_update_backdrop()
+
+
+## 把两个窗口左右并排（放不下时尽量错开）。在两者尺寸确定后执行。
+func arrange_side_by_side(left: UIWindow, right: UIWindow, gap: float = 12.0) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(left) or not is_instance_valid(right):
+		return
+	var vp := _layer.size
+	var total := left.size.x + right.size.x + gap
+	var x0 := maxf((vp.x - total) * 0.5, 4.0)
+	left.position = Vector2(x0, maxf((vp.y - left.size.y) * 0.5, 0.0)).floor()
+	right.position = Vector2(minf(x0 + left.size.x + gap, vp.x - right.size.x - 4.0), maxf((vp.y - right.size.y) * 0.5, 0.0)).floor()
+	left._moved = true
+	right._moved = true
 
 
 func _remove(w: UIWindow, animate: bool) -> void:

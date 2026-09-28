@@ -71,7 +71,7 @@ func _draw() -> void:
 	for i in 5:
 		var e := ORDER[i]
 		var v := clampf(float(_anim.get(e, 0.0)) / 100.0, 0.0, 1.0)
-		vpts.append(_vertex(i, R * maxf(v, 0.04)))
+		vpts.append(_vertex(i, R * maxf(v, 0.08)))
 		var c := Elem.color_of(e)
 		vcols.append(Color(c.r, c.g, c.b, 0.5 if v > 0.0 else 0.08))
 	var total := 0.0

@@ -122,12 +122,10 @@ func _slot(slot_name: String, sz: Vector2) -> EquipSlot:
 func _build_bag() -> Control:
 	var col := UITheme.vbox(8)
 	var head := UITheme.hbox(8)
-	_bag_title = UITheme.label("储物袋", 21, Color(0, 0, 0, 0), "HeaderLabel")
-	head.add_child(_bag_title)
-	var sep := GoldSeparator.new()
-	sep.ornament = false
-	sep.fade_left = false
-	head.add_child(sep)
+	var hdr := UITheme.header("储物袋")
+	hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bag_title = hdr.get_child(1) as Label
+	head.add_child(hdr)
 	head.add_child(UITheme.button("整理", "ChipButton", func() -> void:
 		if not InvOps.sort_grid(GS.player.bag):
 			Events.notify.emit("整理失败：空间不足", "warn")
@@ -137,9 +135,10 @@ func _build_bag() -> Control:
 	_bag_view.cell = 52.0 if GS.player.bag.w <= 8 else 46.0
 	_connect_view(_bag_view)
 	col.add_child(_bag_view)
-	var sh := UITheme.hbox(8)
-	sh.add_child(UITheme.label("本命空间", 19, Color(0, 0, 0, 0), "HeaderLabel"))
-	sh.add_child(UITheme.label("身陨后仍保留", 14, UITheme.TEXT_FAINT))
+	var sh := UITheme.header("本命空间", 19)
+	var note := UITheme.label("身陨后仍保留", 14, UITheme.TEXT_FAINT)
+	sh.add_child(note)
+	sh.move_child(note, 2)
 	col.add_child(sh)
 	_secure_view = GridView.new()
 	_secure_view.cell = 52.0

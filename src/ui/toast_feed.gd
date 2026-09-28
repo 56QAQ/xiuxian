@@ -8,6 +8,11 @@ const GLYPHS := {"info": "◇", "good": "◆", "warn": "▲", "bad": "■", "loo
 var _list: VBoxContainer
 var _banner_queue: Array[String] = []
 var _banner_busy: bool = false
+## 合并连续相同提示
+var _last_text: String = ""
+var _last_label: Label
+var _last_count: int = 1
+var _last_time: int = 0
 
 
 func _init() -> void:
@@ -27,11 +32,18 @@ func _ready() -> void:
 
 func push(text: String, kind: String = "info") -> void:
 	if kind == "realm":
-		_banner_queue.append(text)
+		# 只保留最新一条待显示横幅（闭关连升多层时不刷屏）
+		_banner_queue = [text]
 		if not _banner_busy:
 			_next_banner()
 		return
 	if _list == null:
+		return
+	var now := Time.get_ticks_msec()
+	if text == _last_text and is_instance_valid(_last_label) and now - _last_time < 2500:
+		_last_count += 1
+		_last_label.text = "%s  ×%d" % [text, _last_count]
+		_last_time = now
 		return
 	while _list.get_child_count() >= MAX_TOASTS:
 		var old := _list.get_child(0)
@@ -60,6 +72,10 @@ func push(text: String, kind: String = "info") -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = 400
 	h.add_child(l)
+	_last_text = text
+	_last_label = l
+	_last_count = 1
+	_last_time = now
 	p.add_child(h)
 	wrap.add_child(p)
 	wrap.modulate.a = 0.0

@@ -103,6 +103,10 @@ func _draw() -> void:
 			draw_rect(r, line, false, 1.0)
 	draw_rect(full, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35), false, 1.0)
 	var hovered := grid.entry_at(_hover.x, _hover.y) if _hover.x >= 0 else {}
+	if hovered.is_empty() and _preview.is_empty() and _hover.x >= 0 and _hover.x < grid.w and _hover.y >= 0 and _hover.y < grid.h:
+		var hr := Rect2(Vector2(_hover) * cell, Vector2(cell, cell)).grow(-1.5)
+		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.08))
+		draw_rect(hr, Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.35), false, 1.0)
 	var quick := GS.player.quick_item if GS.player != null else ""
 	for e in grid.entries:
 		var it: ItemInstance = e["item"]

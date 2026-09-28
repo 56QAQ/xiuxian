@@ -103,6 +103,8 @@ static func _build() -> Theme:
 	win.inner_line_color = Color(GOLD.r, GOLD.g, GOLD.b, 0.16)
 	win.corner_len = 18.0
 	win.top_glow = 1.0
+	win.wash = 1.0
+	win.watermark = 1.0
 	t.set_stylebox("panel", "WindowPanel", win)
 	t.set_type_variation("InsetPanel", "PanelContainer")
 	var inset := OrnateBox.new()
