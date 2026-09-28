@@ -47,6 +47,7 @@ class HUDCanvas:
 	var kill_t: float = 0.0
 	var dmg_dirs: Array[Dictionary] = []   ## {angle, t}
 	var prompt: String = ""
+	var objective: String = ""
 	var search_p: float = -1.0
 	var shown_hp: float = 1.0
 	var shown_shield: float = 1.0
@@ -59,6 +60,7 @@ class HUDCanvas:
 		Events.hit_landed.connect(_on_hit)
 		Events.interaction_prompt.connect(func(t: String) -> void: prompt = t)
 		Events.search_progress.connect(func(p: float) -> void: search_p = p)
+		Events.hud_objective.connect(func(t: String) -> void: objective = t)
 		_vignette = TextureRect.new()
 		var gt := GradientTexture2D.new()
 		gt.fill = GradientTexture2D.FILL_RADIAL
@@ -358,6 +360,12 @@ class HUDCanvas:
 		_text(Vector2(x, y + 56.0 * s), "灵石 %d" % p.spirit_stones, 14 * s, Color(0.65, 0.88, 1.0), HORIZONTAL_ALIGNMENT_LEFT)
 		# 左上：时间
 		_text(Vector2(28.0 * s, 36.0 * s), GS.date_text(), 16 * s, C_TEXT, HORIZONTAL_ALIGNMENT_LEFT)
+		if objective != "":
+			var ow := font.get_string_size(objective, HORIZONTAL_ALIGNMENT_LEFT, -1, int(18 * s)).x + 40.0 * s
+			var orect := Rect2(Vector2((vs.x - ow) * 0.5, 14.0 * s), Vector2(ow, 34.0 * s))
+			draw_rect(orect, Color(0.03, 0.04, 0.06, 0.65))
+			draw_rect(orect, C_GOLD.darkened(0.3), false, 1.0)
+			_text(Vector2(vs.x * 0.5, 38.0 * s), objective, 18 * s, C_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 		if actor.action == "meditate":
 			var rate := Cultivation.rate_per_hour(p, GS.stats, GS.location)
 			_text(Vector2(vs.x * 0.5, vs.y * 0.5 - 170.0 * s), "吐纳修炼中 · 修为 +%.1f / 时辰" % (rate * 2.0), 20 * s, C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, font_b)

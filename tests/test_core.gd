@@ -8,6 +8,30 @@ func _ok(c: bool, m: String) -> void:
 	runner.check(c, m)
 
 
+func test_all_scripts_compile() -> void:
+	var files: Array[String] = []
+	_collect_scripts("res://src", files)
+	_collect_scripts("res://tools/shots", files)
+	var bad: Array[String] = []
+	for f in files:
+		var s: Script = load(f)
+		if s == null or not s.can_instantiate():
+			bad.append(f)
+	_ok(files.size() > 30, "找到脚本 %d 个" % files.size())
+	_ok(bad.is_empty(), "编译失败的脚本：%s" % str(bad))
+
+
+func _collect_scripts(dir_path: String, out: Array[String]) -> void:
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return
+	for f in d.get_files():
+		if f.ends_with(".gd"):
+			out.append(dir_path + "/" + f)
+	for sub in d.get_directories():
+		_collect_scripts(dir_path + "/" + sub, out)
+
+
 func test_db_loads_without_errors() -> void:
 	_ok(DB.errors().is_empty(), "DB 加载错误: %s" % str(DB.errors()))
 	_ok(DB.realm_count() >= 3, "至少 3 个大境界")

@@ -21,6 +21,14 @@ var heal_pills: int = 2
 var passive: bool = true
 ## 跟随对象（同伴 / 护送）
 var follow: Node3D = null
+## 秘境寻宝者：在各容器间搜刮
+var looter: bool = false
+## 初次见到玩家时翻脸的几率（秘境中的劫修）
+var hostile_chance: float = 0.0
+
+var _loot_target: LootContainer = null
+var _loot_t: float = 0.0
+var _seen_player: bool = false
 
 var _think_t: float = 0.0
 var _wander_to: Vector3 = Vector3.INF
@@ -91,6 +99,8 @@ func update_intents(a: HumanoidActor, delta: float) -> void:
 				a.in_face = _talk_face.global_position - a.global_position
 		"follow":
 			_follow(delta)
+		"loot":
+			_loot(delta)
 		"combat":
 			_combat(delta)
 		"flee":
@@ -110,14 +120,24 @@ func _think() -> void:
 		if target == null or not is_instance_valid(target) or tc == null or not tc.alive or not c.is_hostile_to(tc):
 			target = null
 			actor.lock_target = null
-			set_state("follow" if follow != null else "wander")
-		elif actor.global_position.distance_to(home) > leash and follow == null:
+			set_state(_idle_state())
+		elif actor.global_position.distance_to(home) > leash and follow == null and not looter:
 			target = null
 			actor.lock_target = null
 			set_state("wander")
 		return
 	if state == "flee":
 		return
+	# 秘境劫修：第一次看到玩家时决定是否动手
+	if hostile_chance > 0.0 and not _seen_player:
+		var pl := get_tree().get_first_node_in_group("player") as Node3D
+		if pl != null and pl.global_position.distance_to(actor.global_position) < 18.0:
+			_seen_player = true
+			if randf() < hostile_chance:
+				var pc := CombatUtil.combatant_of(pl)
+				c.add_grudge(pc)
+				engage(pl)
+				return
 	# 寻敌：主动型寻找所有敌对单位，被动型只理会对自己有私仇者
 	var best: Node3D = null
 	var bd := aggro_range
@@ -136,6 +156,51 @@ func _think() -> void:
 			best = body
 	if best != null:
 		engage(best)
+
+
+func _idle_state() -> String:
+	if follow != null:
+		return "follow"
+	if looter:
+		return "loot"
+	return "wander"
+
+
+func _loot(delta: float) -> void:
+	if _loot_target == null or not is_instance_valid(_loot_target) or _loot_target.searched:
+		_loot_target = null
+		_loot_t = 0.0
+		var best: LootContainer = null
+		var bd := 90.0
+		for n in get_tree().get_nodes_in_group("loot_container"):
+			var lc := n as LootContainer
+			if lc == null or lc.searched or lc.has_meta("claimed_by"):
+				continue
+			var dd := lc.global_position.distance_to(actor.global_position)
+			if dd < bd:
+				bd = dd
+				best = lc
+		if best == null:
+			_wander(delta)
+			return
+		_loot_target = best
+		best.set_meta("claimed_by", actor.get_instance_id())
+	var to := _loot_target.global_position - actor.global_position
+	to.y = 0.0
+	if to.length() > 1.8:
+		actor.in_move = to.normalized()
+		actor.in_boost = to.length() > 20.0 and actor.combatant.qi > actor.combatant.stat("max_qi") * 0.5
+		if actor.is_on_wall() and actor.grounded:
+			actor.in_jump = true
+		_loot_t = 0.0
+		return
+	_loot_t += delta
+	if _loot_t > 0.2 and actor.rig != null and actor.rig.current_action() != "search":
+		actor.rig.play("search")
+	if _loot_t >= _loot_target.search_time * 1.3:
+		_loot_target.loot_all_into(actor.pd.bag)
+		actor.rig.stop_action()
+		_loot_target = null
 
 
 func _wander(delta: float) -> void:

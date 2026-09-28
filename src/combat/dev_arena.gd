@@ -25,7 +25,8 @@ func _ready() -> void:
 	spawn_enemies(3)
 	session.player_died.connect(func() -> void:
 		await get_tree().create_timer(2.5).timeout
-		get_tree().reload_current_scene())
+		if is_inside_tree() and get_tree().current_scene == self:
+			get_tree().reload_current_scene())
 
 
 func spawn_enemies(n: int) -> void:

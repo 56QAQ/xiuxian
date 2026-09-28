@@ -34,3 +34,4 @@ signal close_panels
 signal dialogue_requested(npc_id: String, context: Dictionary)
 signal interaction_prompt(text: String)      ## 空字符串表示隐藏
 signal search_progress(progress: float)      ## <0 表示隐藏
+signal hud_objective(text: String)           ## 屏幕上方的目标/计时文本（空字符串隐藏）

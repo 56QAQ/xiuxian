@@ -153,3 +153,18 @@ static func spawn_cultivator(parent: Node, pd: PlayerData, pos: Vector3, faction
 	a.controller = ai
 	a.rotation.y = randf() * TAU
 	return a
+
+
+## 生成妖兽
+static func spawn_beast(parent: Node, enemy_id: String, pos: Vector3, level_bonus: int = 0) -> BeastActor:
+	var b := BeastActor.new()
+	b.name = "Beast"
+	parent.add_child(b)
+	b.global_position = pos
+	b.setup(enemy_id, level_bonus)
+	var ai := BeastAI.new()
+	ai.home = pos
+	ai.aggro = float(b.def.get("aggro", 24.0))
+	b.ai = ai
+	b.rotation.y = randf() * TAU
+	return b
