@@ -9,6 +9,8 @@ uniform float amount = 0.0;
 uniform float pulse = 0.0;         // 心跳（0..1），由脚本驱动
 uniform float aspect = 1.7778;
 
+float gauss(float x) { return exp(-x * x); }
+
 void fragment() {
 	vec2 q = (UV - 0.5) * 2.0;                 // -1..1
 	// 超椭圆距离：0 = 中心，1 = 屏幕边（四角圆润）
@@ -26,7 +28,7 @@ void fragment() {
 	// 浓淡：边缘最浓，向前沿渐淡；前沿积墨
 	float t = clamp(d / max(front, 0.001), 0.0, 1.0);
 	float dens = mix(0.85, 0.28, smoothstep(0.0, 1.0, t)) * (0.75 + 0.35 * n2);
-	float rim = exp(-pow((d - front) / 0.01, 2.0)) * 0.3;
+	float rim = gauss((d - front) / 0.01) * 0.3;
 	// 前沿之外再淡淡晕开一层水渍
 	float wash = (1.0 - smoothstep(front, front + 0.08, d)) * 0.12;
 	float alpha = (inside * (dens + rim) + wash) * clamp(amount * 2.2, 0.0, 1.0);

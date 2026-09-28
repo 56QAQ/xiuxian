@@ -105,8 +105,8 @@ func _draw_values(ci: RID, fd: Font, c: Vector2, r: float, s: float, cb: Combata
 	InkArt.text(ci, fd, qi_p + Vector2(0, 8.0 * s), str(int(cb.qi)), int(28 * s), qcol, 0, OUTLINE, int(5 * s))
 	# 小字标签
 	var fb := UITheme.font_title()
-	InkArt.text(ci, fb, hp_p + Vector2(0, 26.0 * s), "气血", int(13 * s), Color(1.0, 0.8, 0.72, 0.75), 2, OUTLINE, int(3 * s))
-	InkArt.text(ci, fb, qi_p + Vector2(0, 26.0 * s), "灵力", int(13 * s), Color(0.8, 0.93, 1.0, 0.75), 0, OUTLINE, int(3 * s))
+	InkArt.text(ci, fb, hp_p + Vector2(0, 26.0 * s), "气血", int(14 * s), Color(1.0, 0.82, 0.74, 0.85), 2, OUTLINE, maxi(int(4 * s), 3))
+	InkArt.text(ci, fb, qi_p + Vector2(0, 26.0 * s), "灵力", int(14 * s), Color(0.82, 0.94, 1.0, 0.85), 0, OUTLINE, maxi(int(4 * s), 3))
 	if cb.shield > 0.5:
 		var top := c + Vector2(0, -r - 44.0 * s)
 		InkArt.text(ci, fd, top, str(int(cb.shield)), int(20 * s), GOLD_LIT, 1, OUTLINE, int(4 * s))
@@ -115,7 +115,7 @@ func _draw_values(ci: RID, fd: Font, c: Vector2, r: float, s: float, cb: Combata
 # ---------------------------------------------------------------- 速度 / 高度 / 推进 / 御空
 func _draw_motion(ci: RID, fd: Font, c: Vector2, r: float, s: float, a: HumanoidActor) -> void:
 	var fb := UITheme.font_title()
-	var col := Color(0.97, 0.94, 0.86, 0.78)
+	var col := Color(0.98, 0.95, 0.88, 0.9)
 	# 速度 / 高度：左右两侧竖排（AC 式左右刻度的位置）
 	var rv := r + 62.0 * s
 	var lp := c + Vector2(cos(deg_to_rad(198.0)), sin(deg_to_rad(198.0))) * rv
@@ -140,8 +140,8 @@ func _draw_motion(ci: RID, fd: Font, c: Vector2, r: float, s: float, a: Humanoid
 
 ## 竖排小标签：书法单字 + 下方数字
 func _vlabel(ci: RID, fd: Font, fb: Font, top: Vector2, glyph: String, value: String, s: float, col: Color) -> void:
-	InkArt.vtext(ci, fd, top, glyph, int(17 * s), col, 0.0, OUTLINE, int(3 * s))
-	InkArt.text(ci, fb, top + Vector2(0, 34.0 * s), value, int(13 * s), col, 1, OUTLINE, int(3 * s))
+	InkArt.vtext(ci, fd, top, glyph, int(19 * s), col, 0.0, OUTLINE, maxi(int(5 * s), 3))
+	InkArt.text(ci, fd, top + Vector2(0, 38.0 * s), value, int(17 * s), col, 1, OUTLINE, maxi(int(4 * s), 3))
 
 
 # ---------------------------------------------------------------- 状态印章

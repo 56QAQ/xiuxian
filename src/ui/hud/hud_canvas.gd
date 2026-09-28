@@ -74,7 +74,9 @@ func _draw_lock(ci: RID, vs: Vector2, s: float) -> void:
 	var realm := DB.realm_name(tc.realm, tc.stage)
 	var fb := UITheme.font_title()
 	var nw := fd.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, name_fs).x
-	var sub := "%s · %d丈" % [realm, int(d / 3.3)]
+	# 距离以“丈”计（1 丈 ≈ 3.33 米），近处保留一位小数
+	var zhang := d / 3.33
+	var sub := "%s · %s丈" % [realm, ("%.1f" % zhang) if zhang < 10.0 else str(int(zhang))]
 	var subw := fb.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * s)).x
 	var pw := maxf(maxf(nw, subw) + 64.0 * s, 170.0 * s)
 	var ph := 62.0 * s

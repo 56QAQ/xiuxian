@@ -17,6 +17,8 @@ uniform float fade = 1.0;          // 整体淡入淡出
 
 const float SPAN = 144.0;
 
+float gauss(float x) { return exp(-x * x); }
+
 float sat(float x) { return clamp(x, 0.0, 1.0); }
 
 vec4 over(vec4 under, vec4 top) {
@@ -60,16 +62,16 @@ void fragment() {
 		}
 	}
 	// 外侧淡墨晕（亮背景上托住玉环）
-	float halo = exp(-pow((abs(dr) - hw_band - 2.5) / 2.5, 2.0)) * (1.0 - band);
+	float halo = gauss((abs(dr) - hw_band - 2.5) / 2.5) * (1.0 - band);
 	col = over(vec4(0.02, 0.03, 0.03, halo * 0.28 * disc_alpha * 2.0), col);
 	// 金色描边（内外细线）
-	float rim_o = exp(-pow((dr - hw_band) / 0.75, 2.0));
-	float rim_i = exp(-pow((dr + hw_band) / 0.75, 2.0));
+	float rim_o = gauss((dr - hw_band) / 0.75);
+	float rim_i = gauss((dr + hw_band) / 0.75);
 	col = over(col, vec4(0.96, 0.84, 0.55, (rim_o * 0.75 + rim_i * 0.55) * disc_alpha * 2.2));
 
 	// 内圈罗盘刻度：细金线 + 每 15° 一刻、每 45° 长刻
 	float r_in = ring_r - hw_band - 6.0;
-	float bez = exp(-pow((r - r_in) / 0.7, 2.0));
+	float bez = gauss((r - r_in) / 0.7);
 	float da15 = abs(fract(a360 / 15.0 + 0.5) - 0.5) * 15.0;
 	float da45 = abs(fract(a360 / 45.0 + 0.5) - 0.5) * 45.0;
 	float tick_w = 1.0 - smoothstep(0.45, 1.1, radians(da15) * r);
@@ -101,6 +103,10 @@ void fragment() {
 		// 失血残痕：暗赭色
 		float lag_in = step(hp, t_hp) * step(t_hp, hp_lag) * (1.0 - smoothstep(hw_band * 0.75 - 1.0, hw_band * 0.75 + 0.4, abs(dr)));
 		col = over(col, vec4(0.3, 0.1, 0.06, lag_in * 0.85 * (0.75 + 0.25 * streak)));
+		// 墨边：笔触外沿一圈淡墨，压在红色背景（如红发、火光）上仍能分辨
+		float halo_in = 1.0 - smoothstep(hw + 0.6, hw + 2.6, abs(dr));
+		float halo_a = halo_in * (1.0 - inside) * smoothstep(-0.01, 0.01, t_hp) * step(t_hp, hp + 0.004) * step(0.001, hp);
+		col = over(col, vec4(0.08, 0.02, 0.01, halo_a * 0.55));
 		col = over(col, vec4(ink, a_hp));
 	}
 
@@ -111,16 +117,16 @@ void fragment() {
 		float hw = hw_band * 0.66;
 		float inside = (1.0 - smoothstep(hw - 1.0, hw + 0.4, abs(dr))) * smoothstep(-0.01, 0.004, t_qi);
 		float lvl = qi;
-		float fill = inside * smoothstep(lvl + 0.004, lvl - 0.004, t_qi) * step(0.001, qi);
+		float fill = inside * (1.0 - smoothstep(lvl - 0.004, lvl + 0.004, t_qi)) * step(0.001, qi);
 		float flow = texture(noise_tex, vec2(along / 160.0 - TIME * 0.35, dr / 40.0 + 0.2)).r;
 		float flow2 = texture(noise_tex, vec2(along / 70.0 - TIME * 0.8, dr / 18.0 + 0.6)).b;
 		vec3 liq = mix(vec3(0.05, 0.3, 0.72), vec3(0.34, 0.8, 1.0), smoothstep(0.25, 0.8, flow));
 		// 流光：沿流动方向的亮纹
 		liq = mix(liq, vec3(0.85, 0.98, 1.0), smoothstep(0.62, 0.9, flow2) * 0.55);
 		// 管壁高光（偏外侧的一道亮线）
-		liq += vec3(0.35, 0.45, 0.5) * exp(-pow((dr - hw * 0.35) / 1.2, 2.0)) * 0.7;
+		liq += vec3(0.35, 0.45, 0.5) * gauss((dr - hw * 0.35) / 1.2) * 0.7;
 		// 液面：末端发光
-		float men = exp(-pow((t_qi - lvl) * circ / 3.0, 2.0)) * inside;
+		float men = gauss((t_qi - lvl) * circ / 3.0) * inside;
 		if (burn > 0.5) {
 			float fl = 0.55 + 0.45 * sin(TIME * 18.0);
 			liq = mix(liq, vec3(1.0, 0.28, 0.22), 0.75 * fl);
