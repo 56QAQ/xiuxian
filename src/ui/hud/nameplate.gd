@@ -103,6 +103,12 @@ func refresh() -> void:
 func _process(delta: float) -> void:
 	if combatant == null or label == null:
 		return
+	# 被锁定时立即隐去（悬牌接替），不等渐隐
+	if _is_locked():
+		if _alpha > 0.0:
+			_set_alpha(0.0)
+		_target_alpha = 0.0
+		return
 	_check_t -= delta
 	if _check_t <= 0.0:
 		_check_t = 0.12
@@ -121,11 +127,19 @@ func _visibility() -> float:
 		return 1.0
 	if _player == null or not is_instance_valid(_player):
 		_player = get_tree().get_first_node_in_group("player") as Node3D
-	# 被锁定时由 HUD 悬牌显示名号，头顶名牌隐去以免重复
-	if _player is HumanoidActor and (_player as HumanoidActor).lock_target == get_parent():
+	if _is_locked():
 		return 0.0
 	var d := cam.global_position.distance_to(global_position)
 	return 1.0 - smoothstep(SHOW_NEAR, SHOW_FAR, d)
+
+
+## 被玩家锁定：由 HUD 悬牌显示名号，头顶名牌隐去以免重复
+func _is_locked() -> bool:
+	if _player == null or not is_instance_valid(_player):
+		if not is_inside_tree():
+			return false
+		_player = get_tree().get_first_node_in_group("player") as Node3D
+	return _player is HumanoidActor and (_player as HumanoidActor).lock_target == get_parent()
 
 
 func _set_alpha(a: float) -> void:

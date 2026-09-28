@@ -36,6 +36,9 @@ func step(_root: Node, i: int) -> void:
 			_darken()
 		for e in arena.enemies:
 			(e as Node).process_mode = Node.PROCESS_MODE_DISABLED
+			# 名牌仍需逐帧计算显隐
+			if (e as HumanoidActor).nameplate != null:
+				(e as HumanoidActor).nameplate.process_mode = Node.PROCESS_MODE_ALWAYS
 		# 敌人排开在玩家前方
 		var slots := [Vector3(-3.5, 0.5, 1.5), Vector3(0.6, 0.5, -1.0), Vector3(4.5, 0.5, 2.0)]
 		for k in arena.enemies.size():

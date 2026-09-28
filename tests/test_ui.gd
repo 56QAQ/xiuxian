@@ -514,7 +514,10 @@ func test_hud_states() -> void:
 	var c := p.combatant
 	for e in arena.enemies:
 		(e as Node).process_mode = Node.PROCESS_MODE_DISABLED
+		(e as HumanoidActor).nameplate.process_mode = Node.PROCESS_MODE_ALWAYS
 	var tgt: HumanoidActor = arena.enemies[0]
+	var other: HumanoidActor = arena.enemies[1]
+	other.global_position = p.global_position + Vector3(2.0, 0.0, -4.0)
 	p.lock_target = tgt
 	c.invuln = 99.0
 	c.apply_status("burn", 3, null)
@@ -553,6 +556,7 @@ func test_hud_states() -> void:
 	for i in 20:
 		await get_tree().process_frame
 	_ok(tgt.nameplate != null and not tgt.nameplate.label.visible, "锁定目标名牌隐去")
+	_ok(other.nameplate != null and other.nameplate.label.visible, "近处未锁定修士显示名牌")
 	# 目标提示、交互提示、搜索进度
 	Events.hud_objective.emit("寻找宝物，在秘境崩塌前撤离")
 	Events.interaction_prompt.emit("E  交谈")
