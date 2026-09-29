@@ -64,8 +64,10 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
   - 部件以 VoxCanvas 绘制、VoxMesh 网格化（隐藏面剔除 + AO + 二维贪心合并 + 按参数缓存）。缺失部件在 WorkerThreadPool（高优先级）并行生成；同步构建只等近景 LOD0，远景 LOD1（2× 降采样）随后在后台生成，由 `VoxMesh.poll()`（CharacterRig 每帧调用）填入；`VoxMesh.finish_pending()` 阻塞等待全部完成。
   - LOD：每个部件两个 MeshInstance3D，visibility range 在约 22m 处切换（`VoxMesh.lod_distance`）。
   - 材质通道：体素低 8 位为属性字节（材质 << 4 | 发光等级），经顶点色 alpha 传给 `assets/shaders/voxel_char.gdshader`：布、皮肤（包裹光 + 次表面暖色）、头发（各向异性光泽）、金饰/钢银（GGX 金属高光）、宝石（高光 + 微自发光）、皮革、毛皮、眼睛、石、鳞角、丝绸、玉、火焰；另有菲涅尔边缘光。instance uniform 与 voxel.gdshader 相同（`flash`、`flash_color`、`dissolve`、`tint`）。
+    兼容渲染器下这四个参数是普通 uniform（`#if CURRENT_RENDERER == RENDERER_COMPATIBILITY`）：该渲染器全场只有约 256 个实例能用 instance uniform，每个角色有 20 多个部件实例，十来个人就会溢出。`CharacterRig._apply_instance_param()` 在首次闪白/消散时复制一份材质，作为 `material_override` 挂到本角色带 meta `vox` 的部件上（VoxMesh.attach 标记）。
 - **WeaponBuilder.build(visual, hand) -> Node3D**：meta `tip_length`；`attach_to_rig(rig, visual)`（拳套双手）；旗枪旗面与流苏有摆动。visual.length 仍为旧单位（0.025m），内部 ×2。
 - **BeastBuilder.build(model, colors, size) -> BeastRig**（另有 `build_async` 同参数）：wolf fox boar bear snake crane spider golem；体型 quad/serpent/bird/spider/humanoid 各有步态；剪辑 bite pounce charge slam spit hit_front stagger death howl（`BeastRig.hit_time()` 给出出手帧）。
+- **HumanoidActor / BeastActor** 用 `build_async` 建模：换装时旧模型保留（冻结在原姿势）直到新网格就绪，避免闪烁；`Scenes.change_to()`、退出与截图前调用 `VoxMesh.finish_pending()` 收尾后台任务。
 - **RigPreview**（src/ui）：捏人/角色面板/对话头像共用的影棚预览；取景 `full`/`upper`/`bust`（面容特写）/`face`。
 
 ## 大地图（src/world）

@@ -1,6 +1,6 @@
 # 问道长生
 
-修仙开放世界 RPG（Godot 4）。体素画风、AC4 式高速斗法、五行灵根构筑、秘境搜打撤、门派与 NPC 羁绊。
+修仙开放世界 RPG（Godot 4），当前版本 v0.15「初入仙途 · 画卷」。体素画风、AC4 式高速斗法、五行灵根构筑、秘境搜打撤、门派与 NPC 羁绊。
 
 - 设计文档：[docs/GDD.md](docs/GDD.md)
 - 技术架构：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -43,11 +43,12 @@ tools/run_tests.sh /path/to/godot           # 无头测试（任何脚本错误�
 tools/shot.sh /path/to/godot combat out.png --size=1600x900   # 截图（需要 xvfb；镜头脚本见 tools/shots/）
 python3 tools/gen_sfx.py && python3 tools/gen_music.py        # 重新生成音效与音乐
 python3 tools/subset_font.py LXGWWenKai-Regular.ttf LXGWWenKai-Medium.ttf  # 更新字体子集
+python3 tools/gen_ui_textures.py && python3 tools/gen_world_textures.py && python3 tools/gen_vfx_textures.py  # 重新生成界面/方块/特效贴图
 ```
 
 导出发布版时，请在导出预设的“非资源文件过滤”中加入 `data/*.json`。
 
 ## 许可
 
-字体 XianKai 为霞鹜文楷（LXGW WenKai）的子集，遵循 SIL OFL 1.1，见 `assets/fonts/`。
-音效与音乐由 `tools/` 下的脚本程序化生成。
+字体 XianKai 为霞鹜文楷（LXGW WenKai）的子集，XianShu 为马善政（Ma Shan Zheng）的子集，均遵循 SIL OFL 1.1，见 `assets/fonts/`。
+音效、音乐与贴图由 `tools/` 下的脚本程序化生成。
