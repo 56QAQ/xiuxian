@@ -101,7 +101,7 @@ static func configure(p: CPUParticles3D, preset: String) -> void:
 		_:
 			p.mesh = VfxLib.quad()
 	var mat_name := str(d.get("mat", "glow"))
-	p.material_override = VfxLib.debris_mat() if mat_name == "debris" else VfxLib.particle_mat(mat_name)
+	p.material_override = VfxLib.debris_mat() if mat_name == "debris" else VfxLib.emitter_mat(mat_name)
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.lifetime = float(d.get("life", 0.5))
 	p.explosiveness = 1.0

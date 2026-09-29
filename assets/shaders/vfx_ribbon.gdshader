@@ -15,7 +15,7 @@ uniform float streak_amount = 0.55;
 uniform float scroll = 1.5;
 uniform float near_fade = 1.0;
 uniform int fire = 0;
-instance uniform float fade = 1.0;
+uniform float fade = 1.0;  // 常规参数（不占用实例参数槽位）；逐条带透明度由顶点色控制
 
 void fragment() {
 	float age = UV.x;

@@ -33,7 +33,10 @@ void fragment() {
 	// 尾部先消散（带噪声的溶解边）
 	float dissolve = smoothstep(prog * 1.25 - 0.1, prog * 1.25 + 0.15, u + (n2 - 0.5) * 0.35);
 	float life = 1.0 - smoothstep(0.55, 1.0, prog);
-	float a = (body * (0.55 + n * 0.6) + edge * 1.6) * dissolve * life;
+	// 沿弧向拉长的气丝纹理，避免月牙成为一整块实心薄片
+	float fil = texture(noise_tex, vec2(u * 0.6 - prog * 0.5, v * 7.0 + 0.3)).g;
+	fil = smoothstep(0.35, 0.75, fil);
+	float a = (body * (0.08 + n * 0.22 + fil * 0.4) + edge * 1.6) * dissolve * life;
 	a *= vfx_near_fade(-VERTEX.z, near_fade);
 	vec3 col = tint.rgb;
 	vec3 c;

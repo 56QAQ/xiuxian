@@ -141,6 +141,17 @@ static func particle_mat(name: String) -> ShaderMaterial:
 	return _make(key, "particle", params)
 
 
+## 粒子发射器材质：与 particle_mat 同参数，但着色器不声明实例参数（颜色全部来自粒子颜色），
+## 避免对象池里大量常驻发射器占满 Compatibility 渲染器的实例参数缓冲
+static func emitter_mat(name: String) -> ShaderMaterial:
+	var key := "em:" + name
+	var c := _cache()
+	if c.has(key):
+		return c[key]
+	var params: Dictionary = PARTICLE_MATS.get(name, PARTICLE_MATS["glow"])
+	return _make(key, "particle_emit", params)
+
+
 static func ribbon_mat(profile: String) -> ShaderMaterial:
 	match profile:
 		"blade":
@@ -438,7 +449,8 @@ static func rock(variant: int, molten: bool = false) -> ArrayMesh:
 					if molten and rng.randf() < 0.24:
 						col = VoxelGrid.glow(Color(1.0, 0.3 + rng.randf() * 0.18, 0.04), 0.45)
 					g.set_color(x, y, z, col)
-	var m := VoxelMesher.build(g, 1.0 / 5.0, Vector3(-0.6, -0.5, -0.6))
+	# 静态体素材质：特效体素不需要受击闪白，也不占用实例参数槽位
+	var m := BuildingMesh.use_static(VoxelMesher.build(g, 1.0 / 5.0, Vector3(-0.6, -0.5, -0.6)))
 	c[key] = m
 	return m
 
@@ -457,7 +469,7 @@ static func leaf_mesh() -> ArrayMesh:
 				var mid := absf(x - 3.0) < 0.5
 				var col := Color(0.55, 1.0, 0.45) if mid else Color(0.25, 0.8, 0.3).lerp(Color(0.5, 0.95, 0.35), v)
 				g.set_color(x, 0, z, VoxelGrid.glow(col, 0.55 if mid else 0.3))
-	var m := VoxelMesher.build(g, 0.045, Vector3(-3.5, -0.5, -6.0) * 0.045)
+	var m := BuildingMesh.use_static(VoxelMesher.build(g, 0.045, Vector3(-3.5, -0.5, -6.0) * 0.045))
 	c["m:leaf"] = m
 	return m
 
@@ -481,48 +493,71 @@ static func crow_mesh() -> ArrayMesh:
 		g.fill_box(Vector3i(8 + i, 1 + (1 if i >= 3 else 0), 3), Vector3i(8 + i, 1 + (1 if i >= 3 else 0), 5 - (1 if i >= 2 else 0)), dark if i >= 3 else mid)
 	# 尾羽
 	g.fill_box(Vector3i(5, 1, 7), Vector3i(7, 1, 8), dark)
-	var m := VoxelMesher.build(g, 0.07, Vector3(-6.5, -1.5, -4.5) * 0.07)
+	var m := BuildingMesh.use_static(VoxelMesher.build(g, 0.07, Vector3(-6.5, -1.5, -4.5) * 0.07))
 	c["m:crow"] = m
 	return m
 
 
+## 程序化飞剑（陨落飞剑、御剑术）：首次用 WeaponBuilder 生成后缓存网格，之后只实例化 MeshInstance3D
+static func sword_node(blade_html: String, length: int = 28) -> Node3D:
+	var key := "m:sword:%s:%d" % [blade_html, length]
+	var c := _cache()
+	if not c.has(key):
+		var w := WeaponBuilder.build({"kind": "sword", "length": length, "blade": blade_html, "guard": "#e0c060", "glow": "metal"})
+		var parts: Array = []
+		_collect_parts(w, Transform3D.IDENTITY, parts)
+		w.free()
+		c[key] = parts
+	var root := Node3D.new()
+	for part in c[key]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = part[0]
+		mi.transform = part[1]
+		# 没有专用材质的部件改用静态体素材质（不占用实例参数槽位）
+		mi.material_override = part[2] if part[2] != null else BuildingMesh.static_material()
+		root.add_child(mi)
+	return root
+
+
+static func _collect_parts(n: Node, xf: Transform3D, out: Array) -> void:
+	for ch in n.get_children():
+		if ch is Node3D:
+			var cxf := xf * (ch as Node3D).transform
+			if ch is MeshInstance3D and (ch as MeshInstance3D).mesh != null:
+				out.append([(ch as MeshInstance3D).mesh, cxf, (ch as MeshInstance3D).material_override])
+			_collect_parts(ch, cxf, out)
+
+
 ## 贴合地面的网格（圆盘/方形，n×n 顶点），用于地面贴花、领域、预警法阵。
-## 顶点高度通过向下射线取得；uv_rot 旋转贴图。返回网格的局部原点位于 center。
+## 顶点高度通过向下射线取得（先探测中心与四角，平地时只用一个四边形）；uv_rot 旋转贴图。返回网格的局部原点位于 center。
 static func ground_mesh(center: Vector3, radius: float, n: int = 9, uv_rot: float = 0.0, lift: float = 0.06) -> ArrayMesh:
-	var heights := PackedFloat32Array()
-	heights.resize(n * n)
 	var flat := true
-	var first := 0.0
-	for j in n:
-		for i in n:
-			var lx := (float(i) / (n - 1) * 2.0 - 1.0) * radius
-			var lz := (float(j) / (n - 1) * 2.0 - 1.0) * radius
-			var p := center + Vector3(lx, 0, lz)
-			var h := 0.0
-			var hit := CombatUtil.ray_world(p + Vector3.UP * 3.0, p + Vector3.DOWN * 4.0)
-			if not hit.is_empty():
-				h = (hit["position"] as Vector3).y - center.y
-			heights[j * n + i] = h
-			if i == 0 and j == 0:
-				first = h
-			elif absf(h - first) > 0.03:
-				flat = false
+	var first := _ground_h(center, 0.0, 0.0)
+	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1), Vector2(0, 1), Vector2(1, 0)]:
+		if absf(_ground_h(center, corner.x * radius, corner.y * radius) - first) > 0.03:
+			flat = false
+			break
+	var heights := PackedFloat32Array()
 	if flat:
 		n = 2
+	else:
+		heights.resize(n * n)
+		for j in n:
+			for i in n:
+				heights[j * n + i] = _ground_h(center, (float(i) / (n - 1) * 2.0 - 1.0) * radius, (float(j) / (n - 1) * 2.0 - 1.0) * radius)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var cr := cos(uv_rot)
 	var sr := sin(uv_rot)
 	var verts: Array[Vector3] = []
 	var uvs: Array[Vector2] = []
-	var src_n := int(sqrt(heights.size()))
 	for j in n:
 		for i in n:
 			var fx := float(i) / (n - 1)
 			var fz := float(j) / (n - 1)
 			var h := first
 			if not flat:
-				h = heights[j * src_n + i]
+				h = heights[j * n + i]
 			verts.append(Vector3((fx * 2.0 - 1.0) * radius, h + lift, (fz * 2.0 - 1.0) * radius))
 			var u := fx - 0.5
 			var v := fz - 0.5
@@ -535,3 +570,10 @@ static func ground_mesh(center: Vector3, radius: float, n: int = 9, uv_rot: floa
 				st.set_normal(Vector3.UP)
 				st.add_vertex(verts[idx])
 	return st.commit()
+
+
+## 相对 center 的地面高度（射线检测世界，没有地面时为 0）
+static func _ground_h(center: Vector3, lx: float, lz: float) -> float:
+	var p := center + Vector3(lx, 0, lz)
+	var hit := CombatUtil.ray_world(p + Vector3.UP * 3.0, p + Vector3.DOWN * 4.0)
+	return (hit["position"] as Vector3).y - center.y if not hit.is_empty() else 0.0

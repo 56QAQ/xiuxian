@@ -28,14 +28,18 @@ func _actor(pos: Vector3, weapon: String = "sword_iron") -> HumanoidActor:
 func test_vfx_resources() -> void:
 	for t in ["glow", "flare", "spark", "mote", "smoke", "flame", "noise", "ribbon", "circle", "glyphs", "crack", "scorch", "frost", "leaf", "shard", "talisman", "hex"]:
 		_ok(VfxLib.tex(t) != null, "特效贴图 %s" % t)
-	for s in ["particle", "ribbon", "slash", "ring", "circle", "beam", "energy", "ice", "shield", "decal", "field", "ghost", "screen"]:
+	for s in ["particle", "particle_emit", "ribbon", "slash", "ring", "circle", "beam", "energy", "ice", "shield", "decal", "field", "ghost", "screen", "distort"]:
 		_ok(VfxLib.shader(s) != null, "特效着色器 %s" % s)
 	for m in VfxLib.PARTICLE_MATS:
 		_ok(VfxLib.particle_mat(m) is ShaderMaterial, "粒子材质 %s" % m)
+		_ok(VfxLib.emitter_mat(m) is ShaderMaterial, "发射器材质 %s" % m)
 	for p in VfxParticles.PRESETS:
 		var n := CPUParticles3D.new()
 		VfxParticles.configure(n, p)
 		_ok(n.mesh != null and n.material_override != null, "粒子预设 %s" % p)
+		# 发射器不使用带实例参数的精灵着色器（Compatibility 渲染器实例参数槽位有限）
+		var sm := n.material_override as ShaderMaterial
+		_ok(sm == null or sm.shader != VfxLib.shader("particle"), "粒子预设 %s 使用发射器着色器" % p)
 		n.free()
 
 

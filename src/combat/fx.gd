@@ -399,7 +399,8 @@ static func hit(point: Vector3, dir: Vector3, elem: String, strength: float = 1.
 	var d := dir.normalized() if dir.length_squared() > 0.01 else Vector3.UP
 	var heavy := strength >= 1.5
 	flash(point, main, 0.55 + strength * 0.3, 0.1 + strength * 0.03)
-	cam_ring(point, 0.35 + strength * 0.25, main, 0.16, 0.3)
+	# 沿攻击方向的冲击波环（斜视为椭圆，读作方向性的冲击而不是气泡）
+	shock_ring(point + d * 0.15, 0.35 + strength * 0.22, main, 0.16, 0.3, d, 0, 0.3)
 	var spark_col: Color = core.lerp(main, 0.35)
 	VfxParticles.burst("spark", point, spark_col, int(8 + strength * 6), {"dir": (d + Vector3.UP * 0.25).normalized(), "spread": 55.0, "speed": 0.9 + strength * 0.25})
 	VfxParticles.burst("glow", point, main, int(3 + strength * 2), {"speed": 0.8, "size": 0.9})

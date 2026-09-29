@@ -272,7 +272,7 @@ func _panel_move() -> void:
 	total = 60
 	_look(Vector3(0, 3.2, 12), Vector3(0, 1.4, 0), 56.0)
 	# 疾行：从左向右
-	var runner := _actor(Vector3(-11, 0, -1), "flag_spear_fire", -90.0, "xuesha", 31)
+	var runner := _actor(Vector3(-16, 0, -1), "flag_spear_fire", -90.0, "xuesha", 31)
 	runner.bolt_element = "fire"
 	_label("疾行尾流", Vector3(-3, 2.8, -1))
 	_every.append(func(_fr: int) -> void:
@@ -290,13 +290,13 @@ func _panel_move() -> void:
 	var hover := _actor(Vector3(-5, 2.5, 2), "sword_green", 20.0, "xuesha", 33)
 	hover.bolt_element = "metal"
 	_label("御空", Vector3(-5, 4.9, 2))
-	var asc := _actor(Vector3(9, 1.5, 0), "spear_bamboo", -20.0, "xuesha", 34)
+	var asc := _actor(Vector3(9, 0, 0), "spear_bamboo", -20.0, "xuesha", 34)
 	asc.bolt_element = "wood"
-	_label("升空", Vector3(9, 4.6, 0))
-	_every.append(func(_fr: int) -> void:
+	_label("升空", Vector3(9, 4.2, 0))
+	_every.append(func(fr: int) -> void:
 		hover.hovering = true
 		hover.combatant.qi = hover.combatant.stat("max_qi")
-		asc.in_jump_held = true
+		asc.in_jump_held = fr > total - 22
 		asc.combatant.qi = asc.combatant.stat("max_qi"))
 	# 蓄力灵气弹
 	var ch := _actor(Vector3(0.5, 0, 3), "fist_wraps", 200.0, "xuesha", 35)

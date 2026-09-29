@@ -1,7 +1,7 @@
 extends RefCounted
 ## 特效性能采样：试炼场 1 名玩家（自动出招、放法诀、瞬步）对 3 名修士 + 6 头妖兽。
 ## 每 10 帧统计一次特效节点、粒子、灯光、贴花、残影与渲染调用，结束时打印平均/峰值。
-## 模拟步长固定约 1/60 秒（同 vfx_gallery）。用法：tools/shot.sh <godot> vfx_perf out.png --size=1600x900
+## 模拟步长固定 1/60 秒（同 vfx_gallery）。用法：tools/shot.sh <godot> vfx_perf out.png --size=1600x900 [--frames=600]
 
 var arena: Node
 var total: int = 330
@@ -14,6 +14,9 @@ func frames() -> int:
 
 
 func build(root: Node) -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--frames="):
+			total = maxi(int(a.substr(9)), 60)
 	GS.active = false
 	arena = load("res://scenes/dev_arena.tscn").instantiate()
 	root.add_child(arena)
@@ -89,6 +92,19 @@ func _sample() -> Dictionary:
 		for g in r.find_children("*", "GeometryInstance3D", true, false):
 			if (g as GeometryInstance3D).is_visible_in_tree():
 				vfx_geo += 1
+	# 占用实例参数槽位的几何体（Compatibility 渲染器在 64 KB UBO 硬件上全场上限 256 个）
+	var iu_vfx := 0
+	var iu_all := 0
+	var vfx_set := {}
+	for r in roots:
+		vfx_set[r.get_instance_id()] = true
+		for g in r.find_children("*", "GeometryInstance3D", true, false):
+			vfx_set[g.get_instance_id()] = true
+	for g in tree.root.find_children("*", "GeometryInstance3D", true, false):
+		if _uses_instance_uniforms(g as GeometryInstance3D):
+			iu_all += 1
+			if vfx_set.has(g.get_instance_id()):
+				iu_vfx += 1
 	var ribbons := tree.root.find_children("*", "VfxRibbon", true, false).size()
 	var lights := 0
 	for n in tree.root.find_children("*", "OmniLight3D", true, false):
@@ -104,7 +120,23 @@ func _sample() -> Dictionary:
 		"objects": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 		"primitives": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
 		"combatants": tree.get_nodes_in_group("combatants").size(),
+		"iu_all": iu_all, "iu_vfx": iu_vfx,
 	}
+
+
+var _iu_cache := {}
+
+
+func _uses_instance_uniforms(g: GeometryInstance3D) -> bool:
+	var mat: Material = g.material_override
+	if mat == null and g is MeshInstance3D and (g as MeshInstance3D).mesh != null and (g as MeshInstance3D).mesh.get_surface_count() > 0:
+		mat = (g as MeshInstance3D).get_active_material(0)
+	if not (mat is ShaderMaterial) or (mat as ShaderMaterial).shader == null:
+		return false
+	var sh := (mat as ShaderMaterial).shader
+	if not _iu_cache.has(sh):
+		_iu_cache[sh] = sh.code.contains("\ninstance uniform")
+	return _iu_cache[sh]
 
 
 func _report() -> void:

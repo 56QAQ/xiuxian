@@ -202,7 +202,7 @@ static func nova(pos: Vector3, radius: float, elem: String, visual: String, colo
 	FX.flash(pos + Vector3.UP * 0.4, c, minf(r * 0.45, 3.0), 0.16)
 	FX.shock_ring(base + Vector3.UP * 0.15, r * 1.05, c, 0.45, 0.3, Vector3.UP, {"flame": 2, "frost": 1, "quake": 3}.get(visual, 0))
 	FX.shock_ring(base + Vector3.UP * 0.2, r * 1.3, c, 0.6, 0.08)
-	FX.magic_circle(base, r * 0.55, e, 0.7, {"reveal": 0.0, "spin": 4.0, "alpha": 1.0, "fade_in": 0.02, "fade_out": 0.5, "color": c})
+	FX.magic_circle(base, r * 0.55, e, 0.7, {"reveal": 0.0, "spin": 4.0, "alpha": 0.7, "fade_in": 0.02, "fade_out": 0.5, "color": c})
 	FX.flash_light(pos + Vector3.UP, c, 5.0, r * 2.5, 0.35)
 	match visual:
 		"blade":
@@ -211,9 +211,10 @@ static func nova(pos: Vector3, radius: float, elem: String, visual: String, colo
 		"frost":
 			_ice_ring(base, r, c)
 			VfxParticles.burst("mist", base + Vector3.UP * 0.3, Color(0.85, 0.95, 1.0), 14, {"shape": "ring", "shape_r": 0.6, "speed": 1.2 + r * 0.25, "size": 1.3})
-			FX.ground_decal(base, r * 0.95, "frost", 7.0, c, 1.0)
+			FX.ground_decal(base, r * 0.95, "frost", 7.0, c, 0.6)
 		"flame":
-			VfxParticles.burst("flame", base + Vector3.UP * 0.4, Color.WHITE, 36, {"shape": "ring", "shape_r": 0.5, "dir": Vector3.UP, "spread": 90.0, "speed": 1.8 + r * 0.55, "size": 1.3, "life": 0.9, "grav": Vector3(0, 2.5, 0)})
+			# 火环：贴地向外奔涌的火焰（径向加速度推动）
+			VfxParticles.burst("flame", base + Vector3.UP * 0.35, Color.WHITE, 40, {"shape": "ring", "shape_r": 0.6, "dir": Vector3.UP, "spread": 20.0, "speed": 0.4, "size": 1.4, "life": 0.85, "grav": Vector3(0, 1.5, 0), "radial": Vector2(r * 9.0, r * 12.0), "damp": Vector2(0.5, 1.0)})
 			VfxParticles.burst("ember", base + Vector3.UP * 0.5, Color(1, 0.8, 0.4), 30, {"spread": 90.0, "speed": 1.6 + r * 0.2})
 			VfxParticles.burst("smoke", base + Vector3.UP * 0.6, Color(0.2, 0.16, 0.14), 10, {"shape": "ring", "shape_r": r * 0.5, "size": 1.5, "life": 1.4})
 			FX.ground_decal(base, r * 0.9, "scorch", 8.0, Color(1.0, 0.4, 0.1), 1.6)
@@ -231,7 +232,7 @@ static func _blade_ring(center: Vector3, radius: float, c: Color) -> void:
 	var m := FX.mgr()
 	if m == null:
 		return
-	var n := 10
+	var n := 12
 	var off := randf() * TAU
 	for i in n:
 		var a := off + TAU * i / n
@@ -242,7 +243,7 @@ static func _blade_ring(center: Vector3, radius: float, c: Color) -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		m.add(mi)
 		mi.position = center + dir * 0.6 + Vector3.UP * randf_range(-0.3, 0.4)
-		mi.basis = FX._basis_fwd(dir).rotated(dir, randf_range(-0.5, 0.5)).scaled(Vector3.ONE * 1.1)
+		mi.basis = FX._basis_fwd(dir).rotated(dir, randf_range(-0.5, 0.5)).scaled(Vector3.ONE * 1.9)
 		mi.set_instance_shader_parameter("tint", c)
 		mi.set_instance_shader_parameter("prog", 0.0)
 		var t := 0.34
@@ -522,7 +523,7 @@ static func meteor(from: Vector3, to: Vector3, elem: String, time: float, size: 
 	var body: Node3D
 	match e:
 		"metal":
-			body = WeaponBuilder.build({"kind": "sword", "length": 30, "blade": "#fff2c8", "guard": "#e0b050", "glow": "metal"})
+			body = VfxLib.sword_node("#fff2c8", 30)
 			holder.add_child(body)
 			holder.basis = FX._basis_fwd(dir).scaled(Vector3.ONE * clampf(size * 1.4, 1.0, 3.0))
 			var r := VfxRibbon.create(holder, c, 0.35 * size, 0.18, "center")
@@ -554,7 +555,8 @@ static func meteor(from: Vector3, to: Vector3, elem: String, time: float, size: 
 			sm.scale_amount_max = 1.6 * size
 			VfxParticles.make("ember", 12, holder, Color(1, 0.8, 0.4))
 			FX.heat(from, size * 3.0, 0.0, holder)
-			var r3 := VfxRibbon.create(holder, c, size * 0.9, 0.16, "fire")
+			# 火尾短而宽（彗尾），避免高速下拉成细长激光
+			var r3 := VfxRibbon.create(holder, c, size * 1.4, 0.085, "fire")
 			if r3 != null:
 				r3.taper = 0.0
 			var gl := MeshInstance3D.new()
@@ -854,8 +856,7 @@ static func summon_visual(node: Node3D, elem: String, color: Color) -> void:
 	var e := elem if VfxLib.is_elem(elem) else "none"
 	match e:
 		"metal":
-			var w := WeaponBuilder.build({"kind": "sword", "length": 28, "blade": color.lightened(0.5).to_html(), "guard": "#e0c060", "glow": "metal"})
-			node.add_child(w)
+			node.add_child(VfxLib.sword_node(color.lightened(0.5).to_html(false), 28))
 			var sp := VfxParticles.make("spark", 6, node, Color(1.0, 0.95, 0.7))
 			sp.gravity = Vector3.ZERO
 			sp.initial_velocity_min = 0.2

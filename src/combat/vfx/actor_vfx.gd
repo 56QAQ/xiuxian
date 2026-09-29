@@ -78,8 +78,7 @@ func _ready() -> void:
 		height = 1.2 * sz + 0.2
 		body_r = 0.55 * sz
 	is_player = actor.is_in_group("player")
-	for i in 4:
-		_hits.append(Vector4(0, 1, 0, -1))
+	_fill_hits()
 	if is_player and GS.player != null:
 		_last_realm = GS.player.realm
 		_last_stage = GS.player.stage
@@ -631,10 +630,16 @@ func shield_hit(world_pos: Vector3) -> void:
 	var d := _shield.global_basis.inverse() * (world_pos - center)
 	if d.length_squared() < 1e-4:
 		d = Vector3.FORWARD
+	_fill_hits()
 	_hits[_hit_idx] = Vector4(d.normalized().x, d.normalized().y, d.normalized().z, 0.0)
 	_hit_idx = (_hit_idx + 1) % 4
 	_shield_flash = maxf(_shield_flash, 0.06)
 	_shield_until = maxf(_shield_until, _clock + 0.6)
+
+
+func _fill_hits() -> void:
+	while _hits.size() < 4:
+		_hits.append(Vector4(0, 1, 0, -1))
 
 
 ## 护盾被击破
@@ -652,6 +657,7 @@ func _shield_tick(delta: float) -> void:
 		_shield = null
 		return
 	var any_hit := false
+	_fill_hits()
 	for i in 4:
 		var h := _hits[i]
 		if h.w >= 0.0:
@@ -673,7 +679,8 @@ func _shield_tick(delta: float) -> void:
 		return
 	_shield_mat.set_shader_parameter("strength", _shield_strength)
 	_shield_mat.set_shader_parameter("flash", _shield_flash)
-	_shield_mat.set_shader_parameter("hits", _hits)
+	# 传副本：4.4 的 Compatibility 渲染器会复用/清空传入的数组引用
+	_shield_mat.set_shader_parameter("hits", _hits.duplicate())
 
 
 # ================================================================ 境界

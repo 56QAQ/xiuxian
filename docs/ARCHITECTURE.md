@@ -82,6 +82,27 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
 - 面板继承 **UIWindow**：覆盖 `_build()` 与 `refresh()`；主题由 **UITheme** 代码生成。
 - 战斗 HUD（src/ui/hud/combat_hud.gd）由 GameSession 创建：中央环形资源、锁定框、法诀栏、雷达、目标提示。
 
+## 战斗特效（src/combat/fx.gd + src/combat/vfx）
+
+- **FX**（静态门面，任何静态代码可调用）：基础图元 `sprite / flash / shock_ring / cam_ring / ground_decal / magic_circle / beam_strip / heat`；
+  命中与爆炸 `hit(point, dir, elem, strength) / impact / explosion(pos, r, elem) / crit_burst / heavy_ground / slash_arc`；
+  转发 `cast_begin / cast_release / talisman / quick_boost / dash_start / lunge_start / land / jump / afterimage / shield_break / death / dissolve / breakthrough / level_up`；
+  `attach(actor)` 挂载 ActorVfx。旧接口（burst、dust、ring、shock_sphere、flash_light、pillar、telegraph、beam、meteor、sparkle）签名保留。
+- **VfxLib**：贴图（assets/textures/vfx，`tools/gen_vfx_textures.py` 生成）、着色器（assets/shaders/vfx_*.gdshader）、共享材质、程序网格、五行配色 `PALETTE`。
+  材质共享，单个特效的颜色/进度用 instance uniform（tint、fade、prog、alpha…），补间直接作用于 `instance_shader_parameters/*`。
+- **VfxParticles**：CPUParticles3D 预设（spark、ember、flame、smoke、dust、debris、leaf、droplet、mist、ice、blood、paper…）；`burst()` 走对象池，`make()` 为持续发射器。
+- **VfxManager**（随场景创建）：粒子池、闪光灯池（≤8）、贴花（≤28）/残影（≤6）上限、粒子预算、镜头位置缓存；监听 `hit_landed` 做护盾涟漪与暴击迸发。
+- **VfxSpells / VfxMotion**：法诀（法阵、爆发、天降、闪电、领域、光束、召唤、护体/增益/回复）与身法/生死/突破表现。
+- **ActorVfx**：挂在角色下，读取角色状态驱动疾行尾流、瞬步残影、御空/升空法阵、蓄力光球、状态特效、护体灵光泡；距镜头 55 米外不生成。
+- **ScreenFx**：CameraRig 下的 CanvasLayer（layer 4，位于 HUD 之下），速度线与重击径向模糊/色散；强度随 `Settings.camera_shake`，`Settings.screen_effects=false` 时关闭。
+- 所有着色器以 `blend_premul_alpha` 为主（明亮场景中保持元素色），并带镜头贴脸渐隐；Compatibility 渲染器下只跳过热浪扭曲。
+- 实例参数槽位：Compatibility 渲染器在 64 KB UBO 的硬件上全场只有 256 个实例能用 instance uniform。
+  因此粒子发射器用 `VfxLib.emitter_mat()`（vfx_particle_emit，无实例参数），拖尾条带只用顶点色，
+  特效里的体素网格（岩石、飞剑、叶片、火鸦）用静态体素材质；只有短命的单体特效（精灵、环、法阵、贴花等）使用实例参数。
+  `vfx_perf` 统计 `iu_all / iu_vfx`（全场 / 特效占用的槽位数）。
+- 截图：`vfx_gallery`（`--panel=proj|impact|nova|strike|field|beam|melee|status|move|cast|summon|misc`）、`vfx_combat`、`vfx_screen`、`vfx_perf`；
+  `VfxShotClock.fix()` 让软件渲染下每帧恰好推进 1/60 秒。
+
 ## 物理层
 
 | 层 | 名称 | 用途 |
