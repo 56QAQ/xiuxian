@@ -13,6 +13,9 @@ var _t: float = 0.0
 var _ring: MeshInstance3D
 var _beam: MeshInstance3D
 var _light: OmniLight3D
+var _circle: MeshInstance3D
+var _motes: CPUParticles3D
+var _spin: float = 0.0
 var _player: Node3D
 var interact_radius: float = 3.5
 
@@ -35,18 +38,34 @@ func _build() -> void:
 			if d > 5.4 and d < 6.6 or (absf(x - 6.5) < 0.6 or absf(z - 6.5) < 0.6) and d < 6.6:
 				g.set_color(x, 1, z, VoxelGrid.glow(col, 0.8))
 	add_child(VoxelMesher.build_instance(g, 0.45, Vector3(-3.15, -0.2, -3.15)))
+	# 光柱：柔和天光圆柱；地面传送阵法阵（撤离读条时加速旋转、变亮）
 	_beam = MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.2
-	cm.bottom_radius = 1.4
-	cm.height = 30.0
-	_beam.mesh = cm
-	var m := FX.glow_mat(col).duplicate() as StandardMaterial3D
-	m.albedo_color = Color(col.r, col.g, col.b, 0.18 if active else 0.05)
-	_beam.material_override = m
+	_beam.mesh = VfxLib.cone_tube()
+	_beam.material_override = VfxLib.energy_mat(2)
+	_beam.set_instance_shader_parameter("tint", col)
+	_beam.set_instance_shader_parameter("alpha", 0.8 if active else 0.2)
 	_beam.position.y = 15.0
+	_beam.scale = Vector3(1.4, 30.0, 1.4)
 	_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_beam)
+	_beam.set_meta("base_scale", _beam.scale)
+	_circle = MeshInstance3D.new()
+	_circle.mesh = VfxLib.plane()
+	_circle.material_override = VfxLib.circle_mat()
+	_circle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_circle)
+	_circle.position = Vector3(0, 0.32, 0)
+	_circle.scale = Vector3(radius * 2.1, 1, radius * 2.1)
+	_circle.set_instance_shader_parameter("tint", col)
+	_circle.set_instance_shader_parameter("alpha", 0.75 if active else 0.2)
+	_circle.set_instance_shader_parameter("glyph", 5.0)
+	if active:
+		_motes = VfxParticles.make("mote", 16, self, col)
+		_motes.position = Vector3(0, 0.4, 0)
+		VfxParticles.set_shape(_motes, "ring", radius * 0.9)
+		_motes.direction = Vector3.UP
+		_motes.gravity = Vector3(0, 1.5, 0)
+		_motes.lifetime = 2.0
 	_light = OmniLight3D.new()
 	_light.light_color = col
 	_light.light_energy = 1.5 if active else 0.3
@@ -99,7 +118,8 @@ func _physics_process(delta: float) -> void:
 		_t += delta
 		Events.search_progress.emit(_t / hold_time)
 		Events.interaction_prompt.emit("撤离中…… %.1f" % maxf(hold_time - _t, 0.0))
-		_beam.scale = Vector3.ONE * (1.0 + _t / hold_time * 1.5)
+		var bs: Vector3 = _beam.get_meta("base_scale", Vector3.ONE)
+		_beam.scale = Vector3(bs.x * (1.0 + _t / hold_time * 1.5), bs.y, bs.z * (1.0 + _t / hold_time * 1.5))
 		if _t >= hold_time:
 			set_physics_process(false)
 			Events.search_progress.emit(-1.0)
@@ -107,6 +127,17 @@ func _physics_process(delta: float) -> void:
 			extracted.emit()
 	elif _t > 0.0:
 		_t = 0.0
-		_beam.scale = Vector3.ONE
+		_beam.scale = _beam.get_meta("base_scale", Vector3.ONE)
 		Events.search_progress.emit(-1.0)
 		Events.interaction_prompt.emit("")
+
+
+## 表现：法阵旋转（撤离读条时加速、变亮）
+func _process(delta: float) -> void:
+	if _circle == null or not is_instance_valid(_circle):
+		return
+	var f := clampf(_t / maxf(hold_time, 0.1), 0.0, 1.0) if active else 0.0
+	_spin += delta * (0.4 + f * 4.0)
+	_circle.set_instance_shader_parameter("spin", _spin)
+	if active:
+		_circle.set_instance_shader_parameter("alpha", 0.75 + f * 0.6)

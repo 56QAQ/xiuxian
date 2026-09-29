@@ -131,6 +131,7 @@ func setup(player_data: PlayerData, faction: String, player: bool = false) -> vo
 	trail = WeaponTrail.new()
 	add_child(trail)
 	trail.rig = rig
+	FX.attach(self)
 	if not player:
 		_make_nameplate()
 
@@ -353,7 +354,7 @@ func _begin_step(idx: int, allow_lunge: bool) -> void:
 			step = s
 			evading = 0.15
 			Audio.play_at("quick_boost", global_position, -4.0)
-			FX.ring(global_position + Vector3.UP * 0.9, 1.2, _elem_color(), 0.25, 0.15, forward())
+			FX.lunge_start(self, (tgt.global_position - global_position).normalized(), _elem_color())
 			return
 	_start_swing(s)
 
@@ -365,7 +366,7 @@ func _start_swing(s: Dictionary) -> void:
 	_hit_done = false
 	var spd := 1.0
 	action_len = rig.play(str(s["clip"]), spd)
-	trail.start(_elem_color().lightened(0.35))
+	trail.start(_elem_color().lightened(0.2), _vfx_elem())
 	Audio.play_at("swing_heavy" if s.get("heavy", false) else "swing_light", global_position, -2.0)
 	_impulse(forward() * (3.5 if not s.get("heavy", false) else 5.0), 0.1)
 	# 近距离时面向目标
@@ -430,6 +431,15 @@ func _melee_hit() -> void:
 	var fwd := forward()
 	var heavy: bool = step.get("heavy", false)
 	var any := false
+	# 表现：剑气月牙（沿本刀真实轨迹）/ 拳劲冲击；终结技落地冲击波与地裂
+	if weapon_kind == "fist":
+		var fist := rig.weapon_tip("r") if rig != null else origin + fwd
+		FX.cam_ring(fist, 0.6 if not heavy else 1.1, _elem_color(), 0.2, 0.25)
+		FX.sprite(fist, "flare", _elem_color(), 0.7 if not heavy else 1.3, 0.1, 1.3)
+	else:
+		trail.release_arc(heavy)
+	if heavy:
+		FX.heavy_ground(global_position + fwd * rng * 0.6, _vfx_elem(), 1.6 + rng * 0.25)
 	for b in CombatUtil.bodies():
 		var body := b as Node3D
 		if body == self or body == null or not CombatUtil.can_damage(self, body):
@@ -455,8 +465,7 @@ func _melee_hit() -> void:
 		var res := CombatUtil.hit(self, body, info)
 		if not res.is_empty():
 			any = true
-			var col := _elem_color()
-			FX.burst(info["point"], col.lightened(0.3), 14 if heavy else 8, 7.0, 0.08, 0.35)
+			FX.hit(info["point"], info["dir"], _vfx_elem(), 2.0 if heavy else 1.0, res.get("crit", false))
 			Audio.play_at("hit_shield" if res.get("shield_damage", 0.0) > 0.0 and res.get("hp_damage", 0.0) <= 0.0 else "hit_flesh", info["point"])
 			if res.get("crit", false):
 				Audio.play_at("crit", info["point"], -2.0)
@@ -493,8 +502,6 @@ func _bolt_logic(delta: float) -> void:
 			charging = true
 			rig.play("charge")
 			Audio.play_at("bolt_charge", global_position, -6.0)
-		if charging and randf() < 0.3:
-			FX.sparkle(_bolt_origin(), Elem.color_of(bolt_element) if Elem.is_valid(bolt_element) else Color(0.8, 0.9, 1), 2)
 	elif _bolt_was_held and charging:
 		var f := clampf((charge_t - CHARGE_START) / (CHARGE_FULL - CHARGE_START), 0.0, 1.0)
 		rig.stop_action()
@@ -545,6 +552,7 @@ func fire_bolt(charge: float) -> void:
 	})
 	if action == "":
 		rig.play("bolt")
+	FX.sprite(origin, "flare", VfxLib.main_color(bolt_element if VfxLib.is_elem(bolt_element) else "none"), 0.45 + charge * 0.35, 0.08, 1.4)
 	Audio.play_at("bolt_fire", origin, -6.0 if charge < 1.5 else 0.0)
 
 
@@ -593,7 +601,7 @@ func cast_spell(id: String, free_cast: bool = false) -> bool:
 		var to := lock_target.global_position - global_position
 		_yaw = atan2(-to.x, -to.z)
 		rotation.y = _yaw
-	FX.sparkle(cast_origin(), SpellRuntime.color_of(def), 12)
+	FX.cast_begin(self, def)
 	Audio.play_at("cast", global_position, -6.0)
 	if is_player:
 		GS.add_spell_xp(id, 1.0)
@@ -617,8 +625,8 @@ func start_dash(dir: Vector3, distance: float, speed: float, width: float, info:
 	action = "dash"
 	action_time = 0.0
 	evading = distance / speed + 0.1
-	trail.start(color)
-	FX.ring(global_position + Vector3.UP, 1.5, color, 0.25, 0.2, dir)
+	trail.start(color, str(info.get("element", Elem.NONE)))
+	FX.dash_start(self, dir, color)
 
 
 func _dash_update(delta: float) -> void:
@@ -638,9 +646,9 @@ func _dash_update(delta: float) -> void:
 			info["dir"] = dash["dir"]
 			info["heavy"] = true
 			CombatUtil.hit(self, body, info)
-			FX.burst(body.global_position + Vector3.UP, dash["color"], 16, 8.0, 0.1, 0.4)
+			FX.hit(body.global_position + Vector3.UP, dash["dir"], str((dash["info"] as Dictionary).get("element", Elem.NONE)), 2.0)
 	if randf() < 0.6:
-		FX.burst(global_position + Vector3.UP, dash["color"], 3, 1.0, 0.1, 0.3, true, 0.0)
+		_dash_trail_fx()
 	if float(dash["left"]) <= 0.0 or is_on_wall():
 		velocity = (dash["dir"] as Vector3) * 4.0
 		_end_action()
@@ -663,9 +671,10 @@ func try_burst() -> bool:
 	CombatUtil.aoe(self, global_position + Vector3.UP, 11.0, info)
 	CombatUtil.damage_destructibles(global_position, 6.0, 120.0)
 	CombatUtil.crater(global_position + forward() * 3.0, 4.0)
-	FX.shock_sphere(global_position + Vector3.UP, 11.0, col, 0.5)
-	FX.ring(global_position + Vector3.UP * 0.2, 13.0, col, 0.6, 0.3)
-	FX.burst(global_position + Vector3.UP, col, 60, 16.0, 0.2, 1.0)
+	var ve := e if VfxLib.is_elem(e) else "none"
+	VfxSpells.nova(global_position + Vector3.UP, 11.0, ve, "ring", VfxLib.main_color(ve))
+	FX.magic_circle(global_position, 5.5, ve, 1.6, {"ground": true, "reveal": 0.2, "spin": 3.0, "glyph": 7})
+	VfxSpells.light_column(global_position, 1.6, 14.0, VfxLib.main_color(ve), 1.2, 0)
 	FX.flash_light(global_position + Vector3.UP * 2.0, col, 10.0, 25.0, 0.5)
 	combatant.apply_status("fury", 1.0, combatant)
 	Audio.play_at("explosion", global_position, 4.0)
@@ -708,8 +717,7 @@ func quick_boost() -> void:
 	if not grounded and velocity.y < 0.0:
 		velocity.y = 0.0
 	Audio.play_at("quick_boost", global_position)
-	FX.ring(global_position + Vector3.UP * 0.9, 1.4, Color(0.85, 0.95, 1.0), 0.22, 0.12, qb_dir)
-	FX.burst(global_position + Vector3.UP * 0.5, Color(0.9, 0.95, 1.0), 10, 5.0, 0.07, 0.3)
+	FX.quick_boost(self, qb_dir, VfxLib.main_color(bolt_element if VfxLib.is_elem(bolt_element) else "none").lerp(Color.WHITE, 0.3))
 
 
 func _move(delta: float) -> void:
@@ -818,7 +826,7 @@ func _move(delta: float) -> void:
 	# 落地
 	if is_on_floor() and not was_grounded and _prev_vy < -11.0:
 		Audio.play_at("land", global_position, -4.0)
-		FX.dust(global_position, 10)
+		FX.land(global_position, clampf(-_prev_vy / 24.0, 0.3, 1.4))
 		if is_player and _prev_vy < -18.0:
 			CombatUtil.shake(0.2)
 	# 脚步
@@ -829,7 +837,7 @@ func _move(delta: float) -> void:
 			if is_player:
 				Audio.play_at("footstep", global_position, -14.0)
 	if boosting and grounded and randf() < 0.3:
-		FX.dust(global_position, 2)
+		FX.dust(global_position + global_basis.z * 0.3, 2)
 
 
 func _face(delta: float) -> void:
@@ -906,8 +914,11 @@ func _on_damaged(_info: Dictionary, _res: Dictionary) -> void:
 
 func _on_shield_broken() -> void:
 	Audio.play_at("shield_break", global_position)
-	FX.shock_sphere(global_position + Vector3.UP, 1.3, Color(1.0, 0.95, 0.7), 0.25)
-	FX.burst(global_position + Vector3.UP, Color(1.0, 0.92, 0.6), 18, 7.0, 0.06, 0.5)
+	var av := FX.vfx_of(self)
+	if av != null:
+		av.break_shield(Color(1.0, 0.9, 0.6))
+	else:
+		FX.shield_break(global_position + Vector3.UP, Color(1.0, 0.9, 0.6))
 	if action in ["", "cast"]:
 		_stagger(0.3)
 
@@ -940,11 +951,13 @@ func _on_died(killer: Combatant) -> void:
 	collision_layer = 0
 	Audio.play_at("death", global_position)
 	died.emit(self, killer.body() if killer != null else null)
+	FX.death(self, pd.main_element() if pd != null else Elem.NONE)
 	if nameplate != null:
 		nameplate.visible = false
 	if not is_player:
 		var tw := create_tween()
 		tw.tween_interval(20.0)
+		tw.tween_callback(func() -> void: FX.dissolve(self, 1.5))
 		tw.tween_method(func(v: float) -> void: rig.set_dissolve(v), 0.0, 1.0, 1.5)
 		tw.tween_callback(queue_free)
 
@@ -990,9 +1003,29 @@ func _flat_dist(n: Node3D) -> float:
 
 
 func _elem_color() -> Color:
-	if Elem.is_valid(weapon_element):
-		return Elem.color_of(weapon_element)
-	return Color(0.9, 0.95, 1.0)
+	return VfxLib.main_color(_vfx_elem()).lerp(Color.WHITE, 0.15)
+
+
+## 表现用元素：兵器五行（无属性为灵光）
+func _vfx_elem() -> String:
+	return weapon_element if Elem.is_valid(weapon_element) else "none"
+
+
+## 冲刺类法诀途经的元素粒子
+func _dash_trail_fx() -> void:
+	var e := str((dash["info"] as Dictionary).get("element", Elem.NONE))
+	var p := global_position + Vector3.UP
+	var c: Color = dash["color"]
+	match e:
+		"fire":
+			VfxParticles.burst("flame", p, Color.WHITE, 3, {"size": 1.2, "speed": 0.4})
+		"water":
+			VfxParticles.burst("droplet", p, Color(0.75, 0.92, 1.0), 4, {"speed": 0.6})
+			VfxParticles.burst("mist", p, Color(0.85, 0.95, 1.0), 1, {"size": 0.7})
+		"metal":
+			VfxParticles.burst("spark", p, Color(1.0, 0.95, 0.7), 4, {"speed": 0.6})
+		_:
+			VfxParticles.burst("glow", p, c, 3, {"speed": 0.5})
 
 
 func is_dead() -> bool:

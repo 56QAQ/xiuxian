@@ -1,6 +1,7 @@
 class_name CameraRig
 extends Node3D
 ## 第三人称越肩镜头：鼠标环视、弹簧臂防穿墙、锁定时自动对准目标、推进时 FOV 拉伸、创伤式震屏。
+## 表现：瞬步/疾行起步的 FOV 冲击、重击时的 FOV 收缩与屏幕径向模糊/色散（ScreenFx）、高速疾行速度线。
 
 const SHOULDER := Vector3(0.55, 1.65, 0.0)
 const DISTANCE := 4.3
@@ -20,6 +21,11 @@ var _dist: float = DISTANCE
 var _noise := FastNoiseLite.new()
 var _t: float = 0.0
 var _follow: Vector3
+var screen: ScreenFx
+var _fov_kick: float = 0.0       ## FOV 冲击（度），弹簧回弹
+var _fov_kick_v: float = 0.0
+var _qb_prev: float = 0.0
+var _boost_prev: bool = false
 
 
 func _ready() -> void:
@@ -42,6 +48,9 @@ func _ready() -> void:
 	arm.add_child(camera)
 	camera.current = true
 	_noise.frequency = 2.5
+	screen = ScreenFx.new()
+	screen.name = "ScreenFx"
+	add_child(screen)
 	if target != null:
 		_follow = target.global_position
 		arm.add_excluded_object(target.get_rid())
@@ -58,6 +67,19 @@ func set_target(t: Node3D) -> void:
 
 func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount, 0.0, 1.0)
+
+
+## 重击冲击：FOV 短暂收缩 + 屏幕径向模糊/色散（强度随 Settings.camera_shake）
+func impact_kick(amount: float) -> void:
+	var k := clampf(amount, 0.0, 1.0) * clampf(Settings.camera_shake, 0.0, 1.5)
+	_fov_kick_v -= 60.0 * k
+	if screen != null:
+		screen.kick(amount)
+
+
+## FOV 冲击（正值拉宽，负值收缩）
+func fov_punch(deg: float) -> void:
+	_fov_kick_v += deg * 25.0
 
 
 func _ui_blocking() -> bool:
@@ -99,9 +121,24 @@ func _process(delta: float) -> void:
 	if target is CharacterBody3D:
 		speed = (target as CharacterBody3D).velocity.length()
 	var boosting: bool = target.get("boosting") == true
-	var want_extra := clampf((speed - 8.0) * 0.9, 0.0, 16.0) if boosting or speed > 14.0 else 0.0
-	_fov_extra = lerpf(_fov_extra, want_extra, 1.0 - exp(-5.0 * delta))
-	camera.fov = Settings.fov + _fov_extra
+	var want_extra := clampf((speed - 8.0) * 0.7, 0.0, 12.0) if boosting or speed > 14.0 else 0.0
+	_fov_extra = lerpf(_fov_extra, want_extra, 1.0 - exp(-4.0 * delta))
+	# 瞬步 / 疾行起步：FOV 冲击（弹簧回弹）
+	var qb = target.get("qb_timer")
+	var qbt := float(qb) if qb != null else 0.0
+	if qbt > _qb_prev + 0.05:
+		fov_punch(5.0)
+	_qb_prev = qbt
+	if boosting and not _boost_prev:
+		fov_punch(2.5)
+	_boost_prev = boosting
+	var rdt := delta / maxf(Engine.time_scale, 0.05)
+	_fov_kick_v += (-_fov_kick * 170.0 - _fov_kick_v * 18.0) * rdt
+	_fov_kick = clampf(_fov_kick + _fov_kick_v * rdt, -8.0, 10.0)
+	camera.fov = Settings.fov + _fov_extra + _fov_kick
+	# 速度线：高速疾行 / 瞬步
+	if screen != null:
+		screen.speed = clampf((speed - 12.0) / 14.0, 0.0, 1.0) * 0.85 if boosting or qbt > 0.0 else 0.0
 	_dist = lerpf(_dist, BOOST_DISTANCE if boosting else DISTANCE, 1.0 - exp(-3.0 * delta))
 	arm.spring_length = _dist
 	global_position = _follow

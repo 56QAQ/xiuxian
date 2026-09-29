@@ -29,18 +29,32 @@ static func create(parent: Node, pos: Vector3, rng: RandomNumberGenerator) -> Tr
 func _ready() -> void:
 	add_to_group("interactable")
 	var col := Grade.color_of(int(DB.item(item_id).get("grade", 2)))
+	# 冲天光柱（柔和天光圆柱 + 明亮光芯），地面法阵与上升灵光
 	_beam = MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.6
-	cm.bottom_radius = 1.2
-	cm.height = 120.0
-	_beam.mesh = cm
-	var m := FX.glow_mat(col).duplicate() as StandardMaterial3D
-	m.albedo_color = Color(col.r, col.g, col.b, 0.35)
-	_beam.material_override = m
+	_beam.mesh = VfxLib.cone_tube()
+	_beam.material_override = VfxLib.energy_mat(2)
+	_beam.set_instance_shader_parameter("tint", col)
+	_beam.set_instance_shader_parameter("alpha", 1.0)
+	_beam.scale = Vector3(1.4, 120.0, 1.4)
 	_beam.position.y = 60.0
 	_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_beam)
+	var core := MeshInstance3D.new()
+	core.mesh = VfxLib.beam_strip()
+	core.material_override = VfxLib.beam_mat(4)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_beam.add_child(core)
+	core.transform = Transform3D(FX.scale_local(Basis(Vector3.RIGHT, PI / 2.0), Vector3(0.5, 0.5, 1.0)), Vector3(0, -0.5, 0))
+	core.set_instance_shader_parameter("tint", col.lerp(Color.WHITE, 0.4))
+	core.set_instance_shader_parameter("alpha", 0.8)
+	core.set_instance_shader_parameter("len", 120.0)
+	FX.magic_circle(global_position, 2.6, "none", 240.0, {"follow": self, "reveal": 1.0, "spin": 0.4, "color": col, "alpha": 0.7, "glyph": 5})
+	var motes := VfxParticles.make("mote", 24, self, col)
+	motes.position = Vector3(0, 0.3, 0)
+	VfxParticles.set_shape(motes, "box", 1.8, 0.2)
+	motes.direction = Vector3.UP
+	motes.gravity = Vector3(0, 1.2, 0)
+	motes.lifetime = 2.2
 	var g := VoxelGrid.new(6, 8, 6)
 	g.fill_box(Vector3i(2, 0, 2), Vector3i(3, 4, 3), Color(0.3, 0.6, 0.3))
 	g.fill_ellipsoid(Vector3(3, 6, 3), Vector3(2.5, 2, 2.5), VoxelGrid.glow(col, 0.9))
@@ -126,5 +140,5 @@ func _finish() -> void:
 		rig.stop_action()
 	remove_from_group("interactable")
 	var tw := create_tween()
-	tw.tween_property(_beam, "scale", Vector3(0.01, 1, 0.01), 1.0)
+	tw.tween_property(_beam, "scale", Vector3(0.01, 120.0, 0.01), 1.0)
 	tw.tween_callback(queue_free)

@@ -112,6 +112,9 @@ static func hit(attacker: Node3D, target: Node3D, info: Dictionary) -> Dictionar
 			elif heavy:
 				HitStop.trigger(0.04, 0.1)
 			shake((0.35 if heavy else 0.18) if p_att else 0.45)
+			# 表现：重击/暴击/击杀时屏幕冲击（径向模糊 + 色散 + FOV 收缩）
+			if heavy:
+				kick(0.55 if p_att else 0.7)
 	return res
 
 
@@ -162,6 +165,13 @@ static func shake(amount: float) -> void:
 	var cam := tree().get_first_node_in_group("camera_rig")
 	if cam != null and cam.has_method("add_trauma"):
 		cam.call("add_trauma", amount * Settings.camera_shake)
+
+
+## 屏幕冲击（仅表现）：FOV 收缩 + 径向模糊/色散
+static func kick(amount: float) -> void:
+	var cam := tree().get_first_node_in_group("camera_rig")
+	if cam != null and cam.has_method("impact_kick"):
+		cam.call("impact_kick", amount)
 
 
 static func _space() -> PhysicsDirectSpaceState3D:

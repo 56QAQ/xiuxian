@@ -74,6 +74,7 @@ func setup(id: String, level_bonus: int = 0) -> void:
 	nameplate.setup(combatant, 1.3 * size + 0.6, "首领" if def.get("boss", false) else "")
 	combatant.poise_broken.connect(func() -> void: _stagger(0.8))
 	_build_rig()
+	FX.attach(self)
 
 
 func _build_rig() -> void:
@@ -229,6 +230,8 @@ func start_attack(a: Dictionary) -> void:
 							bc.statuses[sid]["time"] = float(buff.get("duration", 8.0))
 			Audio.play_at("beast_growl", global_position, 2.0)
 			FX.ring(global_position + Vector3.UP * 0.5, 6.0, Color(1, 0.5, 0.3), 0.6)
+			FX.cam_ring(global_position + Vector3.UP * (0.8 * size + 0.3) + forward() * 0.6 * size, 1.4 * size, Color(1, 0.55, 0.35), 0.4, 0.14)
+			VfxParticles.burst("streak", global_position + Vector3.UP * 0.3, Color(1, 0.6, 0.4), 14, {"shape": "ring", "shape_r": 0.8 * size, "dir": Vector3.UP, "spread": 8.0, "speed": 0.4, "life": 1.4})
 		_:
 			Audio.play_at("beast_bite" if action == "bite" else "beast_growl", global_position, -4.0)
 	set_meta("attack_len", maxf(dur, _hit_at + 0.3))
@@ -284,6 +287,7 @@ func _do_hit() -> void:
 		var r := float(a["aoe"])
 		CombatUtil.aoe(self, global_position + forward() * 1.0 * size + Vector3.UP * 0.5, r, {"kind": "melee", "mult": dmg, "poise": 35.0, "knock": 7.0, "element": str(def.get("element", Elem.NONE))})
 		FX.ring(global_position + forward() * size, r, Color(0.8, 0.7, 0.55), 0.35, 0.25)
+		FX.heavy_ground(global_position + forward() * size + Vector3.UP * 0.3, _vfx_elem(), r * 0.55)
 		FX.dust(global_position + forward() * size, 22)
 		CombatUtil.damage_destructibles(global_position + forward() * size, r * 0.5, dmg * 20.0)
 		Audio.play_at("earth_quake", global_position)
@@ -299,7 +303,9 @@ func _deal(b: Node3D, dmg: float, knock: float, poise: float) -> void:
 		info["status"] = attack_def["status"]
 	var res := CombatUtil.hit(self, b, info)
 	if not res.is_empty():
-		FX.burst(b.global_position + Vector3.UP, Color(0.9, 0.2, 0.2), 10, 5.0, 0.07, 0.35)
+		var d := b.global_position - global_position
+		d.y = 0.0
+		FX.hit(b.global_position + Vector3.UP, d.normalized() if d.length() > 0.05 else forward(), _vfx_elem(), 1.3, false, Color(1.0, 0.38, 0.25))
 		Audio.play_at("hit_flesh", b.global_position)
 
 
@@ -346,6 +352,7 @@ func _on_died(killer: Combatant) -> void:
 		var tw0 := create_tween()
 		tw0.tween_property(rig, "rotation:z", PI / 2.0, 0.5)
 	Audio.play_at("beast_hurt", global_position)
+	FX.death(self, _vfx_elem())
 	var kb: Node3D = killer.body() if killer != null else null
 	died.emit(self, kb)
 	# 掉落
@@ -363,6 +370,13 @@ func _on_died(killer: Combatant) -> void:
 		c.reveal_after(1.0)
 	var tw := create_tween()
 	tw.tween_interval(6.0)
+	tw.tween_callback(func() -> void: FX.dissolve(self, 1.2))
 	if rig is CharacterRig:
 		tw.tween_method(func(v: float) -> void: (rig as CharacterRig).set_dissolve(v), 0.0, 1.0, 1.2)
 	tw.tween_callback(queue_free)
+
+
+## 表现用元素（妖兽五行，无属性为灵光）
+func _vfx_elem() -> String:
+	var e := str(def.get("element", Elem.NONE))
+	return e if Elem.is_valid(e) else "none"
