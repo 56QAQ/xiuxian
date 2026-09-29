@@ -12,6 +12,7 @@ func build(root: Node) -> void:
 	var dn := DayNight.new()
 	dn.hour = 10.0
 	root.add_child(dn)
+	dn.env.fog_height = -1.0  # 影棚地面在 y=0，不需要大地图的低地高度雾
 	# 地面（world 层静态体，碎块可落地）
 	var ground := StaticBody3D.new()
 	ground.collision_layer = 1

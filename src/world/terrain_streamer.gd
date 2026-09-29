@@ -47,16 +47,8 @@ func _init(t: TerrainGen = null) -> void:
 
 
 func _ready() -> void:
-	var sh: Shader = load("res://assets/shaders/terrain.gdshader")
-	_near_mat = ShaderMaterial.new()
-	_near_mat.shader = sh
-	_lod_mat = ShaderMaterial.new()
-	_lod_mat.shader = sh
-	_lod_mat.set_shader_parameter("block_size", float(TerrainGen.LOD_CELL))
-	_lod_mat.set_shader_parameter("detail_distance", 0.0)
-	_lod_mat.set_shader_parameter("variation", 0.05)
-	_lod_mat.set_shader_parameter("texel_variation", 0.0)
-	_lod_mat.set_shader_parameter("edge_strength", 0.0)
+	_near_mat = BlockTex.material("terrain")
+	_lod_mat = BlockTex.material("lod")
 	_lod_root = Node3D.new()
 	_lod_root.name = "LOD"
 	add_child(_lod_root)

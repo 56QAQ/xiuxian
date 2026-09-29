@@ -11,7 +11,7 @@ const CELL := 6.0
 ## 可见距离分类 [begin, end]
 const VIS := {
 	"tree0": [0.0, 120.0], "tree1": [120.0, 460.0], "grass": [0.0, 62.0], "flower": [0.0, 72.0],
-	"rock": [0.0, 240.0], "shrub": [0.0, 150.0], "reed": [0.0, 120.0],
+	"rock": [0.0, 240.0], "shrub": [0.0, 150.0], "reed": [0.0, 120.0], "lotus": [0.0, 140.0],
 }
 const TREE_KINDS := ["pine_snow", "pine", "ancient", "broadleaf", "blossom", "bamboo", "willow", "maple", "dead", "crystal"]
 ## 工作线程读取，使用非只读的 static var（见 TerrainGen 中的说明）
@@ -43,7 +43,7 @@ func _init(t: TerrainGen = null) -> void:
 
 func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
-	PropBuilder.warm_up(TREE_KINDS + ["shrub", "shrub_yellow", "reed", "rock_gray", "rock_moss", "rock_snow", "rock_red", "rock_yellow", "pebble", "grass", "grass_dry", "grass_snow", "flower"])
+	PropBuilder.warm_up(TREE_KINDS + ["shrub", "shrub_yellow", "reed", "rock_gray", "rock_moss", "rock_snow", "rock_red", "rock_yellow", "pebble", "grass", "grass_dry", "grass_snow", "flower", "lotus"])
 	stats["warm_ms"] = Time.get_ticks_msec() - t0
 
 
@@ -328,6 +328,10 @@ static func generate_tile(t: TerrainGen, tx: int, tz: int) -> Dictionary:
 		if h < sea:
 			if r == TerrainGen.R_LAKE and h == sea - 1 and roll < 0.25:
 				_add_inst(mm, "reed|%d|0|reed" % (q % 2), pos, yaw, s)
+			elif r == TerrainGen.R_LAKE and h >= sea - 4 and h <= sea - 2 and roll < 0.55 and t.n_patch.get_noise_2d(ix * 1.7, iz * 1.7) > 0.12:
+				# 荷叶（成片，浮于水面）
+				var lp := Vector3(pos.x, TerrainGen.WATER_Y + 0.02, pos.z)
+				_add_inst(mm, "lotus|%d|0|lotus" % (q % 3), lp, yaw, rng.randf_range(0.8, 1.4))
 			continue
 		if _slope(hm, ix, iz) >= 2:
 			continue
@@ -440,7 +444,7 @@ func _apply(k: Vector2i, data: Dictionary) -> void:
 			mmi.visibility_range_begin_margin = 8.0
 		mmi.visibility_range_end_margin = 8.0
 		mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
-		if cat == "grass" or cat == "flower" or cat == "reed" or cat == "tree1":
+		if cat == "grass" or cat == "flower" or cat == "reed" or cat == "tree1" or cat == "lotus":
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		tile.add_child(mmi)
 		inst += count

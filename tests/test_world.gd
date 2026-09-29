@@ -1,6 +1,7 @@
 extends Node
 ## 大地图测试：地形确定性、生物群系布局、弹坑、POI 注册表与标记点、可破坏物与孤岛脱落、
-## 区块/LOD/道具生成耗时、地形碰撞、地图图像。
+## 区块/LOD/道具生成耗时、地形碰撞、地图图像；方块材质（纹理数组、材质层 UV、方块种类）、
+## 大气调色板与夜窗、环境粒子、秘境地形与水面。
 
 var runner: Node
 var _t: TerrainGen
@@ -323,3 +324,182 @@ func test_overworld_standalone() -> void:
 	ow.queue_free()
 	await get_tree().process_frame
 	GS.overworld_position = saved_pos
+
+
+# ================================================================ 方块材质与大气（v0.15）
+
+func test_block_textures() -> void:
+	_ok(BlockIds.NAMES.size() == BlockIds.COUNT and BlockIds.INFO.size() == BlockIds.COUNT and BlockIds.AVG.size() == BlockIds.COUNT,
+		"BlockIds 各表长度一致（%d 层）" % BlockIds.COUNT)
+	_ok(BlockIds.COUNT <= BlockTex.MAX_LAYERS, "层数不超过着色器数组上限")
+	var tx := BlockTex.textures()
+	var alb := tx[0] as TextureLayered
+	var det := tx[1] as TextureLayered
+	_ok(alb != null and det != null, "纹理数组可加载")
+	if alb != null and det != null:
+		_ok(alb.get_layers() == BlockIds.COUNT and det.get_layers() == BlockIds.COUNT, "纹理数组层数 = BlockIds.COUNT（%d）" % alb.get_layers())
+		_ok(alb.get_width() == 32 and alb.get_height() == 32, "每层 32×32")
+		_ok(alb.has_mipmaps(), "纹理数组带 mipmap")
+		# 显存估算：两张数组 × 层数 × 32×32×4 × 4/3
+		var bytes := 2 * BlockIds.COUNT * 32 * 32 * 4 * 4 / 3
+		_ok(bytes < 64 * 1024 * 1024, "纹理显存约 %.2f MB" % (bytes / 1048576.0))
+	var bad := 0
+	for k in BlockTex.kind_count():
+		for f in 3:
+			var l := BlockTex.face_layer(k, f)
+			if l < 0 or l >= BlockIds.COUNT:
+				bad += 1
+	_ok(bad == 0, "全部方块种类的三面材质层有效")
+	for i in BlockIds.COUNT:
+		var info: Vector4 = BlockIds.INFO[i]
+		if int(info.x) > 1:
+			_ok(i + int(info.x) <= BlockIds.COUNT and str(BlockIds.NAMES[i + 1]).begins_with(str(BlockIds.NAMES[i])), "%s 的变体层连续" % BlockIds.NAMES[i])
+	var m := BlockTex.material("static")
+	_ok(m != null and m.shader != null, "共享方块材质")
+	_ok(BlockTex.material("static") == m, "共享材质被缓存复用")
+	BlockTex.set_env({"night_glow": 0.7})
+	_ok(is_equal_approx(float(m.get_shader_parameter("night_glow")), 0.7), "set_env 同步到共享材质")
+	BlockTex.reset_env()
+	_ok(is_equal_approx(float(m.get_shader_parameter("night_glow")), 0.0), "reset_env 恢复默认")
+
+
+func _layers_of(arrays: Array) -> Dictionary:
+	var out := {}
+	var uv: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	for u in uv:
+		out[int(u.x + 0.5)] = true
+	return out
+
+
+func test_block_layers_in_meshes() -> void:
+	var t := _terrain()
+	var town := t.find_poi("town")
+	var k := Vector2i(int(town["pos"].x) / TerrainGen.CHUNK, int(town["pos"].z) / TerrainGen.CHUNK)
+	var arr: Array = t.build_chunk_arrays(k.x, k.y)["arrays"]
+	var uv: PackedVector2Array = arr[Mesh.ARRAY_TEX_UV]
+	_ok(uv.size() == (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "地形区块每个顶点都有材质层 UV")
+	var lay := _layers_of(arr)
+	_ok(lay.has(BlockIds.FLAGSTONE), "坊市区块含铺地石板层")
+	_ok(lay.has(BlockIds.GRASS_TOP) or lay.has(BlockIds.PATH), "坊市区块含草地/道路层")
+	for l in lay:
+		_ok(int(l) >= 0 and int(l) < BlockIds.COUNT, "地形材质层 %d 有效" % l)
+	# 雪峰
+	var sp := t.find_poi("sect_tianjian")
+	var ks := Vector2i(int(sp["pos"].x) / TerrainGen.CHUNK + 3, int(sp["pos"].z) / TerrainGen.CHUNK - 3)
+	var lay2 := _layers_of(t.build_chunk_arrays(ks.x, ks.y)["arrays"])
+	_ok(lay2.has(BlockIds.SNOW) or lay2.has(BlockIds.GRANITE), "雪峰区块含雪/花岗岩层")
+	# 远景 LOD
+	var lod := t.build_lod_arrays(2, 2)
+	_ok(not lod.is_empty() and (lod[Mesh.ARRAY_TEX_UV] as PackedVector2Array).size() == (lod[Mesh.ARRAY_VERTEX] as PackedVector3Array).size(), "LOD 分块带材质层 UV")
+	# 建筑：屋顶种类的顶/侧/底三面
+	var bm := BuildingMesh.new()
+	bm.kind = BlockTex.K_ROOF
+	bm.box(Vector3.ZERO, Vector3.ONE, Color(0.3, 0.3, 0.35))
+	var bl := _layers_of(bm.build_arrays())
+	_ok(bl.has(BlockIds.ROOF_TOP) and bl.has(BlockIds.ROOF_SIDE) and bl.has(BlockIds.ROOF_UNDER), "屋顶盒子三面使用瓦顶/瓦当/椽子层")
+	var bm2 := BuildingMesh.new()
+	BuildingBuilder.hall(bm2, 0, 0, 12, 8, 1.0, 4.0, BuildingBuilder.pal_with({}))
+	var hl := _layers_of(bm2.build_arrays())
+	for need in [BlockIds.PLASTER, BlockIds.LACQUER_V, BlockIds.ROOF_TOP, BlockIds.GOLD, BlockIds.LATTICE, BlockIds.FLAGSTONE, BlockIds.MARBLE, BlockIds.BRICK, BlockIds.PAINTED_BEAM]:
+		_ok(hl.has(need), "殿堂使用材质 %s" % BlockIds.NAMES[need])
+	# 植被：树皮 + 叶（叶有风摆幅度），草丛随高度摆动
+	var pine := PropBuilder.mesh("pine", 0).surface_get_arrays(0)
+	var pl := _layers_of(pine)
+	_ok(pl.has(BlockIds.LOG_BARK) and pl.has(BlockIds.LEAF_PINE), "松树使用树皮与松针层")
+	var sway := 0.0
+	for u in (pine[Mesh.ARRAY_TEX_UV] as PackedVector2Array):
+		sway = maxf(sway, u.y)
+	_ok(sway > 0.01, "松针带风摆幅度（%.3f）" % sway)
+	var grass := PropBuilder.mesh("grass", 0).surface_get_arrays(0)
+	var gmin := 1.0
+	var gmax := 0.0
+	for u in (grass[Mesh.ARRAY_TEX_UV] as PackedVector2Array):
+		gmin = minf(gmin, u.y)
+		gmax = maxf(gmax, u.y)
+	_ok(gmin < 0.01 and gmax > 0.05, "草丛根部不动、顶端摆动（%.3f~%.3f）" % [gmin, gmax])
+	# 可破坏物：受损重建后仍保留材质层
+	var lan := DestructibleFactory.lantern()
+	add_child(lan)
+	var removed := lan.apply_damage_at(lan.global_position + Vector3(0.45, 0.05, 0.45), 0.2, 1.0)
+	_ok(removed > 0, "石灯笼底座被打掉一角")
+	var dl := _layers_of(lan.mesh_instance.mesh.surface_get_arrays(0))
+	_ok(dl.has(BlockIds.MARBLE) and dl.has(BlockIds.PAPER_LANTERN), "石灯笼受损后仍为汉白玉 + 纸灯层")
+	lan.queue_free()
+	await get_tree().process_frame
+
+
+func test_atmosphere_palettes() -> void:
+	var dn := DayNight.new()
+	add_child(dn)
+	var noon := DayNight.palette_at(0.9)
+	var night := DayNight.palette_at(-0.5)
+	var dusk := DayNight.palette_at(0.03)
+	_ok((noon["zenith"] as Color).get_luminance() > (night["zenith"] as Color).get_luminance() * 4.0, "正午天顶远亮于深夜")
+	_ok((dusk["horizon"] as Color).r > (dusk["horizon"] as Color).b, "日出日落地平线偏暖")
+	_ok((night["ambient"] as Color).b > (night["ambient"] as Color).r, "月夜环境光偏蓝")
+	dn.apply_hour(12.0)
+	_ok(dn.sun.visible and dn.sun.light_energy > 1.0 and dn.night_amount < 0.05, "正午：太阳可见、无夜灯")
+	_ok(float(BlockTex.material("static").get_shader_parameter("night_glow")) < 0.05, "白天窗纸不透光")
+	dn.apply_hour(23.0)
+	_ok(not dn.sun.visible and dn.moon.visible and dn.night_amount > 0.9, "深夜：月光、夜灯")
+	_ok(float(BlockTex.material("static").get_shader_parameter("night_glow")) > 0.9, "夜晚窗纸透光")
+	_ok(dn.env.tonemap_mode == Environment.TONE_MAPPER_AGX and dn.env.adjustment_color_correction != null, "AgX 色调映射与 3D LUT 调色")
+	var lut := dn.env.adjustment_color_correction as Texture3D
+	_ok(lut != null and lut.get_width() == 32 and lut.get_depth() == 32, "调色 LUT 为 32³")
+	dn.queue_free()
+	await get_tree().process_frame
+	BlockTex.reset_env()
+
+
+func test_ambient_fx() -> void:
+	var t := _terrain()
+	var fx := AmbientFX.new(t, null)
+	add_child(fx)
+	_ok(fx.get_child_count() == AmbientFX.DEFS.size(), "每种环境粒子一个发射器（%d）" % fx.get_child_count())
+	# 北方雪峰高处：雪花
+	var sp := t.find_poi("sect_tianjian")
+	fx.focus_pos = Vector3(sp["pos"].x, float(sp["height"]) + 2.0, sp["pos"].z)
+	fx._update_targets()
+	_ok(float(fx._targets["snow"]) > 0.3 and float(fx._targets["embers"]) < 0.01, "雪峰：落雪，无余烬（%.2f）" % float(fx._targets["snow"]))
+	# 西部赤岩：余烬与火山灰
+	var lh := t.find_poi("sect_lihuo")
+	fx.focus_pos = Vector3(lh["pos"].x, float(lh["height"]) + 2.0, lh["pos"].z)
+	fx._update_targets()
+	_ok(float(fx._targets["embers"]) > 0.3 and float(fx._targets["snow"]) < 0.01, "赤岩：余烬飞舞，无雪")
+	# 坊市：花瓣
+	var tw := t.find_poi("town")
+	fx.focus_pos = Vector3(tw["pos"].x, 20.0, tw["pos"].z)
+	fx._update_targets()
+	_ok(float(fx._targets["petals"]) > 0.3, "坊市：落花")
+	fx.setup_static({"motes": 1.0})
+	_ok(float(fx.weights["motes"]) > 0.9 and float(fx.weights["snow"]) < 0.01, "秘境可指定固定粒子权重")
+	fx.queue_free()
+	await get_tree().process_frame
+
+
+func test_realm_terrain_layers() -> void:
+	var ht := HeightfieldTerrain.new()
+	add_child(ht)
+	var n := 40
+	var h := PackedFloat32Array()
+	var tops := PackedColorArray()
+	var surf := PackedByteArray()
+	for z in n:
+		for x in n:
+			h.append(4.0 + float((x / 6 + z / 9) % 3))
+			tops.append(Color(0.4, 0.6, 0.3))
+			surf.append(TerrainGen.S_GRASS if x < 20 else TerrainGen.S_ICE)
+	ht.setup(n, n, h, tops, surf)
+	var lay := {}
+	for c in ht.get_children():
+		var mi := c as MeshInstance3D
+		if mi != null and mi.mesh != null:
+			for k in _layers_of(mi.mesh.surface_get_arrays(0)):
+				lay[k] = true
+	_ok(lay.has(BlockIds.GRASS_TOP) and lay.has(BlockIds.ICE), "秘境地形按地表类型使用草地/冰面层")
+	var img := ht.height_image()
+	_ok(img.get_width() == n and img.get_pixel(3, 3).r * 255.0 > 3.5, "秘境高度图供水面计算水深")
+	ht.carve_crater(ht.global_position + Vector3(10.5, 5.0, 10.5), 4.0)
+	_ok(ht.height_at(10.5, 10.5) < 4.0, "秘境炸坑降低地形")
+	ht.queue_free()
+	await get_tree().process_frame

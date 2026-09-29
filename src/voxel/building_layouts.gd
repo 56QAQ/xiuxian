@@ -38,7 +38,8 @@ const PORTAL_MARKERS := {
 	"realm_portal": [Vector3(0, 0.75, -0.5), F_N],
 }
 
-static var _terrain_mat: ShaderMaterial
+const K = preload("res://src/world/block_tex.gd")
+
 static var _portal_shader: Shader
 
 
@@ -73,10 +74,7 @@ static func marker_transforms(poi: Dictionary) -> Dictionary:
 
 
 static func terrain_material() -> ShaderMaterial:
-	if _terrain_mat == null:
-		_terrain_mat = ShaderMaterial.new()
-		_terrain_mat.shader = load("res://assets/shaders/terrain.gdshader")
-	return _terrain_mat
+	return BlockTex.material("terrain")
 
 
 static func build_poi(poi: Dictionary, terrain: TerrainGen) -> Node3D:
@@ -164,24 +162,31 @@ static func sect_palette(sid: String) -> Dictionary:
 	var c3 := Color.html(str(sd.get("color3", "#3a4050")))
 	match sid:
 		"tianjian":
-			return BuildingBuilder.pal_with({"roof": c3.darkened(0.2), "roof2": c3, "pillar": Color(0.58, 0.14, 0.12), "wall": c1,
-				"trim": c2, "beam": Color(0.22, 0.40, 0.52), "stone": Color(0.74, 0.75, 0.78), "stone2": Color(0.60, 0.62, 0.66), "plaque": Color(0.14, 0.18, 0.28)})
+			# 雪峰剑宗：黛瓦（顶面积雪由着色器生成）、银白粉墙、朱柱、青绿彩画
+			return BuildingBuilder.pal_with({"roof": c3.darkened(0.25), "roof2": c3.darkened(0.05), "pillar": Color(0.56, 0.13, 0.11), "wall": c1,
+				"trim": c2, "beam": Color(0.20, 0.38, 0.48), "stone": Color(0.66, 0.67, 0.70), "stone2": Color(0.54, 0.56, 0.60), "plaque": Color(0.14, 0.18, 0.28),
+				"paper": Color(0.94, 0.88, 0.72)})
 		"qingmu":
-			return BuildingBuilder.pal_with({"roof": c3, "roof2": c3.lightened(0.15), "pillar": Color(0.40, 0.26, 0.16), "wall": c2,
-				"trim": Color(0.82, 0.72, 0.36), "beam": c1.darkened(0.2), "stone": Color(0.60, 0.62, 0.56), "stone2": Color(0.50, 0.53, 0.48),
-				"door": Color(0.36, 0.22, 0.13), "plaque": Color(0.12, 0.22, 0.14)})
+			# 古林木宗：绿琉璃瓦、原木柱、米黄墙
+			return BuildingBuilder.pal_with({"roof": Color(0.22, 0.42, 0.28), "roof2": Color(0.30, 0.50, 0.32), "roof_kind": K.K_GLAZED,
+				"pillar": Color(0.42, 0.27, 0.16), "wall": c2, "trim": Color(0.82, 0.72, 0.36), "beam": c1.darkened(0.3), "stone": Color(0.60, 0.62, 0.56),
+				"stone2": Color(0.50, 0.53, 0.48), "door": Color(0.36, 0.22, 0.13), "plaque": Color(0.12, 0.22, 0.14)})
 		"xuanshui":
-			return BuildingBuilder.pal_with({"roof": c3, "roof2": c3.lightened(0.18), "pillar": c1.darkened(0.25), "wall": c2.lerp(Color.WHITE, 0.4),
-				"trim": Color(0.80, 0.86, 0.95), "beam": c1, "stone": Color(0.70, 0.72, 0.76), "stone2": Color(0.58, 0.61, 0.66),
-				"door": Color(0.18, 0.26, 0.45), "plaque": Color(0.10, 0.14, 0.30), "lantern": Color(0.5, 0.8, 1.0)})
+			# 湖泽水阁：蓝琉璃瓦、靛青柱、白墙
+			return BuildingBuilder.pal_with({"roof": Color(0.16, 0.28, 0.52), "roof2": Color(0.24, 0.38, 0.62), "roof_kind": K.K_GLAZED,
+				"pillar": c1.darkened(0.35), "wall": c2.lerp(Color.WHITE, 0.5), "trim": Color(0.80, 0.86, 0.95), "beam": c1.darkened(0.1),
+				"stone": Color(0.72, 0.74, 0.78), "stone2": Color(0.58, 0.61, 0.66), "door": Color(0.18, 0.26, 0.45), "plaque": Color(0.10, 0.14, 0.30),
+				"lantern": Color(0.5, 0.8, 1.0), "paper": Color(0.88, 0.92, 0.96)})
 		"lihuo":
-			return BuildingBuilder.pal_with({"roof": c3.darkened(0.1), "roof2": Color(0.40, 0.14, 0.10), "pillar": c1, "wall": Color(0.90, 0.84, 0.76),
-				"trim": c2, "beam": Color(0.55, 0.10, 0.08), "stone": Color(0.40, 0.34, 0.33), "stone2": Color(0.30, 0.25, 0.25),
+			# 赤岩火殿：黑瓦朱脊、朱红柱、赭石台基
+			return BuildingBuilder.pal_with({"roof": Color(0.17, 0.12, 0.12), "roof2": Color(0.46, 0.14, 0.10), "pillar": c1, "wall": Color(0.90, 0.84, 0.76),
+				"trim": c2, "beam": Color(0.55, 0.10, 0.08), "stone": Color(0.44, 0.36, 0.34), "stone2": Color(0.32, 0.26, 0.25),
 				"door": Color(0.42, 0.10, 0.08), "plaque": Color(0.10, 0.06, 0.05), "lantern": Color(1.0, 0.45, 0.12)})
 		"houtu":
-			return BuildingBuilder.pal_with({"roof": c2.darkened(0.15), "roof2": c2.lightened(0.1), "pillar": c1.darkened(0.2), "wall": c3,
-				"trim": Color(0.85, 0.66, 0.28), "beam": Color(0.44, 0.30, 0.16), "stone": Color(0.78, 0.68, 0.50), "stone2": Color(0.66, 0.56, 0.40),
-				"door": Color(0.40, 0.24, 0.12), "plaque": Color(0.22, 0.14, 0.08)})
+			# 黄土厚土宗：黄琉璃瓦、赭柱、夯土色墙
+			return BuildingBuilder.pal_with({"roof": Color(0.80, 0.60, 0.22), "roof2": Color(0.62, 0.42, 0.16), "roof_kind": K.K_GLAZED,
+				"pillar": c1.darkened(0.3), "wall": c3, "trim": Color(0.85, 0.66, 0.28), "beam": Color(0.44, 0.30, 0.16),
+				"stone": Color(0.78, 0.68, 0.50), "stone2": Color(0.66, 0.56, 0.40), "door": Color(0.40, 0.24, 0.12), "plaque": Color(0.22, 0.14, 0.08)})
 	return BuildingBuilder.pal_with({})
 
 
@@ -211,9 +216,13 @@ static func build_sect(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	var flag: Color = p["beam"] if sid != "tianjian" else Color(0.9, 0.92, 0.96)
 	for sx in [-1.0, 1.0]:
 		var x: float = sx * 12.0
+		m.kind = K.K_CARVED
 		m.box(Vector3(x - 0.6, 0, -50.6), Vector3(x + 0.6, 0.75, -49.4), p["stone"], true)
+		m.kind = K.K_PILLAR
 		m.box(Vector3(x - 0.15, 0.75, -50.15), Vector3(x + 0.15, 12, -49.85), p["wood"], true)
+		m.kind = K.K_GOLD
 		m.box(Vector3(x - 0.3, 12, -50.3), Vector3(x + 0.3, 12.4, -49.7), p["trim"])
+		m.kind = K.K_CLOTH
 		for i in 8:
 			var yy := 11.5 - i * 0.6
 			m.box(Vector3(x + sx * 0.15, yy - 0.6, -50.05), Vector3(x + sx * (0.15 + 2.6 - i * 0.12), yy, -49.95), flag if i % 3 != 2 else flag.darkened(0.15))
@@ -227,6 +236,7 @@ static func build_sect(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 		for sz in [-1.0, 1.0]:
 			var cx: float = sx * 44.0
 			var cz: float = -48.0 if sz < 0.0 else 46.0
+			m.kind = K.K_BRICK
 			m.box(Vector3(cx - 2.5, 0, cz - 2.5), Vector3(cx + 2.5, 5.0, cz + 2.5), p["stone2"], true)
 			B.pavilion(m, cx, cz, 3.0, 2.5, p, 5.0)
 	# 主殿（重檐）
@@ -325,8 +335,10 @@ static func _meditation_room(m: BuildingMesh, p: Dictionary) -> void:
 	var s: Color = p["stone"]
 	var w := 7.0
 	var d := 7.0
+	m.kind = K.K_STONE
 	m.box(Vector3(-w * 0.5 - 0.5, -0.25, -d * 0.5 - 0.5), Vector3(w * 0.5 + 0.5, 0.25, d * 0.5 + 0.5), p["stone2"], true)
 	# 墙（正面月洞门）
+	m.kind = K.K_WALL
 	m.box(Vector3(-w * 0.5, 0.25, d * 0.5 - 0.5), Vector3(w * 0.5, 4.0, d * 0.5), p["wall"], true)
 	m.box(Vector3(-w * 0.5, 0.25, -d * 0.5), Vector3(-w * 0.5 + 0.5, 4.0, d * 0.5), p["wall"], true)
 	m.box(Vector3(w * 0.5 - 0.5, 0.25, -d * 0.5), Vector3(w * 0.5, 4.0, d * 0.5), p["wall"], true)
@@ -336,10 +348,14 @@ static func _meditation_room(m: BuildingMesh, p: Dictionary) -> void:
 	m.box(Vector3(-1.25, 2.5, -d * 0.5), Vector3(-0.75, 2.75, -d * 0.5 + 0.5), p["wall"])
 	m.box(Vector3(0.75, 2.5, -d * 0.5), Vector3(1.25, 2.75, -d * 0.5 + 0.5), p["wall"])
 	# 门框（石）
+	m.kind = K.K_CARVED
 	m.box(Vector3(-1.5, 0.25, -d * 0.5 - 0.15), Vector3(1.5, 3.0, -d * 0.5), s)
+	m.kind = K.K_PLAIN
 	m.box(Vector3(-1.0, 0.25, -d * 0.5 - 0.2), Vector3(1.0, 2.6, -d * 0.5 - 0.15), Color(0.1, 0.1, 0.1))
 	# 室内：蒲团 + 发光阵纹
+	m.kind = K.K_RUNE
 	m.box(Vector3(-1.5, 0.25, -1.5), Vector3(1.5, 0.3, 1.5), VoxelGrid.glow(p["trim"], 0.35))
+	m.kind = K.K_CLOTH
 	m.box(Vector3(-0.5, 0.3, -0.5), Vector3(0.5, 0.55, 0.5), Color(0.72, 0.56, 0.3))
 	BuildingBuilder.roof(m, 0, 0, w * 0.5 + 1.25, d * 0.5 + 1.25, 4.0, 2.5, p, false)
 
@@ -347,14 +363,18 @@ static func _meditation_room(m: BuildingMesh, p: Dictionary) -> void:
 static func _herb_garden(m: BuildingMesh, c: Vector3, p: Dictionary) -> void:
 	var soil := Color(0.34, 0.24, 0.16)
 	var wood: Color = p["wood"]
+	m.kind = K.K_SOIL
 	m.box(c + Vector3(-5, 0, -8), c + Vector3(5, 0.3, 8), soil, true)
 	for i in 5:
 		for j in 8:
-			var col := Color(0.30, 0.72, 0.50) if (i + j) % 3 != 0 else Color(0.45, 0.85, 0.6)
+			var col := Color(0.30, 0.66, 0.44) if (i + j) % 3 != 0 else Color(0.42, 0.78, 0.52)
 			var pos := c + Vector3(-4 + i * 2.0, 0.3, -7 + j * 2.0)
+			m.kind = K.K_LEAF
 			m.box(pos + Vector3(-0.3, 0, -0.3), pos + Vector3(0.3, 0.6, 0.3), col)
 			if (i + j) % 4 == 0:
+				m.kind = K.K_GLOW
 				m.box(pos + Vector3(-0.1, 0.6, -0.1), pos + Vector3(0.1, 0.8, 0.1), VoxelGrid.glow(Color(0.6, 1.0, 0.9), 0.8))
+	m.kind = K.K_WOOD
 	for sx in [-1.0, 1.0]:
 		m.box(c + Vector3(sx * 5.0 - 0.1, 0, -8), c + Vector3(sx * 5.0 + 0.1, 0.8, 8), wood)
 	m.box(c + Vector3(-5, 0, -8.1), c + Vector3(5, 0.8, -7.9), wood)
@@ -364,7 +384,9 @@ static func _herb_garden(m: BuildingMesh, c: Vector3, p: Dictionary) -> void:
 ## 水池：石栏 + 水面（水面着色器）+ 荷叶
 static func _pool(m: BuildingMesh, root: Node3D, c: Vector3, hw: float, hd: float, p: Dictionary) -> void:
 	var s: Color = p["stone"]
+	m.kind = K.K_COBBLE
 	m.box(c + Vector3(-hw, -0.5, -hd), c + Vector3(hw, 0.0, hd), Color(0.24, 0.34, 0.38))
+	m.kind = K.K_STONE_SMOOTH
 	m.box(c + Vector3(-hw - 0.75, 0, -hd - 0.75), c + Vector3(hw + 0.75, 0.6, -hd), s, true)
 	m.box(c + Vector3(-hw - 0.75, 0, hd), c + Vector3(hw + 0.75, 0.6, hd + 0.75), s, true)
 	m.box(c + Vector3(-hw - 0.75, 0, -hd), c + Vector3(-hw, 0.6, hd), s, true)
@@ -376,7 +398,8 @@ static func _pool(m: BuildingMesh, root: Node3D, c: Vector3, hw: float, hd: floa
 	water.mesh = pm
 	var wm := ShaderMaterial.new()
 	wm.shader = load("res://assets/shaders/water.gdshader")
-	wm.set_shader_parameter("absorption", 0.6)
+	wm.set_shader_parameter("absorption", 0.45)
+	wm.set_shader_parameter("wave_strength", 0.18)
 	water.material_override = wm
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(water)
@@ -396,10 +419,14 @@ static func _pool(m: BuildingMesh, root: Node3D, c: Vector3, hw: float, hd: floa
 
 static func _brazier(m: BuildingMesh, c: Vector3, p: Dictionary) -> void:
 	var s: Color = p["stone"]
+	m.kind = K.K_STONE
 	m.box(c + Vector3(-0.6, 0, -0.6), c + Vector3(0.6, 0.3, 0.6), s, true)
+	m.kind = K.K_BRONZE
 	m.box(c + Vector3(-0.25, 0.3, -0.25), c + Vector3(0.25, 1.4, 0.25), Color(0.3, 0.26, 0.22), true)
 	m.box(c + Vector3(-0.7, 1.4, -0.7), c + Vector3(0.7, 1.8, 0.7), Color(0.36, 0.30, 0.18))
+	m.kind = K.K_LAVA
 	m.box(c + Vector3(-0.5, 1.8, -0.5), c + Vector3(0.5, 2.2, 0.5), VoxelGrid.glow(Color(1.0, 0.5, 0.12), 1.0))
+	m.kind = K.K_GLOW
 	m.box(c + Vector3(-0.25, 2.2, -0.25), c + Vector3(0.25, 2.7, 0.25), VoxelGrid.glow(Color(1.0, 0.8, 0.3), 1.0))
 
 
@@ -407,6 +434,7 @@ static func _brazier(m: BuildingMesh, c: Vector3, p: Dictionary) -> void:
 static func _formation(m: BuildingMesh, c: Vector3, r: float, p: Dictionary) -> void:
 	var s: Color = p["stone"]
 	var rune := VoxelGrid.glow(Color(1.0, 0.8, 0.3), 0.7)
+	m.kind = K.K_TILE_FLOOR
 	m.box(c + Vector3(-r, 0, -r * 0.4), c + Vector3(r, 0.25, r * 0.4), p["stone2"], true)
 	m.box(c + Vector3(-r * 0.4, 0, -r), c + Vector3(r * 0.4, 0.25, r), p["stone2"], true)
 	m.box(c + Vector3(-r * 0.75, 0, -r * 0.75), c + Vector3(r * 0.75, 0.25, r * 0.75), p["stone2"], true)
@@ -414,13 +442,18 @@ static func _formation(m: BuildingMesh, c: Vector3, r: float, p: Dictionary) -> 
 		var a := i * TAU / 8.0
 		var q := c + Vector3(cos(a) * r, 0, sin(a) * r)
 		q = Vector3(snappedf(q.x, 0.25), 0, snappedf(q.z, 0.25))
+		m.kind = K.K_CARVED
 		m.box(q + Vector3(-0.6, 0, -0.6), q + Vector3(0.6, 4.0 + (i % 2) * 1.0, 0.6), s, true)
+		m.kind = K.K_RUNE
 		m.box(q + Vector3(-0.65, 1.5, -0.65), q + Vector3(0.65, 1.75, 0.65), rune)
 		m.box(q + Vector3(-0.65, 3.0, -0.65), q + Vector3(0.65, 3.25, 0.65), rune)
 	# 阵纹
+	m.kind = K.K_GLOW
 	m.box(c + Vector3(-r * 0.6, 0.25, -0.15), c + Vector3(r * 0.6, 0.3, 0.15), rune)
 	m.box(c + Vector3(-0.15, 0.25, -r * 0.6), c + Vector3(0.15, 0.3, r * 0.6), rune)
+	m.kind = K.K_GOLD
 	m.box(c + Vector3(-1.5, 0.25, -1.5), c + Vector3(1.5, 0.5, 1.5), p["trim"], true)
+	m.kind = K.K_CRYSTAL
 	m.box(c + Vector3(-0.5, 0.5, -0.5), c + Vector3(0.5, 1.3, 0.5), VoxelGrid.glow(Color(1.0, 0.85, 0.4), 0.9))
 
 
@@ -452,7 +485,9 @@ static func build_town(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	m.push(Vector3(48, 0, -16), 2)
 	B.hall(m, 0, 0, 18, 11, 0.5, 4.0, p, {"double": true, "porch": 1.25, "stairs_w": 4.0, "door_w": 3.5})
 	m.pop()
+	m.kind = K.K_PILLAR
 	m.box(Vector3(37.5, 0, -8.5), Vector3(38.0, 9, -8.0), p["wood"], true)
+	m.kind = K.K_CLOTH
 	for i in 6:
 		m.box(Vector3(38.0, 8.5 - i * 0.6, -8.35), Vector3(40.2, 9.0 - i * 0.6, -8.15), Color(0.85, 0.2, 0.15) if i % 2 == 0 else Color(0.95, 0.85, 0.7))
 	# 十字街民居
@@ -491,8 +526,11 @@ static func build_town(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	m.pop()
 	# 水井
 	var s: Color = p["stone"]
+	m.kind = K.K_COBBLE
 	m.box(Vector3(-11.5, 0, 8.5), Vector3(-8.5, 0.9, 11.5), s, true)
-	m.box(Vector3(-11, 0.5, 9), Vector3(-9, 0.95, 11), Color(0.15, 0.25, 0.3))
+	m.kind = K.K_PLAIN
+	m.box(Vector3(-11, 0.5, 9), Vector3(-9, 0.95, 11), Color(0.10, 0.18, 0.22))
+	m.kind = K.K_LOG
 	for sx in [-1.0, 1.0]:
 		m.box(Vector3(-10 + sx * 1.3 - 0.12, 0.9, 9.9), Vector3(-10 + sx * 1.3 + 0.12, 2.8, 10.1), p["wood"])
 	m.box(Vector3(-11.6, 2.8, 9.7), Vector3(-8.4, 3.0, 10.3), p["wood"])
@@ -504,6 +542,7 @@ static func build_town(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 			continue
 		for sz in [-1.0, 1.0]:
 			var z: float = sz * 6.0
+			m.kind = K.K_PILLAR
 			m.box(Vector3(x - 0.12, 0, z - 0.12), Vector3(x + 0.12, 4.2, z + 0.12), p["wood"], true)
 			m.box(Vector3(x - 0.12, 4.0, z - 0.12 - sz * 0.8), Vector3(x + 0.12, 4.2, z + 0.12), p["wood"])
 			B.lantern(m, Vector3(x, 4.0, z - sz * 0.7), p, 0.9)
@@ -578,10 +617,14 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 			var sk := 0.93 + 0.1 * TerrainGen._hash2(wx, wz)
 			var st := Color(stone.r * sk, stone.g * sk, stone.b * sk)
 			if h - base > 3.0:
+				hill.kind = K.K_ROCK
 				hill.box(a, Vector3(b.x, h - 3.0, b.z), st)
+				hill.kind = K.K_DIRT
 				hill.box(Vector3(a.x, h - 3.0, a.z), Vector3(b.x, h - 1.0, b.z), dirt)
+				hill.kind = K.K_GRASS
 				hill.box(Vector3(a.x, h - 1.0, a.z), b, surf[1], false, false, top)
 			else:
+				hill.kind = K.K_MOSSY
 				hill.box(a, b, st, false, false, top)
 			hill.collider(a, b)
 	var hmi := MeshInstance3D.new()
@@ -593,24 +636,33 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	root.add_child(hbody)
 	# 石室地面
 	B.paving(m, -7, 3, 7, 15, 0.1, p, 1.0)
+	m.kind = K.K_STONE
 	m.box(Vector3(-2, -0.2, 0), Vector3(2, 0.1, 3.5), p["stone2"])
 	# 门框 + 匾额 + 小檐
 	var wood := Color(0.36, 0.22, 0.14)
+	m.kind = K.K_CARVED
 	for sx in [-1.0, 1.0]:
 		m.box(Vector3(sx * 2.25 - 0.5, 0, 0.0), Vector3(sx * 2.25 + 0.5, 4.5, 1.0), p["stone"], true)
+	m.kind = K.K_STONE
 	m.box(Vector3(-2.75, 4.0, -0.25), Vector3(2.75, 4.75, 1.0), p["stone"])
+	m.kind = K.K_BEAM
 	m.box(Vector3(-1.25, 4.1, -0.4), Vector3(1.25, 4.65, -0.25), Color(0.15, 0.12, 0.1))
+	m.kind = K.K_GOLD
 	for i in 2:
 		m.box(Vector3(-0.7 + i * 0.9, 4.2, -0.5), Vector3(-0.2 + i * 0.9, 4.55, -0.4), Color(0.9, 0.72, 0.3))
 	B.roof(m, 0, 0.2, 3.5, 1.3, 4.75, 0.75, BuildingBuilder.pal_with({}), true, 0.0, 0.8)
 	# 室内陈设：蒲团玉台、储物箱、丹炉、书架、灵晶
 	var jade := Color(0.52, 0.80, 0.66)
+	m.kind = K.K_STONE_SMOOTH
 	m.box(Vector3(-1.75, 0.1, 10.25), Vector3(1.75, 0.3, 13.75), jade.darkened(0.2), true)
 	m.box(Vector3(-1.25, 0.3, 10.75), Vector3(1.25, 0.45, 13.25), VoxelGrid.glow(jade, 0.4), true)
+	m.kind = K.K_CLOTH
 	m.box(Vector3(-0.55, 0.45, 11.45), Vector3(0.55, 0.7, 12.55), Color(0.78, 0.60, 0.32))
 	# 储物箱
+	m.kind = K.K_WOOD
 	m.box(Vector3(4.75, 0.1, 11.0), Vector3(6.25, 1.1, 13.0), wood, true)
 	m.box(Vector3(4.7, 1.1, 10.95), Vector3(6.3, 1.3, 13.05), wood.lightened(0.1))
+	m.kind = K.K_GOLD
 	m.box(Vector3(4.65, 0.5, 11.8), Vector3(4.75, 0.8, 12.2), Color(0.9, 0.72, 0.3))
 	m.box(Vector3(4.7, 0.1, 10.95), Vector3(6.3, 0.25, 13.05), Color(0.85, 0.66, 0.28))
 	# 丹炉
@@ -620,13 +672,16 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 		var x0 := -6.5 + i * 4.5
 		if i == 1:
 			continue
+		m.kind = K.K_WOOD
 		m.box(Vector3(x0, 0.1, 14.4), Vector3(x0 + 3.5, 3.0, 14.9), wood, true)
 		m.box(Vector3(x0, 0.1, 13.8), Vector3(x0 + 0.2, 3.0, 14.4), wood)
 		m.box(Vector3(x0 + 3.3, 0.1, 13.8), Vector3(x0 + 3.5, 3.0, 14.4), wood)
 		m.box(Vector3(x0, 2.9, 13.7), Vector3(x0 + 3.5, 3.1, 14.9), wood.lightened(0.1))
 		for sh in 3:
 			var y := 0.35 + sh * 0.85
+			m.kind = K.K_WOOD
 			m.box(Vector3(x0 + 0.2, y - 0.1, 13.8), Vector3(x0 + 3.3, y, 14.4), wood.darkened(0.15))
+			m.kind = K.K_CLOTH
 			var bx := x0 + 0.25
 			var k := 0
 			while bx < x0 + 3.15:
@@ -636,10 +691,14 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 				bx += bw + 0.03
 				k += 1
 	# 卷轴与蒲团旁小几
+	m.kind = K.K_WOOD
 	m.box(Vector3(2.0, 0.1, 10.8), Vector3(3.2, 0.6, 11.6), wood)
+	m.kind = K.K_CLOTH
 	m.box(Vector3(2.2, 0.6, 11.0), Vector3(3.0, 0.72, 11.2), Color(0.92, 0.86, 0.7))
+	m.kind = K.K_GLOW
 	m.box(Vector3(2.4, 0.6, 11.3), Vector3(2.6, 0.9, 11.5), VoxelGrid.glow(Color(0.5, 1.0, 0.8), 0.5))
 	# 灵晶（墙角发光）
+	m.kind = K.K_CRYSTAL
 	for q in [Vector3(-6.5, 0.1, 4.0), Vector3(6.5, 0.1, 4.5), Vector3(-6.5, 3.0, 9.0), Vector3(6.5, 3.5, 14.0), Vector3(0.5, 5.0, 8.0)]:
 		var cc := VoxelGrid.glow(Color(0.45, 0.85, 1.0), 0.9)
 		m.box(q + Vector3(-0.25, 0, -0.25), q + Vector3(0.25, 1.0, 0.25), cc)
@@ -665,6 +724,7 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	for sx in [-1.0, 1.0]:
 		var x0: float = -8.0 if sx < 0.0 else 1.0
 		var x1: float = x0 + 7.0
+		m.kind = K.K_WOOD
 		m.box(Vector3(x0, 0, -15.1), Vector3(x1, 0.7, -14.9), wood)
 		m.box(Vector3(x0, 0, -7.1), Vector3(x1, 0.7, -6.9), wood)
 		m.box(Vector3(x0 - 0.1, 0, -15), Vector3(x0 + 0.1, 0.7, -7), wood)
@@ -672,8 +732,11 @@ static func build_home(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 		for i in 3:
 			for j in 4:
 				var pos := Vector3(x0 + 1.3 + i * 2.2, 0, -13.8 + j * 2.0)
-				m.box(pos + Vector3(-0.3, 0, -0.3), pos + Vector3(0.3, 0.45, 0.3), Color(0.3, 0.7, 0.45))
+				m.kind = K.K_LEAF
+				m.box(pos + Vector3(-0.3, 0, -0.3), pos + Vector3(0.3, 0.45, 0.3), Color(0.3, 0.66, 0.42))
+				m.kind = K.K_GLOW
 				m.box(pos + Vector3(-0.1, 0.45, -0.1), pos + Vector3(0.1, 0.6, 0.1), VoxelGrid.glow(Color(0.6, 1.0, 0.85), 0.7))
+	m.kind = K.K_FLAGSTONE
 	for i in 7:
 		var z := -16.0 + i * 2.2
 		m.box(Vector3(-0.8, -0.1, z), Vector3(0.8, 0.12, z + 1.6), p["stone"])
@@ -699,12 +762,14 @@ static func build_portal(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	var c2 := Color(0.2, 0.55, 1.0) if rid == "herb_valley" else Color(1.0, 0.75, 0.35)
 	var rune := VoxelGrid.glow(c1, 0.85)
 	# 八角基座（两层）
+	m.kind = K.K_STONE
 	m.box(Vector3(-6, 0, -3.5), Vector3(6, 0.5, 3.5), stone2, true)
 	m.box(Vector3(-3.5, 0, -6), Vector3(3.5, 0.5, 6), stone2, true)
 	m.box(Vector3(-5, 0, -5), Vector3(5, 0.5, 5), stone2, true)
 	m.box(Vector3(-4.5, 0.5, -2.5), Vector3(4.5, 0.75, 2.5), stone, true)
 	m.box(Vector3(-2.5, 0.5, -4.5), Vector3(2.5, 0.75, 4.5), stone, true)
 	# 阵纹环
+	m.kind = K.K_GLOW
 	for i in 16:
 		var a := i * TAU / 16.0
 		var q := Vector3(snappedf(cos(a) * 4.4, 0.25), 0.5, snappedf(sin(a) * 4.4, 0.25))
@@ -712,20 +777,27 @@ static func build_portal(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 	# 门柱与门楣
 	for sx in [-1.0, 1.0]:
 		var x: float = sx * 3.4
+		m.kind = K.K_STONE
 		m.box(Vector3(x - 0.9, 0.75, -0.9), Vector3(x + 0.9, 1.5, 0.9), stone2, true)
+		m.kind = K.K_CARVED
 		m.box(Vector3(x - 0.7, 1.5, -0.7), Vector3(x + 0.7, 8.0, 0.7), stone, true)
+		m.kind = K.K_RUNE
 		for k in 4:
 			var y := 2.25 + k * 1.5
 			m.box(Vector3(x - 0.75, y, -0.75), Vector3(x + 0.75, y + 0.25, 0.75), rune)
+	m.kind = K.K_STONE
 	m.box(Vector3(-4.75, 8.0, -1.0), Vector3(4.75, 9.0, 1.0), stone2, true)
 	m.box(Vector3(-4.25, 9.0, -0.75), Vector3(4.25, 9.5, 0.75), stone)
+	m.kind = K.K_RUNE
 	m.box(Vector3(-1.0, 8.2, -1.1), Vector3(1.0, 8.8, -1.0), rune)
 	BuildingBuilder.roof(m, 0, 0, 5.5, 1.75, 9.5, 1.0, BuildingBuilder.pal_with({"roof": Color(0.2, 0.2, 0.26), "roof2": Color(0.3, 0.3, 0.36), "trim": Color(0.75, 0.62, 0.35)}), true, 0.0, 1.0)
 	# 四角符石
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			var q := Vector3(sx * 5.0, 0.5, sz * 5.0)
+			m.kind = K.K_CARVED
 			m.box(q + Vector3(-0.4, 0, -0.4), q + Vector3(0.4, 2.2, 0.4), stone, true)
+			m.kind = K.K_RUNE
 			m.box(q + Vector3(-0.45, 1.6, -0.45), q + Vector3(0.45, 1.85, 0.45), rune)
 	_finish(root, m)
 	# 旋涡门面
@@ -787,8 +859,11 @@ static func build_landmark(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 				var q := Vector3(roundf(cos(a) * 11.0), 0, roundf(sin(a) * 11.0))
 				B.giant_sword(m, q.x, q.z, rng.randf_range(4.0, 8.0), tp)
 			# 石碑
+			m.kind = K.K_STONE
 			m.box(Vector3(-1.5, 0, -6.5), Vector3(1.5, 0.75, -5.5), tp["stone2"], true)
+			m.kind = K.K_CARVED
 			m.box(Vector3(-1.1, 0.75, -6.25), Vector3(1.1, 4.5, -5.75), tp["stone"], true)
+			m.kind = K.K_PLAIN
 			for k in 5:
 				m.box(Vector3(-0.2, 1.2 + k * 0.6, -6.3), Vector3(0.2, 1.5 + k * 0.6, -6.25), Color(0.2, 0.2, 0.22))
 			_finish(root, m)
@@ -800,10 +875,12 @@ static func build_landmark(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 			# 残破牌坊基座与倒塌柱段
 			for i in 6:
 				var q := Vector3(rng.randf_range(-14, 14), 0, rng.randf_range(-14, 14))
+				m.kind = K.K_MOSSY if i % 2 == 0 else K.K_STONE
 				m.box(q + Vector3(-0.6, -0.3, -2.5), q + Vector3(0.6, 0.9, 2.5), Color(0.52, 0.5, 0.47), true)
 			for i in 14:
 				var q := Vector3(rng.randf_range(-15, 15), 0, rng.randf_range(-15, 15))
 				var c := Color(0.55, 0.56, 0.6) if i % 2 == 0 else Color(0.42, 0.3, 0.2)
+				m.kind = K.K_GOLD if i % 2 == 0 else K.K_WOOD
 				m.box(q + Vector3(-0.05, 0, -0.05), q + Vector3(0.05, rng.randf_range(0.8, 1.6), 0.05), c)
 				m.box(q + Vector3(-0.25, 0.6, -0.04), q + Vector3(0.25, 0.7, 0.04), c)
 			_finish(root, m)
@@ -821,8 +898,11 @@ static func build_landmark(poi: Dictionary, terrain: TerrainGen) -> Node3D:
 			t.scale = Vector3.ONE * 1.8
 			_place(root, t, Vector3.ZERO)
 			# 小祠
+			m.kind = K.K_CARVED
 			m.box(Vector3(-1.5, 0, -12.5), Vector3(1.5, 0.9, -11.5), p["stone"], true)
+			m.kind = K.K_BEAM
 			m.box(Vector3(-0.9, 0.9, -12.3), Vector3(0.9, 1.1, -11.7), Color(0.62, 0.14, 0.11))
+			m.kind = K.K_GLOW
 			m.box(Vector3(-0.2, 1.1, -12.1), Vector3(0.2, 1.6, -11.9), VoxelGrid.glow(Color(1.0, 0.7, 0.3), 0.8))
 			_finish(root, m)
 			for sx in [-1.0, 1.0]:

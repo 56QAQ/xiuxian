@@ -10,6 +10,7 @@ func build(root: Node) -> void:
 	var dn := DayNight.new()
 	dn.hour = 9.5
 	root.add_child(dn)
+	dn.env.fog_height = -1.0  # 影棚地面在 y=0，不需要大地图的低地高度雾
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(300, 300)
