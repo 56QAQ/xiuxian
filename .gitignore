@@ -16,3 +16,5 @@ __pycache__/
 
 # Claude Code local state (agent worktrees)
 .claude/
+# 本地临时截图脚本（以下划线开头，不入库）
+/tools/shots/_*
