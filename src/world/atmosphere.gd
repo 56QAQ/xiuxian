@@ -32,7 +32,9 @@ static func make_environment() -> Environment:
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	sky.sky_material = make_sky_material()
-	sky.radiance_size = Sky.RADIANCE_SIZE_64
+	# 避免部分 Vulkan 驱动在增量天空辐照度滤波时产生大片黑色区域。
+	sky.process_mode = Sky.PROCESS_MODE_REALTIME
+	sky.radiance_size = Sky.RADIANCE_SIZE_256
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
