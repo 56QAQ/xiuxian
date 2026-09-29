@@ -3,7 +3,7 @@
 // 材质：0 布 1 皮肤 2 头发 3 金饰 4 钢银 5 宝石 6 皮革 7 毛皮 8 眼睛 9 石 10 鳞角 11 丝绸 12 玉 13 火焰
 // 自定义光照：包裹漫反射（皮肤带暖色次表面）、GGX 高光（金属着色 F0）、头发各向异性光泽、宝石闪光；
 // 另加视角菲涅尔边缘光，让角色在任何背景下都轮廓清晰。
-// instance uniform（战斗用）：flash / flash_color / dissolve / tint，与 voxel.gdshader 相同。
+// instance uniform（战斗用）：flash / flash_color / dissolve / tint，与 voxel.gdshader 相同（兼容渲染器下为普通 uniform）。
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
 
@@ -13,10 +13,19 @@ uniform vec3 rim_color : source_color = vec3(1.0, 0.96, 0.9);
 uniform float spec_gain : hint_range(0.0, 3.0) = 1.0;
 uniform float voxel_density = 80.0;   // 每米体素数（溶解颗粒）
 
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+// 兼容渲染器的实例参数槽位受硬件 UBO 限制（全场景约 256 个实例），角色部件一多就会溢出；
+// 这里改为普通 uniform，由 CharacterRig 在首次受击/消散时为该角色复制一份材质承载。
+uniform float flash = 0.0;
+uniform vec4 flash_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform float dissolve = 0.0;
+uniform vec4 tint = vec4(1.0, 1.0, 1.0, 0.0);
+#else
 instance uniform float flash = 0.0;          // 受击闪白 0~1
 instance uniform vec4 flash_color = vec4(1.0, 1.0, 1.0, 1.0);
 instance uniform float dissolve = 0.0;       // 死亡消散 0~1
 instance uniform vec4 tint = vec4(1.0, 1.0, 1.0, 0.0); // rgb 色调，a 为混合量
+#endif
 
 varying vec3 local_pos;
 varying vec4 v_mat;     // x 粗糙度 y 金属度 z 高光强度 w 包裹光

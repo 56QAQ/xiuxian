@@ -13,6 +13,7 @@ var music_volume := 0.6
 var camera_shake := 1.0
 var show_damage_numbers := true
 var hud_drift := 1.0  ## HUD 随运动漂移强度
+var screen_effects := true  ## 速度线、径向模糊、色散等全屏特效
 
 ## action -> Array of [type, code]；type: "key" | "mouse"
 const BINDINGS := {
@@ -83,6 +84,7 @@ func load_settings() -> void:
 	camera_shake = cfg.get_value("video", "camera_shake", camera_shake)
 	hud_drift = cfg.get_value("video", "hud_drift", hud_drift)
 	show_damage_numbers = cfg.get_value("video", "show_damage_numbers", show_damage_numbers)
+	screen_effects = cfg.get_value("video", "screen_effects", screen_effects)
 	master_volume = cfg.get_value("audio", "master", master_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	music_volume = cfg.get_value("audio", "music", music_volume)
@@ -97,6 +99,7 @@ func save_settings() -> void:
 	cfg.set_value("video", "camera_shake", camera_shake)
 	cfg.set_value("video", "hud_drift", hud_drift)
 	cfg.set_value("video", "show_damage_numbers", show_damage_numbers)
+	cfg.set_value("video", "screen_effects", screen_effects)
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music", music_volume)

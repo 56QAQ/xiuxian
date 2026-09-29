@@ -4,7 +4,7 @@ extends UIWindow
 
 const DEFAULTS := {
 	"mouse_sensitivity": 0.0025, "invert_y": false, "fov": 72.0, "camera_shake": 1.0, "hud_drift": 1.0,
-	"show_damage_numbers": true, "master_volume": 0.8, "sfx_volume": 0.9, "music_volume": 0.6,
+	"show_damage_numbers": true, "screen_effects": true, "master_volume": 0.8, "sfx_volume": 0.9, "music_volume": 0.6,
 }
 
 var _rows: Dictionary = {}
@@ -28,6 +28,7 @@ func _build() -> void:
 	_slider_row("camera_shake", "镜头震动", 0.0, 1.5, 0.05, _pct)
 	_slider_row("hud_drift", "界面漂移", 0.0, 1.5, 0.05, _pct)
 	_toggle_row("show_damage_numbers", "显示伤害数字")
+	_toggle_row("screen_effects", "全屏特效（速度线、径向模糊）")
 	add(UITheme.header("声音"))
 	_slider_row("master_volume", "总音量", 0.0, 1.0, 0.01, _pct)
 	_slider_row("sfx_volume", "音效", 0.0, 1.0, 0.01, _pct)

@@ -562,6 +562,7 @@ static func attach(bone: Node3D, pair: Array, mesh_name: String = "Mesh", mirror
 	var mi := MeshInstance3D.new()
 	mi.name = mesh_name
 	mi.mesh = pair[0]
+	mi.set_meta("vox", true)
 	if mirror:
 		mi.scale = Vector3(-1, 1, 1)
 	bone.add_child(mi)
@@ -575,6 +576,7 @@ static func attach(bone: Node3D, pair: Array, mesh_name: String = "Mesh", mirror
 		m1.visibility_range_begin = d
 		m1.visibility_range_begin_margin = 1.5
 		m1.set_meta("lod", 1)
+		m1.set_meta("vox", true)
 		if mirror:
 			m1.scale = Vector3(-1, 1, 1)
 		bone.add_child(m1)

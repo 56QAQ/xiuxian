@@ -34,6 +34,9 @@ const SPRING_PREFIXES: Array[String] = ["hair_", "tail", "ear_", "cloth_"]
 var bones: Dictionary = {}
 var rest: Dictionary = {}
 var meshes: Array[MeshInstance3D] = []
+## 兼容渲染器下本角色专用的材质副本（首次需要时创建）
+var _own_mat: ShaderMaterial
+static var _compat: int = -1
 ## 身高缩放（builder 写入），影响步幅
 var body_scale: float = 1.0
 var voxel_size: float = 1.0 / 36.0
@@ -199,9 +202,26 @@ func set_tint(c: Color, amount: float) -> void:
 
 
 func _apply_instance_param(p: String, v: Variant) -> void:
+	var compat := compat_renderer()
 	for m in meshes:
-		if is_instance_valid(m):
+		if not is_instance_valid(m):
+			continue
+		if compat and m.has_meta("vox"):
+			if _own_mat == null:
+				_own_mat = VoxMesh.material().duplicate() as ShaderMaterial
+			if m.material_override != _own_mat:
+				m.material_override = _own_mat
+		else:
 			m.set_instance_shader_parameter(p, v)
+	if compat and _own_mat != null:
+		_own_mat.set_shader_parameter(p, v)
+
+
+## 是否为兼容渲染器（voxel_char.gdshader 在其下用普通 uniform，见 _apply_instance_param）
+static func compat_renderer() -> bool:
+	if _compat < 0:
+		_compat = 1 if RenderingServer.get_current_rendering_method() == "gl_compatibility" else 0
+	return _compat == 1
 
 
 ## 把节点挂到手上（清空该手原有挂件）

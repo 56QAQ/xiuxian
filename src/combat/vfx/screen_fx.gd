@@ -1,7 +1,7 @@
 class_name ScreenFx
 extends CanvasLayer
 ## 屏幕特效层（位于 HUD 之下）：高速疾行的径向速度线；重击时短暂的径向模糊 + 色散。
-## 强度随 Settings.camera_shake 缩放；若 Settings 提供 screen_effects=false 则完全关闭。
+## 强度随 Settings.camera_shake 缩放；Settings.screen_effects=false 时完全关闭。
 ## 两项均为 0 时隐藏全屏矩形，不产生额外的屏幕拷贝开销。
 
 const LAYER := 4
@@ -28,10 +28,7 @@ func _ready() -> void:
 
 
 static func enabled() -> bool:
-	var v = Settings.get("screen_effects")
-	if v is bool and not v:
-		return false
-	return Settings.camera_shake > 0.001
+	return Settings.screen_effects and Settings.camera_shake > 0.001
 
 
 ## 重击冲击（0~1）

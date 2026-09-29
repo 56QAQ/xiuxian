@@ -135,7 +135,9 @@ func _uses_instance_uniforms(g: GeometryInstance3D) -> bool:
 		return false
 	var sh := (mat as ShaderMaterial).shader
 	if not _iu_cache.has(sh):
-		_iu_cache[sh] = sh.code.contains("\ninstance uniform")
+		# 带渲染器分支的着色器（voxel_char）在兼容渲染器下不用实例参数
+		_iu_cache[sh] = sh.code.contains("\ninstance uniform") \
+			and not (CharacterRig.compat_renderer() and sh.code.contains("#if CURRENT_RENDERER == RENDERER_COMPATIBILITY"))
 	return _iu_cache[sh]
 
 
