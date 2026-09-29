@@ -534,11 +534,11 @@ def t_lava(rng, v):
 	edge = f2 - f1
 	n = fbm(rng, 4, 3)
 	n2 = fbm(rng, 8, 2)
-	river = 1.0 - smoothstep_np(2.2, 5.0, edge + (n - 0.5) * 3.0)
-	crust = river < 0.45
-	# 熔流：越靠近河心越亮
-	hot = np.clip(river * 1.1 + (n2 - 0.5) * 0.3, 0, 1)
-	rgb = ramp(0.35 + hot * 0.65, P_LAVA, 0.35)
+	river = 1.0 - smoothstep_np(1.2, 3.6, edge + (n - 0.5) * 2.4)
+	crust = river < 0.4
+	# 熔流：越靠近河心越亮（保持橙红，只有河心带一点金黄）
+	hot = np.clip(river * 1.15 + (n2 - 0.5) * 0.3, 0, 1)
+	rgb = ramp(0.25 + hot ** 1.6 * 0.58, P_LAVA, 0.35)
 	# 结壳：玄武岩色，左上受光，边缘被熔流烧红
 	ch = np.clip((edge - 2.0) / 5.0, 0, 1)
 	lt = light(ch * 0.8 + n2 * 0.2, 3.0)
@@ -1455,18 +1455,18 @@ def grade(rgb):
 	# 纯红偏朱砂
 	rdom = np.clip((r - np.maximum(g, b)) * 2.0, 0.0, 1.0)
 	x = x + rdom * r * np.array([-0.02, 0.035, 0.0])
-	# 去饱和（高饱和处更多）
+	# 饱和度：中低饱和处略提（补偿 AgX 与空气透视的发灰），高饱和处收住
 	lum = (x * lw).sum(-1, keepdims=True)
 	sat = np.max(x, -1, keepdims=True) - np.min(x, -1, keepdims=True)
-	k = 0.9 - 0.08 * np.clip(sat - 0.4, 0.0, 1.0)
+	k = 1.1 - 0.25 * np.clip(sat - 0.35, 0.0, 1.0)
 	x = lum + (x - lum) * k
 	# 分离色调：暗部青蓝、亮部暖金
 	lum = np.clip((x * lw).sum(-1, keepdims=True), 0.0, 1.0)
 	sh = (1.0 - lum) ** 2
 	hi = lum ** 2
 	x = x + sh * np.array([-0.012, 0.010, 0.030]) + hi * np.array([0.028, 0.012, -0.030])
-	# 纸感：抬黑、柔化高光
-	x = 0.022 + x * 0.968
+	# 纸感：轻微抬黑、柔化高光
+	x = 0.012 + x * 0.98
 	x = x - 0.035 * np.maximum(x - 0.8, 0.0) ** 2 / 0.04
 	return np.clip(x, 0.0, 1.0)
 

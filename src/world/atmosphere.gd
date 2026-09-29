@@ -10,13 +10,14 @@ const SKY_SHADER := "res://assets/shaders/sky.gdshader"
 ## 调色板字段（颜色均为 sRGB）：
 ## zenith horizon haze glow（天空）、ambient amb_e（环境光与强度）、fog fog_d（雾色与密度）、
 ## vol vol_d（体积雾反照率与密度）、ink mist（远山墨色与山脚雾色）、cloud_l cloud_s（云亮/暗部）、
-## sun sun_e（太阳色与强度）、exposure（曝光）、cloud（云量）
+## sun sun_e（太阳色与强度）、exposure（曝光）、cloud（云量）；
+## 可选 fog_h fog_hd（高度雾起始高度与密度；低于该高度雾渐浓，默认按大地图海平面设置）
 const DAY := {
-	"zenith": Color(0.28, 0.52, 0.84), "horizon": Color(0.70, 0.83, 0.92), "haze": Color(0.84, 0.90, 0.94), "glow": Color(1.0, 0.92, 0.76),
-	"ambient": Color(0.50, 0.60, 0.72), "amb_e": 0.62, "fog": Color(0.74, 0.83, 0.90), "fog_d": 0.78, "fog_end": 1150.0,
-	"vol": Color(0.92, 0.94, 0.96), "vol_d": 0.0025, "ink": Color(0.46, 0.58, 0.66), "mist": Color(0.84, 0.90, 0.93),
-	"cloud_l": Color(1.0, 1.0, 0.98), "cloud_s": Color(0.68, 0.74, 0.84), "sun": Color(1.0, 0.96, 0.88), "sun_e": 1.7,
-	"exposure": 0.88, "cloud": 0.45,
+	"zenith": Color(0.22, 0.46, 0.86), "horizon": Color(0.64, 0.80, 0.94), "haze": Color(0.80, 0.88, 0.95), "glow": Color(1.0, 0.92, 0.76),
+	"ambient": Color(0.50, 0.60, 0.74), "amb_e": 0.62, "fog": Color(0.70, 0.80, 0.92), "fog_d": 0.7, "fog_end": 1400.0,
+	"vol": Color(0.92, 0.94, 0.96), "vol_d": 0.0016, "ink": Color(0.40, 0.54, 0.66), "mist": Color(0.80, 0.88, 0.94),
+	"cloud_l": Color(1.0, 1.0, 0.98), "cloud_s": Color(0.66, 0.73, 0.84), "sun": Color(1.0, 0.95, 0.84), "sun_e": 1.8,
+	"exposure": 0.9, "cloud": 0.45,
 }
 
 
@@ -71,19 +72,19 @@ static func make_environment() -> Environment:
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_density = 0.8
-	env.fog_depth_begin = 40.0
+	env.fog_depth_begin = 60.0
 	env.fog_depth_end = 1100.0
 	env.fog_depth_curve = 1.7
 	env.fog_aerial_perspective = 0.55
 	env.fog_sky_affect = 0.16
 	env.fog_sun_scatter = 0.2
 	env.fog_height = 15.0
-	env.fog_height_density = 0.018
+	env.fog_height_density = 0.012
 	# 体积雾：光柱与晨雾（仅 Forward+）
 	env.volumetric_fog_enabled = fplus
 	env.volumetric_fog_density = 0.003
 	env.volumetric_fog_albedo = Color(0.92, 0.94, 0.96)
-	env.volumetric_fog_anisotropy = 0.6
+	env.volumetric_fog_anisotropy = 0.45
 	env.volumetric_fog_length = 120.0
 	env.volumetric_fog_detail_spread = 2.0
 	env.volumetric_fog_ambient_inject = 0.35
@@ -91,7 +92,7 @@ static func make_environment() -> Environment:
 	env.volumetric_fog_temporal_reprojection_enabled = true
 	env.volumetric_fog_temporal_reprojection_amount = 0.85
 	env.sdfgi_enabled = false
-	# 调色：3D LUT（暖高光、青绿暗部、略去饱和、纸感抬黑）
+	# 调色：3D LUT（暖高光、青绿暗部、略提饱和、轻微抬黑）
 	env.adjustment_enabled = true
 	env.adjustment_brightness = 1.0
 	env.adjustment_contrast = 1.0
@@ -145,6 +146,10 @@ static func apply(env: Environment, sky_mat: ShaderMaterial, sun: DirectionalLig
 	# 深度雾：fog_d 为远处最大浓度，fog_end 为达到最大浓度的距离
 	env.fog_density = float(p["fog_d"])
 	env.fog_depth_end = float(p.get("fog_end", 1100.0))
+	if p.has("fog_h"):
+		env.fog_height = float(p["fog_h"])
+	if p.has("fog_hd"):
+		env.fog_height_density = float(p["fog_hd"])
 	env.volumetric_fog_albedo = p["vol"]
 	env.volumetric_fog_density = float(p["vol_d"])
 	env.tonemap_exposure = float(p["exposure"])

@@ -32,8 +32,8 @@ static var KEYS: Array = [
 		"exposure": 1.0, "cloud": 0.45}],
 	[0.18, {
 		"zenith": Color(0.30, 0.50, 0.78), "horizon": Color(0.78, 0.84, 0.86), "haze": Color(0.88, 0.88, 0.84), "glow": Color(1.0, 0.82, 0.58),
-		"ambient": Color(0.52, 0.60, 0.68), "amb_e": 0.56, "fog": Color(0.76, 0.81, 0.84), "fog_d": 0.82, "fog_end": 1000.0,
-		"vol": Color(0.96, 0.94, 0.90), "vol_d": 0.004, "ink": Color(0.42, 0.52, 0.56), "mist": Color(0.82, 0.86, 0.86),
+		"ambient": Color(0.52, 0.60, 0.68), "amb_e": 0.56, "fog": Color(0.76, 0.81, 0.84), "fog_d": 0.76, "fog_end": 1150.0,
+		"vol": Color(0.96, 0.94, 0.90), "vol_d": 0.003, "ink": Color(0.42, 0.52, 0.56), "mist": Color(0.82, 0.86, 0.86),
 		"cloud_l": Color(1.0, 0.97, 0.92), "cloud_s": Color(0.64, 0.70, 0.78), "sun": Color(1.0, 0.90, 0.74), "sun_e": 1.6,
 		"exposure": 0.9, "cloud": 0.45}],
 	[0.55, Atmosphere.DAY],

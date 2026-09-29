@@ -119,11 +119,15 @@ func _exit_tree() -> void:
 func _build_env() -> void:
 	var env := WorldEnvironment.new()
 	var e := Atmosphere.make_environment()
-	var pal: Dictionary = theme["pal"]
+	var pal: Dictionary = (theme["pal"] as Dictionary).duplicate()
+	# 秘境地面约 0~15 米：高度雾只积在低洼处与水面上
+	var water_y := float(theme.get("water", -10.0))
+	pal["fog_h"] = water_y + 1.5 if water_y > 0.0 else 2.5
+	pal["fog_hd"] = 0.02
 	# 秘境较小：天空远山低一些，雾在边缘峭壁外收拢
 	var sky_mat := e.sky.sky_material as ShaderMaterial
 	sky_mat.set_shader_parameter("mountain_scale", 0.8)
-	sky_mat.set_shader_parameter("cloud_time", rng.randf() * 500.0)
+	sky_mat.set_shader_parameter("cloud_time", float(absi(rng.seed) % 500))  # 不消耗 rng，保持秘境布局随机序列不变
 	env.environment = e
 	add_child(env)
 	var sun := DirectionalLight3D.new()

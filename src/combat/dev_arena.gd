@@ -58,6 +58,9 @@ static func build_arena(root: Node3D) -> void:
 	pal["fog_end"] = 520.0
 	pal["vol_d"] = 0.004
 	pal["cloud"] = 0.38
+	# 地面在 y=0：高度雾只在草地以下，广场保持通透
+	pal["fog_h"] = -0.5
+	pal["fog_hd"] = 0.01
 	Atmosphere.apply(e, sky_mat, sun, pal)
 	# 斗法读图优先：关闭体积雾（法术强光会把雾照成一片）
 	e.volumetric_fog_enabled = false

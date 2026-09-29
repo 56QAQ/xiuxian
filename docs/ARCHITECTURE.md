@@ -73,6 +73,11 @@ tools/                 字体子集化、截图（tools/shot.sh）、音效生�
 - **VoxelDestructible**（组 `destructible`，层 1+7）：`apply_damage_at(point, radius, power)`；断开的部分整体坠落；碎屑为对象池 MultiMesh。
 - **PropBuilder / BuildingBuilder / BuildingLayouts / DestructibleFactory**：植被、中式建筑、宗门布局与可破坏物。
 - **DayNight**、**WaterPlane**：昼夜与水面；大地图 1 现实分钟 = 1 时辰。
+- **方块材质**：`tools/gen_world_textures.py`（numpy + Pillow）绘制 32×32 像素材质 → `assets/textures/world/blocks_albedo.png` / `blocks_detail.png`（Texture2DArray，73 层）与 `grade_lut.png`（32³ 调色 LUT），并生成 `src/world/block_ids.gd`（层号、标志位、平均色）。改材质只改脚本后重新运行。
+  - 网格约定：`COLOR.rgb` = 平均反照率 × 烘焙 AO（sRGB），`COLOR.a` < 1 为自发光；`UV.x` = 材质层号，`UV.y` = 风摆幅度（米）。共享着色器 `assets/shaders/block.gdshader`（世界坐标 UV、逐方块旋转/翻转/色偏、积雪、潮湿、熔岩/晶体发光、夜间窗光、树叶草丛风摆）；静态几何不使用 instance uniform。
+  - **BlockTex**：方块种类 `K_*` → 顶/侧/底材质层；`material("terrain"|"lod"|"static")`；`set_env/reset_env` 设置雪线、水位、夜光、风（秘境/试炼场进入时设置、退出时复位）。
+  - **MatGrid**（VoxelGrid 子类，逐体素种类）+ **BlockMesher**：道具、可破坏物、秘境道具的网格化；**BuildingMesh** 的 `kind` 决定盒子各面材质。地形由 `TerrainGen.mesh_columns` 按地表类型（`SURF_LAYERS`）写入层号。
+- **Atmosphere**（静态）：环境/天空/雾/调色的唯一入口（AgX、SSAO/SSIL/体积雾仅 Forward+）；`DayNight` 按时辰插值调色板（黎明/白昼/黄昏/夜）并写入天空（水墨远山、云、日月星）。**AmbientFX**：按生物群系混合的环境粒子（花瓣、雪、灰烬、萤火、雾、灵光），兼容渲染器下改用 CPUParticles3D。
 - **OverworldGameplay**（src/gameplay）：`overworld._spawn_player()` 在已开局时创建它，负责玩家会话、NPC 按锚点生成/回收、标记点交互、地点加成、遭遇、地图参数（`UIManager.register_args_provider("map", ...)`）。
 
 ## 界面（src/ui）

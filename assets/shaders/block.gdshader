@@ -165,6 +165,10 @@ void fragment() {
 	float lr = dot(a.rgb, lw) / dot(avg, lw);
 	vec3 ratio = mix(vec3(lr), a.rgb / avg, info.w);
 	ratio = clamp(mix(vec3(1.0), ratio, detail_contrast), vec3(0.0), vec3(3.0));
+	if ((flags & F_LAVA) != 0) {
+		// 熔岩发光：限制亮部倍率，避免色调映射后泛白
+		ratio = min(ratio, vec3(1.8));
+	}
 	vec3 c = srgb_to_linear(COLOR.rgb) * ratio;
 	float jit = 1.0 + (h4 - 0.5) * 2.0 * block_jitter;
 	if ((flags & F_TERRAIN) != 0) {
@@ -221,7 +225,9 @@ void fragment() {
 	vec3 em = vec3(0.0);
 	if ((flags & F_LAVA) != 0) {
 		float pulse = 0.8 + 0.2 * sin(TIME * 1.3 + h4 * 6.2831 + w_pos.x * 0.15);
-		em = c * (0.25 + 1.6 * a.a) * pulse * emission_gain * max(glow, 0.6);
+		// 亮度适中以保留橙红色相（过亮会被 AgX 压成白色）；反照率压暗，避免日光把熔岩照灰
+		em = c * (0.08 + 0.62 * a.a) * pulse * emission_gain * max(glow, 0.6);
+		ALBEDO = c * 0.3;
 	} else if (glow > 0.0) {
 		float m = (flags & F_EMIT_MASK) != 0 ? a.a : 1.0;
 		if ((flags & F_CRYSTAL) != 0) {
